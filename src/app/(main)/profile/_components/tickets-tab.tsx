@@ -53,7 +53,7 @@ export default function TicketsTab() {
     },
   });
 
-  const { data, isLoading, error } = useQuery<{ tickets: Ticket[] }>({
+  const { data, isLoading, error } = useQuery<{ tickets: Ticket[]; serverTime?: string }>({
     queryKey: ["user-tickets"],
     queryFn: async () => {
       const res = await fetch("/api/user/tickets");
@@ -62,26 +62,28 @@ export default function TicketsTab() {
     },
   });
 
+  const sendEmailRef = useRef(sendEmailMutation);
+  sendEmailRef.current = sendEmailMutation;
+
   useEffect(() => {
     if (data?.tickets && session?.user?.email) {
-      const now = new Date();
+      const serverTime = data.serverTime || new Date().toISOString();
       data.tickets
         .filter((ticket) => {
-          const eventDate = new Date(ticket.event.eventDate);
           return (
-            eventDate < now &&
+            ticket.event.eventDate < serverTime &&
             ticket.status === "active" &&
             !notifiedTickets.current.has(ticket.id)
           );
         })
         .forEach((ticket) => {
-          sendEmailMutation.mutate(ticket.id, {
+          sendEmailRef.current.mutate(ticket.id, {
             onError: () =>
               console.error("Failed to send email for ticket", ticket.id),
           });
         });
     }
-  }, [data?.tickets, session?.user?.email, sendEmailMutation]);
+  }, [data?.tickets, session?.user?.email]);
 
   if (isLoading) {
     return (
@@ -102,8 +104,9 @@ export default function TicketsTab() {
   }
 
   const tickets = data?.tickets || [];
+  const serverTime = data?.serverTime || new Date().toISOString();
   const activeTickets = tickets.filter(
-    (t) => new Date(t.event.eventDate) >= new Date(),
+    (t) => t.event.eventDate >= serverTime,
   );
   const expiredCount = tickets.length - activeTickets.length;
 

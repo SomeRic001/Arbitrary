@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
-  return NextResponse.json({ tickets: result.data });
+  return NextResponse.json({ tickets: result.data, serverTime: new Date().toISOString() });
 }
 
 export async function POST(req: NextRequest) {
