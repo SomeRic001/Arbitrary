@@ -1,6 +1,9 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import SectionHeader from "./section-header";
 
 interface SettingsTabProps {
@@ -10,15 +13,58 @@ interface SettingsTabProps {
   facebookId?: string;
 }
 
-/**
- * Content for the "Settings" tab — connected accounts and account management.
- */
 export default function SettingsTab({
   userEmail,
   provider,
   googleId,
   facebookId,
 }: SettingsTabProps) {
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/user/password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to change password");
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Password changed successfully");
+      setShowPasswordForm(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
+    },
+    onError: (error: Error) => {
+      setPasswordError(error.message);
+    },
+  });
+
+  const handleChangePassword = () => {
+    setPasswordError("");
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters");
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError("New password must be different from current password");
+      return;
+    }
+    changePasswordMutation.mutate();
+  };
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
@@ -162,24 +208,79 @@ export default function SettingsTab({
           Account Management
         </p>
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl transition-all duration-200 hover:bg-white hover:border-gray-200 hover:shadow-sm hover:scale-[1.01]">
-            <div>
-              <p className="text-sm font-semibold text-gray-900">
-                Password
-              </p>
-              <p className="text-xs text-gray-400">
-                Change your account password
-              </p>
-            </div>
-            <button
-              className="text-xs font-bold text-gray-600 bg-white border border-gray-200
+          {/* Password */}
+          {provider === "credentials" && (
+            <div className="flex flex-col px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Password
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Change your account password
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowPasswordForm(!showPasswordForm)}
+                  className="text-xs font-bold text-gray-600 bg-white border border-gray-200
                                hover:bg-slate-900 hover:text-white hover:border-slate-900
                                px-3.5 py-1.5 rounded-lg transition-all duration-200
                                active:scale-95"
-            >
-              Change
-            </button>
-          </div>
+                >
+                  {showPasswordForm ? "Cancel" : "Change"}
+                </button>
+              </div>
+
+              {showPasswordForm && (
+                <div className="mt-4 space-y-3 border-t border-gray-200 pt-4">
+                  <div>
+                    <input
+                      type="password"
+                      placeholder="Current password"
+                      value={currentPassword}
+                      onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(""); }}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm
+                                   focus:outline-none focus:border-slate-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="password"
+                      placeholder="New password (min 8 characters)"
+                      value={newPassword}
+                      onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm
+                                   focus:outline-none focus:border-slate-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm
+                                   focus:outline-none focus:border-slate-900 bg-white"
+                    />
+                  </div>
+
+                  {passwordError && (
+                    <p className="text-xs text-red-500 font-medium">{passwordError}</p>
+                  )}
+
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={changePasswordMutation.isPending}
+                    className="w-full py-2 rounded-lg bg-slate-900 text-white text-xs font-bold
+                                 hover:bg-slate-800 transition-all duration-200
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {changePasswordMutation.isPending ? "Saving..." : "Save Password"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {/* Space for more settings */}
           <div className="flex items-center gap-3 px-4 py-3 border border-dashed border-gray-200 rounded-xl text-gray-400">
             <p className="text-xs font-medium">
