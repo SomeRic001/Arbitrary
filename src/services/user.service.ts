@@ -4,7 +4,6 @@ import { eq, desc, sql, aliasedTable } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { toDateStr } from "@/src/lib/streak-helper";
 import { ReferralService } from "./referral.service";
-import { checkRankUpdate } from "./rank.service";
 import { ServiceResult, ok, fail } from "./result";
 import type { User } from "@/src/types/db";
 
@@ -20,7 +19,7 @@ export type UserPointsResult = {
 export type UserProfile = Pick<
   User,
   "id" | "name" | "email" | "image" | "bio" | "location" | "phoneNumber" | "referralCode" | "points"
-> & { rank: string; lifetimePoints: number; referredBy: number | null; referredByName: string | null };
+> & { lifetimePoints: number; referredBy: number | null; referredByName: string | null };
 
 export const UserService = {
   async getUserPoints(userId: number): Promise<ServiceResult<UserPointsResult>> {
@@ -79,7 +78,6 @@ export const UserService = {
         phoneNumber: usersTable.phoneNumber,
         referralCode: usersTable.referralCode,
         points: usersTable.points,
-        rank: usersTable.rank,
         lifetimePoints: usersTable.lifetimePoints,
         referredBy: usersTable.referredBy,
         referredByName: referrerAlias.name,
@@ -171,8 +169,6 @@ export const UserService = {
         .where(eq(usersTable.id, userId));
     });
 
-    await checkRankUpdate(userId);
-
     return ok({ pointsAwarded: taskPoints });
   },
 
@@ -230,8 +226,6 @@ export const UserService = {
           .where(eq(referralsTable.id, ref.id));
       }
     });
-
-    await checkRankUpdate(userId);
 
     return ok({ pointsAwarded: totalReferralPoints, referralCount: unclaimedReferrals.length });
   },

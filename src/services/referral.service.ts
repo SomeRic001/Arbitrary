@@ -4,7 +4,6 @@ import { usersTable, referralsTable, userTasksTable, pointsLogTable } from "@/sr
 import { eq, and, isNull, inArray, sql } from "drizzle-orm";
 import { ServiceResult, ok, fail } from "./result";
 import { rateLimit } from "@/src/lib/rate-limit";
-import { getRankLabel } from "@/src/lib/tiers";
 
 const REFERRAL_BONUS = 100;
 
@@ -97,13 +96,11 @@ export const ReferralService = {
             .select({ lifetimePoints: usersTable.lifetimePoints })
             .from(usersTable)
             .where(eq(usersTable.id, referrer.id));
-          const newLifetime = (refUser?.lifetimePoints || 0) + REFERRAL_BONUS;
           await tx
             .update(usersTable)
             .set({
               points: sql`${usersTable.points} + ${REFERRAL_BONUS}`,
               lifetimePoints: sql`${usersTable.lifetimePoints} + ${REFERRAL_BONUS}`,
-              rank: getRankLabel(newLifetime),
             })
             .where(eq(usersTable.id, referrer.id));
         }
@@ -182,13 +179,11 @@ export const ReferralService = {
         .select({ lifetimePoints: usersTable.lifetimePoints })
         .from(usersTable)
         .where(eq(usersTable.id, referredBy));
-      const newLifetime = (bonusUser?.lifetimePoints || 0) + REFERRAL_BONUS;
       await tx
         .update(usersTable)
         .set({
           points: sql`${usersTable.points} + ${REFERRAL_BONUS}`,
           lifetimePoints: sql`${usersTable.lifetimePoints} + ${REFERRAL_BONUS}`,
-          rank: getRankLabel(newLifetime),
         })
         .where(eq(usersTable.id, referredBy));
 

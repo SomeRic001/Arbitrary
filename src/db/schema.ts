@@ -109,7 +109,6 @@ export const usersTable = pgTable("users", {
     longestStreak: integer("longest_streak").notNull().default(0),
     createdAt: timestamp("created_at").defaultNow(),
     lastLoginAt: timestamp("last_login_at"),
-    rank: varchar("rank", { length: 255 }).default("Iron"),
     lifetimePoints: integer("lifetime_points").notNull().default(0),
     referredBy: integer("referred_by").references((): AnyPgColumn => usersTable.id),
     referralRewarded: boolean("referral_rewarded").default(false),

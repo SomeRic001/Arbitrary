@@ -19,7 +19,6 @@ import { ReferralService } from "./referral.service";
 import { isYtLike, isYtSubscribe, isYtComment } from "@/src/lib/task-detector";
 import { pointsLogTable } from "@/src/db/schema";
 import { ServiceResult, ok, fail } from "./result";
-import { getRankLabel } from "@/src/lib/tiers";
 import type { Task, UserTask, ShareTask } from "@/src/types/db";
 
 export type UserTaskItem = {
@@ -253,8 +252,6 @@ export const TaskService = {
         const newLongest = Math.max(user.longestStreak || 0, newStreak);
         const basePoints = targetTask.points || 0;
         const bonusPoints = bonus;
-        const newLifetime = (user.lifetimePoints || 0) + basePoints + bonusPoints;
-
         await tx
           .update(usersTable)
           .set({
@@ -263,7 +260,6 @@ export const TaskService = {
             longestStreak: newLongest,
             points: sql`${usersTable.points} + ${basePoints + bonusPoints}`,
             lifetimePoints: sql`${usersTable.lifetimePoints} + ${basePoints + bonusPoints}`,
-            rank: getRankLabel(newLifetime),
             completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
             lastLoginAt: new Date(),
           })
@@ -459,8 +455,6 @@ export const TaskService = {
       const newLongest = Math.max(user.longestStreak || 0, newStreak);
       const bonusPoints = bonus;
       const basePoints = task.points || 0;
-      const newLifetime = (user.lifetimePoints || 0) + basePoints + bonusPoints;
-
       await tx
         .update(usersTable)
         .set({
@@ -470,7 +464,6 @@ export const TaskService = {
           longestStreak: newLongest,
           points: sql`${usersTable.points} + ${basePoints + bonusPoints}`,
           lifetimePoints: sql`${usersTable.lifetimePoints} + ${basePoints + bonusPoints}`,
-          rank: getRankLabel(newLifetime),
           completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
         })
         .where(eq(usersTable.id, userId));
@@ -699,13 +692,11 @@ export const TaskService = {
         .for("update");
 
       if (currentUser) {
-        const newLifetime = (currentUser.lifetimePoints || 0) + pointsAwarded;
         await tx
           .update(usersTable)
           .set({
             points: sql`${usersTable.points} + ${pointsAwarded}`,
             lifetimePoints: sql`${usersTable.lifetimePoints} + ${pointsAwarded}`,
-            rank: getRankLabel(newLifetime),
             completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
           })
           .where(eq(usersTable.id, userId));
@@ -1184,11 +1175,6 @@ export const TaskService = {
         completedTasksCount: sql`${usersTable.completedTasksCount} + ${countChange}`,
       };
 
-      if (countChange > 0) {
-        const newLifetime = (userTaskInfo.user.lifetimePoints || 0) + taskPoints;
-        setData.rank = getRankLabel(newLifetime);
-      }
-
       await tx
         .update(usersTable)
         .set(setData)
@@ -1303,14 +1289,12 @@ async function awardFacebookPoints(
       .where(eq(usersTable.id, userId))
       .for("update");
 
-    if (currentUser) {
-      const newLifetime = (currentUser.lifetimePoints || 0) + pointsAwarded;
+      if (currentUser) {
       await tx
         .update(usersTable)
         .set({
           points: sql`${usersTable.points} + ${pointsAwarded}`,
           lifetimePoints: sql`${usersTable.lifetimePoints} + ${pointsAwarded}`,
-          rank: getRankLabel(newLifetime),
           completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
         })
         .where(eq(usersTable.id, userId));

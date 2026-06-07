@@ -4,7 +4,6 @@ import { userTasksTable, tasksTable, usersTable, pointsLogTable } from "@/src/db
 import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdmin } from "@/src/services/auth.service";
 import { ReferralService } from "@/src/services/referral.service";
-import { getRankLabel } from "@/src/lib/tiers";
 
 async function deleteCloudinaryImage(url: string): Promise<void> {
   try {
@@ -105,8 +104,6 @@ export async function POST(req: NextRequest) {
     const pointsAwarded = userTask.task.points ?? 0;
 
     await db.transaction(async (tx) => {
-      const newLifetime = (userTask.user.lifetimePoints || 0) + pointsAwarded;
-
       await tx
         .update(userTasksTable)
         .set({ status: "verified" })
@@ -117,7 +114,6 @@ export async function POST(req: NextRequest) {
         .set({
           points: sql`${usersTable.points} + ${pointsAwarded}`,
           lifetimePoints: sql`${usersTable.lifetimePoints} + ${pointsAwarded}`,
-          rank: getRankLabel(newLifetime),
           completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
         })
         .where(eq(usersTable.id, userTask.user.id));
