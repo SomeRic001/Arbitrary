@@ -10,6 +10,7 @@ import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import FacebookProvider from "next-auth/providers/facebook";
 import { ReferralService } from "@/src/services/referral.service";
+import { encryptToken, decryptToken } from "@/src/lib/token-crypto";
 
 export const authOptions: import("next-auth").NextAuthOptions = {
     providers: [
@@ -104,6 +105,18 @@ export const authOptions: import("next-auth").NextAuthOptions = {
 
     callbacks: {
         async signIn({ user, account }) {
+            if (account?.provider === "google") {
+                const existingByGoogleId = await db.query.usersTable.findFirst({
+                    where: eq(usersTable.googleId, account.providerAccountId),
+                });
+                if (existingByGoogleId && existingByGoogleId.email !== user.email) {
+                    console.warn(
+                        `Google ID ${account.providerAccountId} already linked to ${existingByGoogleId.email}, ` +
+                        `rejecting sign-in attempt from ${user.email}`
+                    );
+                    return false;
+                }
+            }
             if (account?.provider === "google" || account?.provider === "facebook") {
                 try {
                     const existingUser = await db.query.usersTable.findFirst({
@@ -118,6 +131,9 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                         };
                         if (account.provider === "google" && !existingUser.googleId) {
                             updateData.googleId = account.providerAccountId;
+                            if (account.refresh_token) {
+                                updateData.googleRefreshToken = encryptToken(account.refresh_token);
+                            }
                         }
                         if (account.provider === "facebook") {
                             updateData.facebookId = account.providerAccountId;
@@ -132,6 +148,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                             name: user.name,
                             image: user.image,
                             googleId: account.provider === "google" ? account.providerAccountId : null,
+                            googleRefreshToken: account.provider === "google" && account.refresh_token ? encryptToken(account.refresh_token) : null,
                             facebookId: account.provider === "facebook" ? account.providerAccountId : null,
                             provider: account.provider,
                             role: "USER",
@@ -178,12 +195,19 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                             client_secret: process.env.GOOGLE_CLIENT_SECRET!,
                             grant_type: 'refresh_token',
                             refresh_token: token.googleRefreshToken as string,
+                            scope: 'openid email profile https://www.googleapis.com/auth/youtube.force-ssl',
                         }),
                     });
                     const refreshed = await response.json();
                     if (refreshed.access_token) {
                         token.googleAccessToken = refreshed.access_token;
                         token.googleTokenExpiry = Math.floor(Date.now() / 1000) + refreshed.expires_in;
+                        if (refreshed.refresh_token && token.userId) {
+                            await db.update(usersTable)
+                                .set({ googleRefreshToken: encryptToken(refreshed.refresh_token) })
+                                .where(eq(usersTable.id, token.userId as number))
+                                .catch(err => console.error('Failed to persist rotated Google refresh token:', err));
+                        }
                     }
                 } catch (err) {
                     console.error('Google token refresh failed:', err);
@@ -207,6 +231,13 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                     token.location = dbUser.location;
                     token.phoneNumber = dbUser.phoneNumber;
                     token.googleId = dbUser.googleId ?? undefined;
+                    if (dbUser.googleRefreshToken && !token.googleRefreshToken) {
+                        const decrypted = decryptToken(dbUser.googleRefreshToken);
+                        if (decrypted) {
+                            token.googleRefreshToken = decrypted;
+                            token.googleTokenExpiry = 0;
+                        }
+                    }
                     if (dbUser.facebookId) token.facebookId = dbUser.facebookId;
                 } else if (trigger === "signIn") {
                     console.warn("JWT signIn: DB user not found for email", token.email);
@@ -232,6 +263,8 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                 session.user.googleId = token.googleId as string;
                 session.facebookAccessToken = token.facebookAccessToken as string;
                 session.facebookId = token.facebookId as string;
+                session.googleAccessToken = token.googleAccessToken as string;
+                session.googleRefreshToken = token.googleRefreshToken as string;
                 session.googleTokenExpiry = token.googleTokenExpiry as number;
             }
             return session;

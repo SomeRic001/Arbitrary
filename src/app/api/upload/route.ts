@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/src/services/auth.service";
+import { rateLimit } from "@/src/lib/rate-limit";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -8,7 +9,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
-  const formData = await req.formData();
+  const rl = await rateLimit(`upload:${auth.data.id}`, 10, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Too many attempts. Try again in ${rl.retryAfterSeconds}s.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+    );
+  }
+
+  const contentType = req.headers.get("content-type") || "";
+  if (!contentType.startsWith("multipart/form-data")) {
+    return NextResponse.json({ error: "Request must be multipart/form-data" }, { status: 400 });
+  }
+
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+  }
+
   const file = formData.get("file") as File | null;
   const type = (formData.get("type") as string) || "task-proofs";
 

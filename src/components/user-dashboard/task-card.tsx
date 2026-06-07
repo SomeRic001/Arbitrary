@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { YoutubeModal } from "./youtube-modal";
 import { FacebookModal } from "./facebook-modal";
 import { SubscribeModal } from "./subscribe-modal";
+import { YouTubeActionModal } from "./youtube-action-modal";
+import { isYtLike, isYtSubscribe, isYtComment } from "@/src/lib/task-detector";
 import { FlashCountdown } from "./flash-countdown";
 import { ShareTaskCard } from "./share-task-card";
 
@@ -56,6 +58,8 @@ export function TaskCard({
   const [isYoutubeModalOpen, setIsYoutubeModalOpen] = useState(false);
   const [isFacebookModalOpen, setIsFacebookModalOpen] = useState(false);
   const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
+  const [isYouTubeActionModalOpen, setIsYouTubeActionModalOpen] = useState(false);
+  const [youtubeActionType, setYoutubeActionType] = useState<"like" | "comment">("like");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -72,25 +76,6 @@ export function TaskCard({
   };
 
   const requiredSeconds: number = task.watchDuration ?? 30;
-
-  // Detect YouTube task type from URL/title heuristics (matches backend fallback logic)
-  function isSubscribeTask(): boolean {
-    if (task.taskType === "VIDEO_SUBSCRIBE") return true;
-    if (task.platform !== "youtube") return false;
-    const url = (task.postUrl ?? "").toLowerCase();
-    const title = (task.title ?? "").toLowerCase();
-    const isChannelUrl =
-      url.includes("youtube.com/channel") ||
-      url.includes("youtube.com/@") ||
-      url.includes("youtube.com/c/") ||
-      url.includes("youtube.com/user/") ||
-      (url.startsWith("uc") && !url.includes("/"));
-    const isVidUrl =
-      url.includes("youtube.com/watch") ||
-      url.includes("youtu.be/") ||
-      url.includes("youtube.com/shorts");
-    return isChannelUrl || (!isVidUrl && title.includes("subscri"));
-  }
 
   const youtubeCompleteMutation = useMutation({
     mutationFn: async ({
@@ -344,7 +329,7 @@ export function TaskCard({
                           : "Cancel"}
                       </button>
                     </div>
-                  ) : isSubscribeTask() ? (
+                  ) : isYtSubscribe(task) ? (
                     <div className="flex gap-1.5">
                       <button
                         onClick={(e) => {
@@ -372,60 +357,34 @@ export function TaskCard({
                           : "Cancel"}
                       </button>
                     </div>
-                  ) : task.taskType === "VIDEO_LIKE" ? (
-                    // Phase 1a.1: auto-verify via youtube-complete; on failure toast "please like and retry"
-                    <div className="flex flex-col gap-1.5">
-                      {task.postUrl && (
-                        <a
-                          href={task.postUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs font-bold text-blue-200 hover:text-white bg-blue-500/30 hover:bg-blue-500/50
-                                     px-2.5 py-1.5 rounded-full backdrop-blur-sm transition-all duration-200
-                                     hover:scale-105 text-center"
-                        >
-                          ↗ Visit Link
-                        </a>
-                      )}
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            youtubeCompleteMutation.mutate(
-                              { taskId: task.id },
-                              {
-                                onSuccess: () => {
-                                  toast.success("Like verified! Points awarded.");
-                                  queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
-                                  queryClient.invalidateQueries({ queryKey: ["user-points"] });
-                                },
-                                onError: () =>
-                                  toast.error("Please like the video and try again."),
-                              },
-                            );
-                          }}
-                          className="text-xs font-bold text-white bg-emerald-500/50 hover:bg-emerald-500/70
-                                          px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                          hover:scale-105 flex-1"
-                        >
-                          Verify Like
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onCancel(task.id);
-                          }}
-                          disabled={cancelPending}
-                          className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                     px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                     hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {cancelPending && cancelVariable === task.id
-                            ? "..."
-                            : "Cancel"}
-                        </button>
-                      </div>
+                  ) : isYtLike(task) || isYtComment(task) ? (
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setYoutubeActionType(isYtLike(task) ? "like" : "comment");
+                          setIsYouTubeActionModalOpen(true);
+                        }}
+                        className="text-xs font-bold text-white bg-emerald-500/50 hover:bg-emerald-500/70
+                                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                                        hover:scale-105 flex-1"
+                      >
+                        {isYtLike(task) ? "👍 Like" : "💬 Comment"}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCancel(task.id);
+                        }}
+                        disabled={cancelPending}
+                        className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
+                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                                   hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {cancelPending && cancelVariable === task.id
+                          ? "..."
+                          : "Cancel"}
+                      </button>
                     </div>
                   ) : task.platform === "youtube" || task.taskType === "VIDEO_WATCH" || task.taskType === "video_watch" ? (
                     <div className="flex gap-1.5">
@@ -628,6 +587,18 @@ export function TaskCard({
         task={task}
         isOpen={isSubscribeModalOpen}
         onClose={() => setIsSubscribeModalOpen(false)}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["user-points"] });
+          return;
+        }}
+      />
+
+      <YouTubeActionModal
+        task={task}
+        action={youtubeActionType}
+        isOpen={isYouTubeActionModalOpen}
+        onClose={() => setIsYouTubeActionModalOpen(false)}
         onComplete={() => {
           queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
           queryClient.invalidateQueries({ queryKey: ["user-points"] });

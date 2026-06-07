@@ -1,5 +1,6 @@
 "use client";
 
+import { signIn } from "next-auth/react";
 import SectionHeader from "./section-header";
 
 interface SettingsTabProps {
@@ -70,18 +71,23 @@ export default function SettingsTab({
                   </p>
                 </div>
               </div>
-              <span
-                className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider
-                                ${
-                                  googleId
-                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                    : "bg-gray-100 text-gray-400"
-                                }`}
-              >
-                {googleId
-                  ? "Connected"
-                  : "Not linked"}
-              </span>
+              {googleId ? (
+                <span
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider
+                             bg-emerald-50 text-emerald-600 border border-emerald-100"
+                >
+                  Connected
+                </span>
+              ) : (
+                <button
+                  onClick={() => signIn("google", { callbackUrl: window.location.href })}
+                  className="text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider
+                             bg-blue-600 text-white hover:bg-blue-700
+                             transition-all duration-200 hover:scale-105 active:scale-95"
+                >
+                  Link
+                </button>
+              )}
             </div>
 
             {/* Facebook */}

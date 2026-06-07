@@ -16,6 +16,7 @@ import {
 } from "@/src/lib/facebook";
 import { YouTubeService } from "./youtube.service";
 import { ReferralService } from "./referral.service";
+import { isYtLike, isYtSubscribe, isYtComment } from "@/src/lib/task-detector";
 import { pointsLogTable } from "@/src/db/schema";
 import { ServiceResult, ok, fail } from "./result";
 import { getRankLabel } from "@/src/lib/tiers";
@@ -596,7 +597,7 @@ export const TaskService = {
       return fail("This endpoint is only for YouTube tasks", 400);
     }
 
-    const tokenResult = await YouTubeService.getAccessToken();
+    const tokenResult = await YouTubeService.getAuthorizedClient(userId);
     if (!tokenResult.success) {
       return fail("Link your YouTube account in settings first", 401);
     }
@@ -605,8 +606,8 @@ export const TaskService = {
     const taskType = task.taskType;
     const pointsAwarded = task.points || 0;
 
-    // Type-specific YouTube verification
-    if (taskType === "VIDEO_SUBSCRIBE") {
+    // Dynamic pattern-based YouTube verification
+    if (isYtSubscribe(task)) {
       const channelId = task.socialPostId || extractChannelId(task.postUrl);
       if (!channelId) {
         return fail("No YouTube channel linked to this task", 400);
@@ -628,87 +629,27 @@ export const TaskService = {
         }
         return fail("Please subscribe to the YouTube channel to complete this task", 429);
       }
-    } else if (taskType === "VIDEO_LIKE") {
+    } else if (isYtLike(task)) {
       const videoId = task.socialPostId || extractVideoId(task.postUrl);
       const isLiked = videoId ? await YouTubeService.verifyLike(videoId, accessToken) : false;
       if (!isLiked) {
         return fail("Please like the video to complete this task", 429);
       }
-    } else if (taskType !== "VIDEO_WATCH" && taskType !== "video_watch") {
-      const targetUrl = task.postUrl ?? "";
-      const titleLower = (task.title ?? "").toLowerCase();
-
-      const isVidUrl =
-        targetUrl.includes("youtube.com/watch") ||
-        targetUrl.includes("youtu.be/") ||
-        targetUrl.includes("youtube.com/shorts");
-
-      const isChannelUrl =
-        targetUrl.includes("youtube.com/channel") ||
-        targetUrl.includes("youtube.com/@") ||
-        targetUrl.includes("youtube.com/c/") ||
-        targetUrl.includes("youtube.com/user/") ||
-        (targetUrl.startsWith("UC") && !targetUrl.includes("/"));
-
-      const isSubscriptionTask = isChannelUrl || titleLower.includes("subscri");
-      const isCommentTask = isVidUrl && (titleLower.includes("comment") || titleLower.includes("engage"));
-      const isLikeTask = isVidUrl && !isCommentTask && titleLower.includes("like");
-
-      if (isCommentTask) {
-        const videoId = task.socialPostId || extractVideoId(targetUrl);
-        if (!videoId) {
-          return fail("Could not extract video ID from the task URL", 400);
-        }
-        const hasCommented = await YouTubeService.verifyComment(videoId, userId, taskId, accessToken);
-        if (!hasCommented) {
-          return fail("Please comment on the video to complete this task", 429);
-        }
-      } else if (isLikeTask) {
-        const videoId = task.socialPostId || extractVideoId(targetUrl);
-        if (!videoId) {
-          return fail("Could not extract video ID from the task URL", 400);
-        }
-        const isLiked = await YouTubeService.verifyLike(videoId, accessToken);
-        if (!isLiked) {
-          return fail("Please like the video to complete this task", 429);
-        }
-      } else if (isSubscriptionTask) {
-        const channelId = task.socialPostId || extractChannelId(targetUrl);
-        if (!channelId) {
-          return fail("No YouTube channel linked to this task", 400);
-        }
-        const resolvedId = channelId.startsWith("@")
-          ? await YouTubeService.resolveChannelHandle(channelId, accessToken)
-          : channelId;
-        if (!resolvedId) {
-          return fail("Could not resolve YouTube channel", 400);
-        }
-        const subResult = await YouTubeService.verifySubscription(resolvedId, accessToken);
-        if (!subResult.verified) {
-          if (subResult.needsScreenshot) {
-            await db
-              .update(userTasksTable)
-              .set({ status: "Pending Verification" })
-              .where(eq(userTasksTable.id, userTask.id));
-            return ok({ message: "Subscription could not be verified automatically. Upload a screenshot as proof.", requiresScreenshot: true });
-          }
-          return fail("Please subscribe to the YouTube channel to complete this task", 429);
-        }
-      } else {
-        return fail("Could not determine the YouTube task type from the URL or title", 400);
+    } else if (isYtComment(task)) {
+      const videoId = task.socialPostId || extractVideoId(task.postUrl);
+      if (!videoId) {
+        return fail("Could not extract video ID from the task URL", 400);
       }
+      const hasCommented = await YouTubeService.verifyComment(videoId, userId, taskId, accessToken);
+      if (!hasCommented) {
+        return fail("Please comment on the video to complete this task", 429);
+      }
+    } else if (taskType !== "VIDEO_WATCH" && taskType !== "video_watch") {
+      return fail("Could not determine the YouTube task type from the URL or title", 400);
     }
 
-    // Watch duration check (skip for subscribe tasks — both exact and heuristic)
-    const isSubscribeByUrl =
-      (task.postUrl ?? "").includes("youtube.com/channel") ||
-      (task.postUrl ?? "").includes("youtube.com/@") ||
-      (task.postUrl ?? "").includes("youtube.com/c/") ||
-      (task.postUrl ?? "").includes("youtube.com/user/") ||
-      ((task.postUrl ?? "").startsWith("UC") && !(task.postUrl ?? "").includes("/")) ||
-      (task.title ?? "").toLowerCase().includes("subscri");
-
-    if (taskType !== "VIDEO_SUBSCRIBE" && !isSubscribeByUrl && taskType !== "VIDEO_LIKE") {
+    // Watch duration check: only VIDEO_WATCH tasks require a watch session
+    if (taskType === "VIDEO_WATCH" || taskType === "video_watch") {
       if (!sessionId) {
         return fail("Watch session is required. Start the video first.", 400);
       }
@@ -769,7 +710,7 @@ export const TaskService = {
           })
           .where(eq(usersTable.id, userId));
 
-        const reason = taskType === "VIDEO_SUBSCRIBE"
+        const reason = isYtSubscribe(task)
           ? `YouTube subscribe: ${task.title}`
           : taskType === "VIDEO_WATCH" || taskType === "video_watch"
             ? `YouTube watch: ${task.title}`
@@ -786,7 +727,7 @@ export const TaskService = {
 
     await ReferralService.awardReferralBonusIfEligible(userId);
 
-    const msg = taskType === "VIDEO_SUBSCRIBE"
+    const msg = isYtSubscribe(task)
       ? "YouTube subscription verified and points awarded!"
       : "YouTube task completed and points awarded!";
     return ok({ message: msg });
@@ -1327,9 +1268,11 @@ function extractChannelId(url: string | null): string | null {
   const rawMatch = url.match(/^(UC[\w-]{22})$/);
   if (rawMatch) return rawMatch[1];
 
+  const atMatch = url.match(/youtube\.com\/@([\w.-]+)/);
+  if (atMatch) return '@' + atMatch[1];
+
   const patterns = [
     /youtube\.com\/channel\/(UC[\w-]{22})/,
-    /youtube\.com\/@([\w.-]+)/,
     /youtube\.com\/c\/([\w.-]+)/,
     /youtube\.com\/user\/([\w.-]+)/,
   ];

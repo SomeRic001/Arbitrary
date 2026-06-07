@@ -83,7 +83,7 @@ export const adminTaskSchema = z.object({
     description: z.string().min(1, "Description is required").max(5000),
     taskType: z.string().min(1, "Task type is required").max(50)
       .refine((val) => ["daily","monthly","social","special","share",
-        "VIDEO_WATCH","VIDEO_LIKE","VIDEO_SUBSCRIBE","SCREENSHOT_UPLOAD",
+        "VIDEO_WATCH","SCREENSHOT_UPLOAD",
         "manual","social_media","video_watch"
       ].includes(val) || val.length >= 1, "Unknown task type"),
     rewardPoint: z.number("rewardPoint must be a number").int().positive("rewardPoint must be positive"),

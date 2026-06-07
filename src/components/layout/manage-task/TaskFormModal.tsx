@@ -314,8 +314,7 @@ export function TaskFormModal({
               <option value="special">Special</option>
               <option value="share">Share</option>
               <option value="VIDEO_WATCH">Video Watch</option>
-              <option value="VIDEO_LIKE">Video Like</option>
-              <option value="VIDEO_SUBSCRIBE">Video Subscribe</option>
+              <option value="social_media">Social Media (YouTube)</option>
               <option value="SCREENSHOT_UPLOAD">Screenshot Upload</option>
             </select>
           </div>

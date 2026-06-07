@@ -3,30 +3,43 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 
-type SubscribeModalProps = {
+type ActionType = "like" | "comment";
+
+type YouTubeActionModalProps = {
   task: any;
+  action: ActionType;
   isOpen: boolean;
   onClose: () => void;
   onComplete: () => void;
 };
 
-export function SubscribeModal({
+export function YouTubeActionModal({
   task,
+  action,
   isOpen,
   onClose,
   onComplete,
-}: SubscribeModalProps) {
+}: YouTubeActionModalProps) {
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [needsScreenshot, setNeedsScreenshot] = useState(false);
+  const [needsGoogleLink, setNeedsGoogleLink] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleOpenChannel = () => {
+  const isLike = action === "like";
+  const label = isLike ? "Like" : "Comment";
+  const labelLower = label.toLowerCase();
+  const headerGradient = isLike
+    ? "from-emerald-500 via-emerald-600 to-emerald-700"
+    : "from-blue-500 via-blue-600 to-blue-700";
+  const headerLabelColor = isLike ? "text-emerald-200" : "text-blue-200";
+
+  const handleOpenVideo = () => {
     if (task.postUrl) {
       window.open(task.postUrl, "_blank", "noopener,noreferrer");
     }
@@ -35,6 +48,7 @@ export function SubscribeModal({
   const handleVerify = async () => {
     setVerifying(true);
     setError("");
+    setNeedsGoogleLink(false);
     try {
       const res = await fetch("/api/user/tasks/youtube-complete", {
         method: "POST",
@@ -43,6 +57,12 @@ export function SubscribeModal({
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setNeedsGoogleLink(true);
+          setError(data.error || "Link your YouTube account");
+          setVerifying(false);
+          return;
+        }
         throw new Error(data.error || "Verification failed");
       }
       if (data.requiresScreenshot) {
@@ -117,10 +137,10 @@ export function SubscribeModal({
         onClick={onClose}
       />
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden modal-in">
-        <div className="bg-gradient-to-br from-red-500 via-red-600 to-red-700 px-6 pt-6 pb-8">
+        <div className={`bg-gradient-to-br ${headerGradient} px-6 pt-6 pb-8`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-red-200">
-              YouTube Subscribe
+            <span className={`text-[10px] font-black uppercase tracking-widest ${headerLabelColor}`}>
+              YouTube {label}
             </span>
             <button
               onClick={onClose}
@@ -132,7 +152,7 @@ export function SubscribeModal({
             </button>
           </div>
           <h2 className="text-xl font-black text-white">{task?.title || ""}</h2>
-          <p className="text-sm text-red-200 mt-1 line-clamp-2">
+          <p className="text-sm text-white/80 mt-1 line-clamp-2">
             {task?.description || ""}
           </p>
         </div>
@@ -145,15 +165,31 @@ export function SubscribeModal({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-lg font-black text-emerald-600">Subscribed!</p>
+              <p className="text-lg font-black text-emerald-600">{label}ed!</p>
               <p className="text-sm text-gray-500">Points have been awarded.</p>
+            </div>
+          ) : needsGoogleLink ? (
+            <div className="flex flex-col gap-4">
+              <div className="p-3 bg-red-50 rounded-2xl border border-red-200">
+                <p className="text-xs font-bold text-red-700">
+                  Your YouTube account is not linked.
+                </p>
+                <p className="text-xs text-red-600 mt-1">
+                  Link your Google account in profile settings. 
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-full py-3 px-5 bg-gray-500 hover:bg-gray-600 text-white font-bold text-sm rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+              >
+                Close
+              </button>
             </div>
           ) : needsScreenshot ? (
             <div className="flex flex-col gap-4">
               <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
                 <p className="text-xs font-bold text-amber-700">
-                  Your subscription privacy settings prevent automatic verification.
-                  Please upload a screenshot showing you are subscribed to this channel.
+                  Automatic verification could not confirm your {labelLower}. Please upload a screenshot showing you have {isLike ? "liked" : "commented on"} this video.
                 </p>
               </div>
               <label
@@ -191,26 +227,26 @@ export function SubscribeModal({
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
                   1
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800 text-sm">Open the YouTube channel</p>
+                  <p className="font-bold text-gray-800 text-sm">Open the YouTube video</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Click the button below to open the channel in a new tab.
+                    Click the button below to open the video in a new tab.
                   </p>
                 </div>
               </div>
 
               {task.postUrl && (
                 <button
-                  onClick={handleOpenChannel}
+                  onClick={handleOpenVideo}
                   className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-2xl border border-red-200 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
-                  Open YouTube Channel
+                  Open YouTube Video
                 </button>
               )}
 
@@ -219,9 +255,11 @@ export function SubscribeModal({
                   2
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800 text-sm">Subscribe & Verify</p>
+                  <p className="font-bold text-gray-800 text-sm">{label} & Verify</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Click the subscriber button on the channel, then verify here.
+                    {isLike
+                      ? "Click the like button on the video, then verify here."
+                      : "Post your comment on the video, then verify here."}
                   </p>
                 </div>
               </div>

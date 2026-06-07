@@ -20,6 +20,7 @@ declare module "next-auth" {
         facebookAccessToken?: string;
         facebookId?: string;
         googleAccessToken?: string;
+        googleRefreshToken?: string;
         googleTokenExpiry?: number;
     }
 }

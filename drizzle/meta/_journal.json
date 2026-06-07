@@ -71,6 +71,20 @@
       "when": 1760000000000,
       "tag": "0009_add_social_platform_target_url_is_active",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1762000000000,
+      "tag": "0010_simplify_task_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1764000000000,
+      "tag": "0011_add_google_refresh_token",
+      "breakpoints": true
     }
   ]
 }

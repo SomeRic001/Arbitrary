@@ -98,6 +98,7 @@ export const usersTable = pgTable("users", {
     location: text("location"),
     provider: text("provider").notNull().default("credentials"),
     googleId: varchar("google_id", { length: 255 }).unique(),
+    googleRefreshToken: text("google_refresh_token"),
     facebookId: varchar("facebook_id", { length: 255 }),
     role: varchar("role", { length: 50 }).notNull().default("user"),
     points: integer("points").notNull().default(0),
