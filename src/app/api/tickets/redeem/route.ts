@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
-  const { eventId } = await req.json();
+  const { eventId, dealCode, dealId } = await req.json();
   if (!eventId) {
     return NextResponse.json({ error: "Event ID is required" }, { status: 400 });
   }
@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     Number(eventId),
     auth.data.email ?? undefined,
     auth.data.name ?? undefined,
+    dealCode,
+    dealId ? Number(dealId) : undefined,
   );
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: (result as any).status ?? 400 });

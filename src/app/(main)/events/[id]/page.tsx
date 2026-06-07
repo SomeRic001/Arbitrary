@@ -37,13 +37,80 @@ const EventContentPage = () => {
   const totalPoints = pointsData?.points ?? 0;
   const queryClient = useQueryClient();
 
+  // Discount code state
+  const [discountCode, setDiscountCode] = React.useState("");
+  const [appliedDiscount, setAppliedDiscount] = React.useState<{
+    dealId: number;
+    dealTitle: string;
+    discountType: string;
+    discountValue: number;
+    discountMaxAmount: number | null;
+    code: string;
+  } | null>(null);
+  const [isValidating, setIsValidating] = React.useState(false);
+  const [codeError, setCodeError] = React.useState("");
+
+  const parsePrice = (priceStr: string) => {
+    const match = priceStr.match(/^([^\d]*)([\d,]+(?:\.\d+)?)/);
+    if (!match) return { prefix: priceStr, value: 0 };
+    return { prefix: match[1], value: Number(match[2].replace(/,/g, "")) };
+  };
+
+  const getDiscountedPrice = (originalPrice: string) => {
+    if (!appliedDiscount) return null;
+    const { prefix, value } = parsePrice(originalPrice);
+    if (value === 0) return null;
+    let discountAmount = 0;
+    if (appliedDiscount.discountType === "percent") {
+      discountAmount = value * (appliedDiscount.discountValue / 100);
+      if (appliedDiscount.discountMaxAmount && discountAmount > appliedDiscount.discountMaxAmount) {
+        discountAmount = appliedDiscount.discountMaxAmount;
+      }
+    } else {
+      discountAmount = appliedDiscount.discountValue;
+    }
+    const newPrice = Math.max(0, value - discountAmount);
+    return { display: `${prefix}${newPrice.toLocaleString()}`, original: originalPrice };
+  };
+
+  const validateDiscountCode = async () => {
+    if (!discountCode.trim()) return;
+    setIsValidating(true);
+    setCodeError("");
+    try {
+      const res = await fetch("/api/deals/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: discountCode.trim() }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedDiscount(data);
+        toast.success(`Code applied: ${data.discountValue}${data.discountType === "percent" ? "%" : " Rs"} off`);
+      } else {
+        setCodeError(data.error || "Invalid code");
+        setAppliedDiscount(null);
+      }
+    } catch (err) {
+      console.error("Discount code validation error:", err);
+      setCodeError("Failed to validate code");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   // Mutation for redeeming ticket
   const { mutate: redeemTicket, isPending: isRedeeming } = useMutation({
     mutationFn: async (eventId: number) => {
+      const body: Record<string, unknown> = { eventId: String(eventId) };
+      if (appliedDiscount) {
+        body.dealCode = appliedDiscount.code;
+        body.dealId = appliedDiscount.dealId;
+      }
       const res = await fetch("/api/tickets/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: String(eventId) }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -51,10 +118,19 @@ const EventContentPage = () => {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.discountApplied) {
+        const d = data.discountApplied;
+        const label = d.type === "percent"
+          ? `${d.value}%${d.maxAmount ? ` (up to Rs ${d.maxAmount})` : ""}`
+          : `Rs ${d.value}`;
+        toast.success(`Discount code applied! ${label} off.`, { duration: 5000 });
+      }
       toast.success("Ticket added to your profile! Check My Tickets.", {
         duration: 5000,
       });
+      setDiscountCode("");
+      setAppliedDiscount(null);
       queryClient.invalidateQueries({ queryKey: ["user-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["user-points"] });
     },
@@ -211,20 +287,79 @@ const EventContentPage = () => {
                     SECURE YOUR ACCESS
                   </h3>
                   <div className="space-y-4 mb-8">
-                    {event.accessTypes.map((type: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-center border-b border-white/10 pb-3"
-                      >
-                        <span className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">
-                          {type.title}
-                        </span>
-                        <span className="text-xl font-black text-[#FACC15]">
-                          {type.price}
-                        </span>
-                      </div>
-                    ))}
+                    {event.accessTypes.map((type: any, i: number) => {
+                      const discounted = getDiscountedPrice(type.price);
+                      return (
+                        <div
+                          key={i}
+                          className="flex justify-between items-center border-b border-white/10 pb-3"
+                        >
+                          <span className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">
+                            {type.title}
+                          </span>
+                          <span className="text-xl font-black text-[#FACC15]">
+                            {discounted ? (
+                              <>
+                                <span className="line-through text-zinc-500 text-base mr-2">{discounted.original}</span>
+                                {discounted.display}
+                              </>
+                            ) : (
+                              type.price
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
+
+                  {/* Discount Code Section */}
+                  <div className="border-t border-white/10 pt-4 space-y-3">
+                    {appliedDiscount ? (
+                      <div className="p-3 rounded-xl bg-emerald-900/30 border border-emerald-500/30 text-center space-y-2">
+                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                          Code applied
+                        </p>
+                        <code className="inline-block text-xs font-mono font-bold text-white bg-white/10 px-3 py-1.5 rounded-lg tracking-wider">
+                          {appliedDiscount.code}
+                        </code>
+                        <p className="text-xs font-black text-white">
+                          {appliedDiscount.discountType === "percent"
+                            ? `${appliedDiscount.discountValue}% OFF${appliedDiscount.discountMaxAmount ? ` (up to Rs ${appliedDiscount.discountMaxAmount})` : ""}`
+                            : `Rs ${appliedDiscount.discountValue} OFF`}
+                        </p>
+                        <p className="text-[9px] text-zinc-400">{appliedDiscount.dealTitle}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">
+                          Have a discount code?
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={discountCode}
+                            onChange={(e) => {
+                              setDiscountCode(e.target.value);
+                              setCodeError("");
+                            }}
+                            placeholder="Enter code"
+                            className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold focus:outline-none focus:border-[#FACC15] uppercase tracking-wider"
+                          />
+                          <button
+                            onClick={validateDiscountCode}
+                            disabled={isValidating || !discountCode.trim()}
+                            className="px-4 py-2 rounded-xl bg-[#FACC15] text-black font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {isValidating ? "..." : "Apply"}
+                          </button>
+                        </div>
+                        {codeError && (
+                          <p className="text-[10px] text-red-400 font-bold text-center">{codeError}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   <button
                     onClick={() => {
                       if (totalPoints >= 100) {
@@ -234,11 +369,11 @@ const EventContentPage = () => {
                       }
                     }}
                     disabled={isRedeeming}
-                    className="w-full py-4 bg-[#FACC15] text-black font-black uppercase tracking-[0.2em] rounded-xl hover:bg-white transition-all duration-500 hover:scale-[1.02] text-sm"
+                    className="w-full py-4 bg-[#FACC15] text-black font-black uppercase tracking-[0.2em] rounded-xl hover:bg-white transition-all duration-500 hover:scale-[1.02] text-sm mt-6"
                   >
                     {isRedeeming ? "Processing..." : "Book Now / Redeem"}
                   </button>
-                  <div className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                  <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">
                       Rewards Member
                     </p>

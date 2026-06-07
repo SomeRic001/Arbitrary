@@ -1141,30 +1141,31 @@ export const TaskService = {
     userTaskId: number,
     newStatus: string,
   ): Promise<ServiceResult<{ message: string }>> {
-    const [userTaskInfo] = await db
-      .select({
-        userTask: userTasksTable,
-        task: tasksTable,
-        user: usersTable,
-      })
-      .from(userTasksTable)
-      .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
-      .innerJoin(usersTable, eq(userTasksTable.userId, usersTable.id))
-      .where(eq(userTasksTable.id, userTaskId));
+    return await db.transaction(async (tx) => {
+      const [userTaskInfo] = await tx
+        .select({
+          userTask: userTasksTable,
+          task: tasksTable,
+          user: usersTable,
+        })
+        .from(userTasksTable)
+        .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
+        .innerJoin(usersTable, eq(userTasksTable.userId, usersTable.id))
+        .where(eq(userTasksTable.id, userTaskId))
+        .for("update");
 
-    if (!userTaskInfo) return fail("Submission not found", 404);
+      if (!userTaskInfo) return fail("Submission not found", 404);
 
-    const currentStatus = userTaskInfo.userTask.status;
-    const taskPoints = userTaskInfo.task.points;
-    let countChange = 0;
+      const currentStatus = userTaskInfo.userTask.status;
+      const taskPoints = userTaskInfo.task.points;
+      let countChange = 0;
 
-    if (newStatus === "Verified" && currentStatus !== "Verified") {
-      countChange = 1;
-    } else if (newStatus !== "Verified" && currentStatus === "Verified") {
-      countChange = -1;
-    }
+      if (newStatus === "Verified" && currentStatus !== "Verified") {
+        countChange = 1;
+      } else if (newStatus !== "Verified" && currentStatus === "Verified") {
+        countChange = -1;
+      }
 
-    await db.transaction(async (tx) => {
       await tx
         .select()
         .from(usersTable)
@@ -1206,13 +1207,13 @@ export const TaskService = {
           reason: `Admin verified: ${userTaskInfo.task.title}`,
         });
       }
+
+      if (newStatus === "Verified" && currentStatus !== "Verified") {
+        await ReferralService.awardReferralBonusIfEligible(userTaskInfo.user.id);
+      }
+
+      return ok({ message: "Submission updated" });
     });
-
-    if (newStatus === "Verified" && currentStatus !== "Verified") {
-      await ReferralService.awardReferralBonusIfEligible(userTaskInfo.user.id);
-    }
-
-    return ok({ message: "Submission updated" });
   },
 };
 

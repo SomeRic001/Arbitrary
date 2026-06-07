@@ -75,7 +75,7 @@ const AccessTypeEditor = ({
                   const key = `accessTypes.${access.id}.price`;
                   if (fieldErrors[key]) onClearError(key);
                 }}
-                placeholder="e.g. $150"
+                placeholder="e.g. Rs 150"
                 className={`w-full px-4 py-3 bg-white border rounded-xl focus:outline-none font-bold text-xs shadow-sm transition-colors ${
                   fieldErrors[`accessTypes.${access.id}.price`]
                     ? "border-red-500 focus:border-red-500"

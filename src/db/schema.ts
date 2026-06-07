@@ -226,6 +226,8 @@ export const dealCodesTable = pgTable("deal_codes", {
     code: text("code").notNull(),
     isRedeemed: boolean("is_redeemed").notNull().default(false),
     redeemedAt: timestamp("redeemed_at"),
+    claimedBy: integer("claimed_by").references(() => usersTable.id),
+    claimedAt: timestamp("claimed_at"),
     createdAt: timestamp("created_at").defaultNow(),
 });
 

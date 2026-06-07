@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { dealsTable, dealCodesTable, usersTable } from "@/src/db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, count } from "drizzle-orm";
 import { requireUser } from "@/src/services/auth.service";
 
 export async function GET() {
@@ -26,14 +26,12 @@ export async function GET() {
       discountMaxAmount: dealsTable.discountMaxAmount,
       imageUrl: dealsTable.imageUrl,
       stock: dealsTable.stock,
-      available: sql<number>`
-        (SELECT COUNT(*)::int FROM ${dealCodesTable}
-         WHERE ${dealCodesTable.dealId} = ${dealsTable.id}
-         AND ${dealCodesTable.isRedeemed} = false)
-      `,
+      available: count(sql`CASE WHEN ${dealCodesTable.isRedeemed} = false AND ${dealCodesTable.claimedBy} IS NULL THEN 1 END`),
     })
     .from(dealsTable)
+    .leftJoin(dealCodesTable, eq(dealsTable.id, dealCodesTable.dealId))
     .where(eq(dealsTable.isActive, true))
+    .groupBy(dealsTable.id, dealsTable.pointsCost)
     .orderBy(dealsTable.pointsCost);
 
   return NextResponse.json({

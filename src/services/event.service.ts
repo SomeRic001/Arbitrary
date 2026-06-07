@@ -6,7 +6,7 @@ import {
   accessTypesTable,
   timelineItemsTable,
 } from "@/src/db/schema";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, lt, gte } from "drizzle-orm";
 import { eventSchema } from "@/src/lib/validations/event";
 import { ServiceResult, ok, fail, failWithDetails } from "./result";
 import type { Event, ContentSection, MediaItem, AccessType, TimelineItem } from "@/src/types/db";
@@ -24,6 +24,7 @@ export type EventListItem = Pick<
 
 export const EventService = {
   async getEvents(): Promise<ServiceResult<EventListItem[]>> {
+    const now = new Date();
     const events = await db
       .select({
         id: eventsTable.id,
@@ -37,7 +38,13 @@ export const EventService = {
         createdAt: eventsTable.createdAt,
       })
       .from(eventsTable)
+      .where(gte(eventsTable.eventDate, now))
       .orderBy(desc(eventsTable.eventDate));
+
+    db.delete(eventsTable)
+      .where(lt(eventsTable.eventDate, now))
+      .then(() => {})
+      .catch((err) => console.error("Failed to delete past events:", err));
 
     return ok(events);
   },

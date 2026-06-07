@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { dealsTable, dealCodesTable } from "@/src/db/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, sql, count, desc } from "drizzle-orm";
 import { requireAdmin } from "@/src/services/auth.service";
 import { SecurityService } from "@/src/services/security.service";
 
@@ -24,11 +24,13 @@ export async function GET() {
       stock: dealsTable.stock,
       isActive: dealsTable.isActive,
       createdAt: dealsTable.createdAt,
-      totalCodes: sql<number>`(SELECT COUNT(*)::int FROM ${dealCodesTable} WHERE ${dealCodesTable.dealId} = ${dealsTable.id})`,
-      availableCodes: sql<number>`(SELECT COUNT(*)::int FROM ${dealCodesTable} WHERE ${dealCodesTable.dealId} = ${dealsTable.id} AND ${dealCodesTable.isRedeemed} = false)`,
-      redeemedCodes: sql<number>`(SELECT COUNT(*)::int FROM ${dealCodesTable} WHERE ${dealCodesTable.dealId} = ${dealsTable.id} AND ${dealCodesTable.isRedeemed} = true)`,
+      totalCodes: count(dealCodesTable.id),
+      availableCodes: count(sql`CASE WHEN ${dealCodesTable.isRedeemed} = false THEN 1 END`),
+      redeemedCodes: count(sql`CASE WHEN ${dealCodesTable.isRedeemed} = true THEN 1 END`),
     })
     .from(dealsTable)
+    .leftJoin(dealCodesTable, eq(dealsTable.id, dealCodesTable.dealId))
+    .groupBy(dealsTable.id, dealsTable.createdAt)
     .orderBy(desc(dealsTable.createdAt));
 
   return NextResponse.json(deals);

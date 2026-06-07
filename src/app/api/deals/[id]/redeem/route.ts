@@ -74,7 +74,7 @@ export async function POST(
 
     await tx
       .update(dealCodesTable)
-      .set({ isRedeemed: true, redeemedAt: new Date() })
+      .set({ claimedBy: auth.data.id, claimedAt: new Date() })
       .where(eq(dealCodesTable.id, availableCode.id));
 
     const pointsSpent = deal.pointsCost;

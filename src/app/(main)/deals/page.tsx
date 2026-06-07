@@ -146,7 +146,7 @@ export default function DealsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {dealsData.deals.map((deal) => {
                   const canAfford = (dealsData.userPoints ?? 0) >= deal.pointsCost;
-                  const outOfStock = deal.stock !== null && deal.available <= 0;
+                  const outOfStock = deal.available <= 0;
                   return (
                     <div
                       key={deal.id}
@@ -177,11 +177,11 @@ export default function DealsPage() {
                           {deal.discountType === "percent" ? (
                             <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                               {deal.discountValue}% OFF
-                              {deal.discountMaxAmount ? ` (up to $${deal.discountMaxAmount})` : ""}
+                              {deal.discountMaxAmount ? ` (up to Rs ${deal.discountMaxAmount})` : ""}
                             </span>
                           ) : (
                             <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                              ${deal.discountValue} OFF
+                              Rs {deal.discountValue} OFF
                             </span>
                           )}
                           {deal.stock !== null && (

@@ -4,9 +4,13 @@ import {
   userTicketsTable,
   eventsTable,
   accessTypesTable,
+  dealsTable,
+  dealCodesTable,
+  redemptionsTable,
 } from "@/src/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { sendEmail } from "@/src/lib/email";
+import { SecurityService } from "./security.service";
 import { ServiceResult, ok, fail } from "./result";
 import type { UserTicket } from "@/src/types/db";
 
@@ -42,11 +46,14 @@ export const TicketService = {
     eventId: number,
     userEmail?: string,
     userName?: string,
+    dealCode?: string,
+    dealId?: number,
   ): Promise<
     ServiceResult<{
       success: true;
       message: string;
       newPoints: number;
+      discountApplied?: { type: string; value: number; maxAmount: number | null };
     }>
   > {
     const user = await db.query.usersTable.findFirst({
@@ -74,8 +81,67 @@ export const TicketService = {
     }
 
     let newTicketId: number;
+    let discountApplied: { type: string; value: number; maxAmount: number | null } | undefined;
 
     await db.transaction(async (tx) => {
+      // Validate and redeem deal code if provided
+      if (dealCode && dealId) {
+        const normalized = dealCode.trim().toUpperCase();
+        const codes = await tx
+          .select({
+            id: dealCodesTable.id,
+            code: dealCodesTable.code,
+            dealTitle: dealsTable.title,
+            discountType: dealsTable.discountType,
+            discountValue: dealsTable.discountValue,
+            discountMaxAmount: dealsTable.discountMaxAmount,
+          })
+          .from(dealCodesTable)
+          .innerJoin(dealsTable, eq(dealCodesTable.dealId, dealsTable.id))
+          .where(
+            and(
+              eq(dealCodesTable.dealId, dealId),
+              eq(dealCodesTable.isRedeemed, false),
+              eq(dealCodesTable.claimedBy, userId),
+              eq(dealsTable.isActive, true),
+            ),
+          );
+
+        let matchedCode: (typeof codes)[0] | undefined;
+        for (const c of codes) {
+          const decrypted = SecurityService.decrypt(c.code);
+          if (decrypted && decrypted.trim().toUpperCase() === normalized) {
+            matchedCode = c;
+            break;
+          }
+        }
+
+        if (!matchedCode) {
+          throw new Error("Invalid or already used discount code");
+        }
+
+        await tx
+          .update(dealCodesTable)
+          .set({ isRedeemed: true, redeemedAt: new Date() })
+          .where(eq(dealCodesTable.id, matchedCode.id));
+
+        await tx
+          .insert(redemptionsTable)
+          .values({
+            userId,
+            dealId,
+            pointsSpent: 0,
+            status: "fulfilled",
+            revealedCode: SecurityService.encrypt(normalized),
+          });
+
+        discountApplied = {
+          type: matchedCode.discountType,
+          value: matchedCode.discountValue,
+          maxAmount: matchedCode.discountMaxAmount,
+        };
+      }
+
       await tx
         .update(usersTable)
         .set({ points: user.points - 100 })
@@ -115,8 +181,9 @@ export const TicketService = {
 
     return ok({
       success: true,
-      message: "Ticket redeemed successfully!",
+      message: discountApplied ? "Ticket redeemed with discount code!" : "Ticket redeemed successfully!",
       newPoints: user.points - 100,
+      discountApplied,
     });
   },
 

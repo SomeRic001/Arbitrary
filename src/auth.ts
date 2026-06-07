@@ -50,50 +50,58 @@ export const authOptions: import("next-auth").NextAuthOptions = {
             },
 
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) {
-                    return null;
-                }
+                try {
+                    if (!credentials?.email || !credentials?.password) {
+                        return null;
+                    }
 
-                // Find user
-                const dbUser = await db.query.usersTable.findFirst({
-                    where: eq(usersTable.email, credentials.email),
-                });
+                    // Find user
+                    const dbUser = await db.query.usersTable.findFirst({
+                        where: eq(usersTable.email, credentials.email),
+                    });
 
-                if (!dbUser) {
-                    return null;
-                }
+                    if (!dbUser) {
+                        return null;
+                    }
 
-                // Google account check
-                if (!dbUser.password) {
-                    throw new Error(
-                        "This email is linked to a Google account. Please sign in with Google.",
+                    // Google account check
+                    if (!dbUser.password) {
+                        throw new Error(
+                            "This email is linked to a Google account. Please sign in with Google.",
+                        );
+                    }
+
+                    // Compare password
+                    const isValid = await bcrypt.compare(
+                        credentials.password,
+                        dbUser.password,
                     );
-                }
 
-                // Compare password
-                const isValid = await bcrypt.compare(
-                    credentials.password,
-                    dbUser.password,
-                );
+                    if (!isValid) {
+                        return null;
+                    }
 
-                if (!isValid) {
+                    // Update login time
+                    await db
+                        .update(usersTable)
+                        .set({
+                            lastLoginAt: new Date(),
+                        })
+                        .where(eq(usersTable.email, credentials.email));
+
+                    return {
+                        id: String(dbUser.id),
+                        email: dbUser.email,
+                        name: dbUser.name,
+                        image: dbUser.image,
+                    };
+                } catch (error) {
+                    if (error instanceof Error && error.message.includes("linked to a Google account")) {
+                        throw error;
+                    }
+                    console.error("authorize error:", error);
                     return null;
                 }
-
-                // Update login time
-                await db
-                    .update(usersTable)
-                    .set({
-                        lastLoginAt: new Date(),
-                    })
-                    .where(eq(usersTable.email, credentials.email));
-
-                return {
-                    id: String(dbUser.id),
-                    email: dbUser.email,
-                    name: dbUser.name,
-                    image: dbUser.image,
-                };
             },
         }),
     ],
@@ -273,6 +281,8 @@ export const authOptions: import("next-auth").NextAuthOptions = {
         // Redirect Callback
         async redirect({ url, baseUrl }) {
             if (url.startsWith("/")) {
+                const resolved = new URL(url, baseUrl);
+                if (resolved.origin !== baseUrl) return baseUrl;
                 return `${baseUrl}${url}`;
             }
 
