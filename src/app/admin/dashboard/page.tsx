@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import OverviewTab from "./_components/overview-tab";
 import type { Event } from "@/src/types/db";
 
-export default function AdminOverview() {
+const AdminDashboardPage = () => {
   const router = useRouter();
   const [analytics, setAnalytics] = useState<{
     totalPointsDistributed: number;
@@ -67,4 +67,6 @@ export default function AdminOverview() {
       onViewAllEvents={() => router.push("/admin/dashboard/events")}
     />
   );
-}
+};
+
+export default AdminDashboardPage;

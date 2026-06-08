@@ -1,13 +1,14 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-let resend: Resend | null = null;
-try {
-  if (process.env.RESEND_API_KEY) {
-    resend = new Resend(process.env.RESEND_API_KEY);
-  }
-} catch {
-  console.warn("Failed to initialize Resend");
-}
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 type SendEmailParams = {
   to: string;
@@ -16,21 +17,16 @@ type SendEmailParams = {
 };
 
 export async function sendEmail({ to, subject, html }: SendEmailParams) {
-  if (!resend) {
-    console.warn("RESEND_API_KEY not set — email not sent", { to, subject });
-    return false;
-  }
-
   try {
-    await resend.emails.send({
-      from: "Arbitary <onboarding@resend.dev>",
+    await transporter.sendMail({
+      from: `"Arbitary" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
     });
     return true;
   } catch (error) {
-    console.error("Error sending email via Resend:", error);
+    console.error("Email sending failed:", error);
     return false;
   }
 }

@@ -1,5 +1,13 @@
 import z from "zod";
 
+const socialProfileRegex =
+  /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com|facebook\.com|instagram\.com)\/[a-zA-Z0-9_.]+\/?$/i;
+
+export const socialProfileUrlSchema = z
+  .string()
+  .url("Must be a valid URL")
+  .regex(socialProfileRegex, "Must be a valid social media profile URL (Twitter/X, Facebook, Instagram)")
+  .max(2048, "URL too long");
 
 export const TaskStatusEnum = z.enum(["In Progress", "Pending Verification", "Completed", "Cancelled"]);
 export const VerifyStatusEnum = z.enum(["Verified", "Rejected", "In Progress"]);
@@ -62,6 +70,11 @@ export const updateTaskSchema = z.object({
         .url("proofUrl must be a valid URL")
         .max(2048, "URL too long")
         .optional(),
+    proofImageUrl: z
+        .string()
+        .url("proofImageUrl must be a valid URL")
+        .max(2048, "URL too long")
+        .optional(),
 });
 
 
@@ -70,12 +83,19 @@ export const DifficultyEnum = z.enum(["easy", "medium", "hard"]);
 export const adminTaskSchema = z.object({
     title: z.string().min(1, "Title is required").max(255),
     description: z.string().min(1, "Description is required").max(5000),
-    taskType: z.string().min(1, "Task type is required").max(50),
+    taskType: z.string().min(1, "Task type is required").max(50)
+      .refine((val) => ["daily","monthly","social","special","share",
+        "VIDEO_WATCH","SCREENSHOT_UPLOAD",
+        "manual","social_media","video_watch"
+      ].includes(val) || val.length >= 1, "Unknown task type"),
     rewardPoint: z.number("rewardPoint must be a number").int().positive("rewardPoint must be positive"),
     socialPostUrl: z.string().url().max(2048).nullable().optional(),
     videoUrl: z.string().url().max(2048).nullable().optional(),
     platform: PlatformEnum,
     socialPostId: z.string().max(255).nullable().optional(),
+    socialPlatform: z.string().max(50).nullable().optional(),
+    targetUrl: z.string().url().max(2048).nullable().optional(),
+    isActive: z.boolean().optional().default(true),
     watchDuration: z.number().int().min(5).max(86400).nullable().optional(),
     difficulty: DifficultyEnum.optional().default("easy"),
     isFlash: z.boolean().optional().default(false),
@@ -93,17 +113,8 @@ export const verifySubmissionSchema = z.object({
 
 export const youtubeCompleteSchema = z.object({
     taskId: z.number("taskId must be a number").int().positive(),
-    watchedSeconds: z.number("watchedSeconds must be a number").int().min(0),
+    sessionId: z.number("sessionId must be a number").int().positive().optional(),
     fingerprint: z.string().max(255).optional(),
 }).strict();
 
-export const youtubePickupSchema = z.object({
-    taskId: z.number("taskId must be a number").int().positive(),
-}).strict();
 
-export const youtubeHeartbeatSchema = z.object({
-    taskId: z.number("taskId must be a number").int().positive(),
-    heartbeatIndex: z.number("heartbeatIndex must be a number").int().min(0),
-    sessionToken: z.string("sessionToken is required").min(1),
-    responseToken: z.string().optional(),
-}).strict();

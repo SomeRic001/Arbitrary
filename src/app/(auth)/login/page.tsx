@@ -11,6 +11,7 @@ const errorMessages: Record<string, string> = {
   OAuthAccountNotLinked: "This email is already linked to another account.",
   CredentialsSignin: "Invalid email or password.",
   AccessDenied: "Access was denied.",
+  VERIFY_EMAIL: "Please verify your email before signing in. Check your inbox for the verification link.",
   Default: "An unexpected error occurred.",
 };
 
@@ -130,6 +131,44 @@ const UserLoginPage = () => {
     }
   };
 
+  const handleCredentialsLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        if (result.error.startsWith("RATE_LIMITED")) {
+          const seconds = Number(result.error.split(":")[1]) || 0;
+          const minutes = Math.ceil(seconds / 60);
+          setError(
+            minutes > 1
+              ? `Too many attempts. Please try again in about ${minutes} minutes.`
+              : "Too many attempts. Please try again in about a minute.",
+          );
+        } else {
+          setError(result.error);
+        }
+        setIsLoading(false);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
+      setIsLoading(false);
+    }
+  };
+
   const dismissError = () => {
     setError("");
     if (authError) router.replace("/login");
@@ -225,8 +264,8 @@ const UserLoginPage = () => {
               </svg>
               <span className="flex-1 text-xs font-semibold">
                 {authError
-                  ? (errorMessages[authError] ?? errorMessages.Default)
-                  : (errorMessages[error] ?? errorMessages.Default)}
+                  ? (errorMessages[authError] ?? error)
+                  : (errorMessages[error] ?? error ?? errorMessages.Default)}
               </span>
               <button
                 onClick={dismissError}
@@ -243,7 +282,7 @@ const UserLoginPage = () => {
             </div>
           )}
 
-          <form className="space-y-4">
+          <form onSubmit={handleCredentialsLogin} className="space-y-4">
             <FormInput
               type="email"
               id="email"

@@ -6,11 +6,11 @@ import { TaskCard } from "./task-card";
 import { UserTaskItem } from "@/src/services/task.service";
 
 type TaskListProps = {
-  availableTasks: UserTaskItem[];
-  inProgressTasks: UserTaskItem[];
-  completedTasks: UserTaskItem[];
-  rejectedTasks: UserTaskItem[];
-  systemTasks: UserTaskItem[];
+  availableTasks: any[];
+  inProgressTasks: any[];
+  rejectedTasks: any[];
+  completedTasks: any[];
+  systemTasks: any[];
   isLoading: boolean;
   activeTab: string;
   isAnimating: boolean;
@@ -19,7 +19,7 @@ type TaskListProps = {
   onToggleExpand: (e: React.MouseEvent, taskId: number) => void;
   onPickup: (taskId: number) => void;
   onCancel: (taskId: number) => void;
-  onComplete: (taskId: number, proofUrl: string) => void;
+  onComplete: (taskId: number, proofUrl: string, proofImageUrl?: string) => void;
   onClaimDailyLogin: (taskId: number) => void;
   onClaimProfile: (taskId: number) => void;
   onClaimReferral: (taskId: number) => void;
@@ -37,12 +37,12 @@ function TaskSection({
   tasks,
   accent,
   ...cardProps
-}: { title: string; tasks: UserTaskItem[]; accent?: string } & Omit<
+}: { title: string; tasks: any[]; accent?: string } & Omit<
   TaskListProps,
   | "availableTasks"
   | "inProgressTasks"
-  | "completedTasks"
   | "rejectedTasks"
+  | "completedTasks"
   | "systemTasks"
   | "isLoading"
   | "activeTab"
@@ -76,8 +76,8 @@ const DIFFICULTIES = ["all", "easy", "medium", "hard"] as const;
 export function TaskList({
   availableTasks,
   inProgressTasks,
-  completedTasks,
   rejectedTasks,
+  completedTasks,
   systemTasks,
   isLoading,
   activeTab,
@@ -92,8 +92,8 @@ export function TaskList({
   const hasAnyTasks =
     availableTasks.length > 0 ||
     inProgressTasks.length > 0 ||
-    completedTasks.length > 0 ||
-    rejectedTasks.length > 0;
+    rejectedTasks.length > 0 ||
+    completedTasks.length > 0;
 
   const filteredAvailable = useMemo(() => {
     if (difficultyFilter === "all") return availableTasks;
@@ -173,6 +173,12 @@ export function TaskList({
               title="In Progress"
               accent="bg-amber-400 animate-pulse"
               tasks={inProgressTasks}
+              {...cardProps}
+            />
+            <TaskSection
+              title="Rejected — Re-claim"
+              accent="bg-red-400"
+              tasks={rejectedTasks}
               {...cardProps}
             />
             <TaskSection

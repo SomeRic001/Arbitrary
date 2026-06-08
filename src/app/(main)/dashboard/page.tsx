@@ -125,10 +125,12 @@ function DashboardInner() {
     mutationFn: async ({
       taskId,
       proofUrl,
+      proofImageUrl,
       tab: _tab,
     }: {
       taskId: number;
       proofUrl: string;
+      proofImageUrl?: string;
       tab: string;
     }) => {
       const res = await fetch("/api/user/tasks", {
@@ -138,6 +140,7 @@ function DashboardInner() {
           taskId,
           status: "Pending Verification",
           proofUrl,
+          proofImageUrl,
         }),
       });
       if (!res.ok) {
@@ -390,6 +393,24 @@ function DashboardInner() {
     document.title = "Dashboard | Arbitary";
   }, []);
 
+  // Bind referral code from OAuth signup if one was stashed in sessionStorage
+  useEffect(() => {
+    const code = sessionStorage.getItem("pendingRefCode");
+    if (!code) return;
+    sessionStorage.removeItem("pendingRefCode");
+    fetch("/api/referral/bind", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    })
+      .then((r) =>
+        r.ok
+          ? toast.success("Referral code linked!")
+          : r.json().then((d) => toast.error(d.error || "Failed to link referral")),
+      )
+      .catch(() => toast.error("Failed to link referral code"));
+  }, []);
+
   return (
     <div className="bg-[#F5F5F0] pt-24 text-black min-h-screen flex flex-col selection:bg-[#FACC15] selection:text-black">
       <style>{`
@@ -515,10 +536,11 @@ function DashboardInner() {
                   onCancel={(id) =>
                     cancelMutation.mutate({ taskId: id, tab: activeTab })
                   }
-                  onComplete={(id, proofUrl) =>
+                  onComplete={(id, proofUrl, proofImageUrl) =>
                     completeMutation.mutate({
                       taskId: id,
                       proofUrl,
+                      proofImageUrl,
                       tab: activeTab,
                     })
                   }

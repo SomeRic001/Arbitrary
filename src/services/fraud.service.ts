@@ -48,7 +48,7 @@ export const FraudService = {
         completedTasksCount: usersTable.completedTasksCount,
       })
       .from(usersTable)
-      .where(sql`${usersTable.role} = 'USER'`)
+      .where(sql`LOWER(${usersTable.role}) = 'user'`)
       .orderBy(desc(usersTable.completedTasksCount));
 
     const flaggedUsers: FraudUser[] = [];
@@ -107,7 +107,7 @@ export const FraudService = {
             sql`${userTasksTable.completionDurationSeconds} IS NOT NULL`,
             sql`${tasksTable.watchDuration} IS NOT NULL`,
             sql`${tasksTable.watchDuration} > 0`,
-            sql`${userTasksTable.completionDurationSeconds} < ${tasksTable.watchDuration} * ${FAST_COMPLETION_RATIO}`,
+            sql`${userTasksTable.completionDurationSeconds} < ${tasksTable.watchDuration} * ${FAST_COMPLETION_RATIO}::numeric`,
           ),
         );
 

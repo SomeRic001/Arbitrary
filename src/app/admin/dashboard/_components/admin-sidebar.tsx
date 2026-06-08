@@ -4,7 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
-const menuItems: { label: string; href: string | null }[] = [
+interface AdminSidebarProps {
+  menuItems?: { label: string }[];
+  activeTab?: string;
+  isCreatingEvent?: boolean;
+  onTabChange?: (tab: string) => void;
+}
+
+const sidebarItems: { label: string; href: string | null }[] = [
   { label: "Overview", href: "/admin/dashboard" },
   { label: "Manage Events", href: "/admin/dashboard/events" },
   { label: "Ticket Scanner", href: "/admin/tickets/scanner" },
@@ -17,7 +24,7 @@ const menuItems: { label: string; href: string | null }[] = [
   { label: "Settings", href: null },
 ];
 
-const AdminSidebar = () => {
+const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   const pathname = usePathname();
 
   return (
@@ -31,7 +38,7 @@ const AdminSidebar = () => {
         </p>
       </div>
       <nav className="flex-1 space-y-2">
-        {menuItems.map((item) => {
+        {sidebarItems.map((item) => {
           if (!item.href) {
             return (
               <div
@@ -43,10 +50,27 @@ const AdminSidebar = () => {
             );
           }
 
-          const isActive =
-            item.href === "/admin/dashboard"
+          const isActive = activeTab
+            ? activeTab === item.label
+            : item.href === "/admin/dashboard"
               ? pathname === item.href
               : pathname.startsWith(item.href);
+
+          if (onTabChange) {
+            return (
+              <button
+                key={item.label}
+                onClick={() => onTabChange(item.label)}
+                className={`w-full flex items-center px-6 py-4 rounded-2xl transition-all duration-300 font-bold text-sm uppercase tracking-wider ${
+                  isActive
+                    ? "bg-[#FACC15] text-black shadow-lg shadow-[#FACC15]/20"
+                    : "text-zinc-500 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          }
 
           return (
             <Link

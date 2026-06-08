@@ -5,11 +5,11 @@ import { createPortal } from "react-dom";
 
 type YoutubeModalProps = {
   url: string;
+  taskId: number;
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (watchedSeconds: number) => void;
+  onComplete: (watchedSeconds: number, sessionId?: number) => void;
   requiredSeconds?: number;
-  taskId: number;
 };
 
 function getYoutubeId(url: string): string | null {
@@ -24,6 +24,7 @@ interface YTPlayer {
   playVideo(): void;
   stopVideo(): void;
   pauseVideo(): void;
+  getCurrentTime(): number;
 }
 
 declare global {
@@ -45,11 +46,11 @@ declare global {
 
 export function YoutubeModal({
   url,
+  taskId,
   isOpen,
   onClose,
   onComplete,
   requiredSeconds = 60,
-  taskId,
 }: YoutubeModalProps) {
   const [watchedSeconds, setWatchedSeconds] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -71,6 +72,40 @@ export function YoutubeModal({
   const lastSentHeartbeatRef = useRef(-1);
   const isSendingRef = useRef(false);
   const isPausedByVisibilityRef = useRef(false);
+  const sessionIdRef = useRef<number | null>(null);
+  const reportingRef = useRef(false);
+
+  const startSession = useCallback(async () => {
+    if (sessionIdRef.current) return sessionIdRef.current;
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/watch-session`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not start watch session");
+      sessionIdRef.current = data.sessionId;
+      return data.sessionId;
+    } catch {
+      return null;
+    }
+  }, [taskId]);
+
+  const reportProgress = useCallback(async () => {
+    if (!playerRef.current || reportingRef.current) return;
+    const sessionId = sessionIdRef.current ?? (await startSession());
+    if (!sessionId) return;
+    reportingRef.current = true;
+    try {
+      const positionSeconds = Math.floor(playerRef.current.getCurrentTime?.() ?? 0);
+      await fetch(`/api/tasks/${taskId}/watch-session`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, positionSeconds }),
+      });
+    } catch {
+      // silent — non-critical
+    } finally {
+      reportingRef.current = false;
+    }
+  }, [taskId, startSession]);
 
   const videoId = getYoutubeId(url);
 
@@ -199,11 +234,13 @@ export function YoutubeModal({
     completedRef.current = true;
     setIsCompleted(true);
     if (timerRef.current) clearInterval(timerRef.current);
+    reportProgress();
     const finalSeconds = watchedSecondsRef.current;
+    const sessId = sessionIdRef.current ?? undefined;
     setTimeout(() => {
-      onComplete(finalSeconds);
+      onComplete(finalSeconds, sessId);
     }, 1200);
-  }, [onComplete]);
+  }, [onComplete, reportProgress]);
 
   const handleChallengeResponse = useCallback(() => {
     setShowChallenge(false);
@@ -262,6 +299,7 @@ export function YoutubeModal({
           onStateChange: (event: { data: number }) => {
             if (event.data === window.YT.PlayerState.PLAYING) {
               setIsPlaying(true);
+              startSession();
             } else {
               setIsPlaying(false);
             }
@@ -324,6 +362,13 @@ export function YoutubeModal({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isPlaying, requiredSeconds]);
+
+  // Report server progress every 5s while playing
+  useEffect(() => {
+    if (!isPlaying || completedRef.current) return;
+    const interval = setInterval(reportProgress, 5000);
+    return () => clearInterval(interval);
+  }, [isPlaying, reportProgress]);
 
   if (!isOpen || !mounted) return null;
 

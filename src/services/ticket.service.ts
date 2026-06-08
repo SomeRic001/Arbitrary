@@ -4,9 +4,13 @@ import {
   userTicketsTable,
   eventsTable,
   accessTypesTable,
+  dealsTable,
+  dealCodesTable,
+  redemptionsTable,
 } from "@/src/db/schema";
 import { and, eq, desc, gte, sql } from "drizzle-orm";
 import { sendEmail } from "@/src/lib/email";
+import { SecurityService } from "./security.service";
 import { ServiceResult, ok, fail } from "./result";
 import type { UserTicket } from "@/src/types/db";
 
@@ -44,24 +48,25 @@ export const TicketService = {
     userEmail?: string,
     userName?: string,
     quantity: number = 1,
+    dealCode?: string,
+    dealId?: number,
   ): Promise<
     ServiceResult<{
       success: true;
       message: string;
       newPoints: number;
       tickets: Array<{ id: number; redemptionToken: string }>;
+      discountApplied?: { type: string; value: number; maxAmount: number | null };
     }>
   > {
     if (quantity < 1) return fail("Quantity must be at least 1", 400);
     if (quantity > 10) return fail("Maximum 10 tickets per purchase", 400);
 
-    // 1. Fetch user
     const user = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, userId),
     });
     if (!user) return fail("User not found", 404);
 
-    // 2. Retrieve the specific access type
     const accessType = await db.query.accessTypesTable.findFirst({
       where: and(
         eq(accessTypesTable.id, accessTypeId),
@@ -75,70 +80,113 @@ export const TicketService = {
     const pointCost = accessType.pointCost;
     const totalCost = pointCost * quantity;
 
-    if (user.points < totalCost) {
-      return fail(
-        `Insufficient points. You need ${totalCost} points to redeem ${quantity} ticket(s).`,
-        400,
-      );
-    }
+    let discountApplied: { type: string; value: number; maxAmount: number | null } | undefined;
 
-    // 3. Atomic points deduction and ticket inserts
-    let updatedPoints: number;
-
-    try {
-      const transactionResult = await db.transaction(async (tx) => {
-        const [updatedUser] = await tx
-          .update(usersTable)
-          .set({ points: sql`${usersTable.points} - ${totalCost}` })
+    return await db.transaction(async (tx) => {
+      // Validate deal code if provided
+      if (dealCode && dealId) {
+        const normalized = dealCode.trim().toUpperCase();
+        const codes = await tx
+          .select({
+            id: dealCodesTable.id,
+            code: dealCodesTable.code,
+            dealTitle: dealsTable.title,
+            discountType: dealsTable.discountType,
+            discountValue: dealsTable.discountValue,
+            discountMaxAmount: dealsTable.discountMaxAmount,
+          })
+          .from(dealCodesTable)
+          .innerJoin(dealsTable, eq(dealCodesTable.dealId, dealsTable.id))
           .where(
             and(
-              eq(usersTable.id, user.id),
-              gte(usersTable.points, totalCost),
+              eq(dealCodesTable.dealId, dealId),
+              eq(dealCodesTable.isRedeemed, false),
+              eq(dealCodesTable.claimedBy, userId),
+              eq(dealsTable.isActive, true),
             ),
-          )
-          .returning({ points: usersTable.points });
+          );
 
-        if (!updatedUser) {
-          throw new Error("Insufficient points");
+        let matchedCode: (typeof codes)[0] | undefined;
+        for (const c of codes) {
+          const decrypted = SecurityService.decrypt(c.code);
+          if (decrypted && decrypted.trim().toUpperCase() === normalized) {
+            matchedCode = c;
+            break;
+          }
         }
 
-        const ticketsToInsert = Array.from({ length: quantity }, () => ({
-          userId: user.id,
-          eventId: eventId,
-          accessTypeId: accessTypeId,
-          status: "active" as const,
-        }));
+        if (!matchedCode) {
+          return fail("Invalid or already used discount code", 400);
+        }
 
-        const inserted = await tx
-          .insert(userTicketsTable)
-          .values(ticketsToInsert)
-          .returning({
-            id: userTicketsTable.id,
-            redemptionToken: userTicketsTable.redemptionToken,
+        await tx
+          .update(dealCodesTable)
+          .set({ isRedeemed: true, redeemedAt: new Date() })
+          .where(eq(dealCodesTable.id, matchedCode.id));
+
+        await tx
+          .insert(redemptionsTable)
+          .values({
+            userId,
+            dealId,
+            pointsSpent: 0,
+            status: "fulfilled",
+            revealedCode: SecurityService.encrypt(normalized),
           });
 
-        return {
-          newPoints: updatedUser.points,
-          tickets: inserted.map((t) => ({ id: t.id, redemptionToken: t.redemptionToken })),
+        discountApplied = {
+          type: matchedCode.discountType,
+          value: matchedCode.discountValue,
+          maxAmount: matchedCode.discountMaxAmount,
         };
-      });
+      }
 
-      updatedPoints = transactionResult.newPoints;
+      // Lock and deduct points
+      const [updatedUser] = await tx
+        .update(usersTable)
+        .set({ points: sql`${usersTable.points} - ${totalCost}` })
+        .where(
+          and(
+            eq(usersTable.id, user.id),
+            gte(usersTable.points, totalCost),
+          ),
+        )
+        .returning({ points: usersTable.points });
 
-      // 4. Send confirmation email (silent on failure)
+      if (!updatedUser) {
+        return fail("Insufficient points to complete this transaction.", 400);
+      }
+
+      // Insert tickets
+      const ticketsToInsert = Array.from({ length: quantity }, () => ({
+        userId: user.id,
+        eventId: eventId,
+        accessTypeId: accessTypeId,
+        status: "active" as const,
+      }));
+
+      const inserted = await tx
+        .insert(userTicketsTable)
+        .values(ticketsToInsert)
+        .returning({
+          id: userTicketsTable.id,
+          redemptionToken: userTicketsTable.redemptionToken,
+        });
+
+      // Send confirmation email (silent on failure)
       if (userEmail) {
-        const event = await db.query.eventsTable.findFirst({
+        const event = await tx.query.eventsTable.findFirst({
           where: eq(eventsTable.id, Number(eventId)),
         });
 
-        if (event && transactionResult.tickets.length > 0) {
+        if (event && inserted.length > 0) {
           sendEmail({
             to: userEmail,
             subject: `${quantity > 1 ? `${quantity}x Tickets` : "Ticket"} Confirmed for ${event.title} – Arbitary`,
             html: bookingConfirmationHtml(
               userName || "there",
               event.title,
-              transactionResult.tickets.map((t) => t.id),
+              inserted.map((t) => t.id),
               event.eventDate,
               quantity,
             ),
@@ -148,18 +196,16 @@ export const TicketService = {
 
       return ok({
         success: true,
-        message: quantity > 1
-          ? `${quantity} tickets redeemed successfully!`
-          : "Ticket redeemed successfully!",
-        newPoints: updatedPoints,
-        tickets: transactionResult.tickets,
+        message: discountApplied
+          ? "Ticket redeemed with discount code!"
+          : quantity > 1
+            ? `${quantity} tickets redeemed successfully!`
+            : "Ticket redeemed successfully!",
+        newPoints: updatedUser.points,
+        tickets: inserted.map((t) => ({ id: t.id, redemptionToken: t.redemptionToken })),
+        discountApplied,
       });
-    } catch (error: any) {
-      if (error.message === "Insufficient points") {
-        return fail("Insufficient points to complete this transaction.", 400);
-      }
-      throw error;
-    }
+    });
   },
 
   async lookupTicket(

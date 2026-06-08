@@ -87,6 +87,68 @@ const EventContentPage = () => {
   const canAfford = totalPoints >= totalCost;
   const maxQuantity = selectedCost > 0 ? Math.min(10, Math.floor(totalPoints / selectedCost)) : 1;
 
+  // Discount code state
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    dealId: number;
+    dealTitle: string;
+    discountType: string;
+    discountValue: number;
+    discountMaxAmount: number | null;
+    code: string;
+  } | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [codeError, setCodeError] = useState("");
+
+  const parsePrice = (priceStr: string) => {
+    const match = priceStr.match(/^([^\d]*)([\d,]+(?:\.\d+)?)/);
+    if (!match) return { prefix: priceStr, value: 0 };
+    return { prefix: match[1], value: Number(match[2].replace(/,/g, "")) };
+  };
+
+  const getDiscountedPrice = (originalPrice: string) => {
+    if (!appliedDiscount) return null;
+    const { prefix, value } = parsePrice(originalPrice);
+    if (value === 0) return null;
+    let discountAmount = 0;
+    if (appliedDiscount.discountType === "percent") {
+      discountAmount = value * (appliedDiscount.discountValue / 100);
+      if (appliedDiscount.discountMaxAmount && discountAmount > appliedDiscount.discountMaxAmount) {
+        discountAmount = appliedDiscount.discountMaxAmount;
+      }
+    } else {
+      discountAmount = appliedDiscount.discountValue;
+    }
+    const newPrice = Math.max(0, value - discountAmount);
+    return { display: `${prefix}${newPrice.toLocaleString()}`, original: originalPrice };
+  };
+
+  const validateDiscountCode = async () => {
+    if (!discountCode.trim()) return;
+    setIsValidating(true);
+    setCodeError("");
+    try {
+      const res = await fetch("/api/deals/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: discountCode.trim() }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedDiscount(data);
+        toast.success(`Code applied: ${data.discountValue}${data.discountType === "percent" ? "%" : " Rs"} off`);
+      } else {
+        setCodeError(data.error || "Invalid code");
+        setAppliedDiscount(null);
+      }
+    } catch (err) {
+      console.error("Discount code validation error:", err);
+      setCodeError("Failed to validate code");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   // Mutation for redeeming ticket
   const { mutate: redeemTicket, isPending: isRedeeming } = useMutation({
     mutationFn: async ({
@@ -98,10 +160,19 @@ const EventContentPage = () => {
       accessTypeId: number;
       quantity: number;
     }) => {
+      const body: Record<string, unknown> = {
+        eventId: String(eventId),
+        accessTypeId: String(accessTypeId),
+        quantity: qty,
+      };
+      if (appliedDiscount) {
+        body.dealCode = appliedDiscount.code;
+        body.dealId = appliedDiscount.dealId;
+      }
       const res = await fetch("/api/tickets/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: String(eventId), accessTypeId: String(accessTypeId), quantity: qty }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -112,12 +183,21 @@ const EventContentPage = () => {
     onSuccess: (data) => {
       setShowQuantityModal(false);
       setPurchasedTickets(data.tickets);
+      if (data?.discountApplied) {
+        const d = data.discountApplied;
+        const label = d.type === "percent"
+          ? `${d.value}%${d.maxAmount ? ` (up to Rs ${d.maxAmount})` : ""}`
+          : `Rs ${d.value}`;
+        toast.success(`Discount code applied! ${label} off.`, { duration: 5000 });
+      }
       toast.success(
         data.tickets?.length > 1
           ? `${data.tickets.length} tickets added to your profile!`
           : "Ticket added to your profile!",
         { duration: 5000 },
       );
+      setDiscountCode("");
+      setAppliedDiscount(null);
       queryClient.invalidateQueries({ queryKey: ["user-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["user-points"] });
     },
@@ -267,6 +347,7 @@ const EventContentPage = () => {
                   <div className="space-y-4 mb-8">
                     {event.accessTypes.map((type: AccessType) => {
                       const isSelected = selectedAccessTypeId === type.id;
+                      const discounted = getDiscountedPrice(type.price);
                       const pointCost = type.pointCost;
                       return (
                         <button
@@ -283,7 +364,14 @@ const EventContentPage = () => {
                               {type.title}
                             </span>
                             <span className="text-[9px] text-zinc-500 mt-1">
-                              {type.price}
+                              {discounted ? (
+                                <>
+                                  <span className="line-through text-zinc-500 mr-2">{discounted.original}</span>
+                                  {discounted.display}
+                                </>
+                              ) : (
+                                type.price
+                              )}
                             </span>
                           </div>
                           <span className="text-lg font-black text-[#FACC15]">
@@ -294,8 +382,56 @@ const EventContentPage = () => {
                     })}
                   </div>
 
+                  {/* Discount Code Section */}
+                  <div className="border-t border-white/10 pt-4 space-y-3">
+                    {appliedDiscount ? (
+                      <div className="p-3 rounded-xl bg-emerald-900/30 border border-emerald-500/30 text-center space-y-2">
+                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                          Code applied
+                        </p>
+                        <code className="inline-block text-xs font-mono font-bold text-white bg-white/10 px-3 py-1.5 rounded-lg tracking-wider">
+                          {appliedDiscount.code}
+                        </code>
+                        <p className="text-xs font-black text-white">
+                          {appliedDiscount.discountType === "percent"
+                            ? `${appliedDiscount.discountValue}% OFF${appliedDiscount.discountMaxAmount ? ` (up to Rs ${appliedDiscount.discountMaxAmount})` : ""}`
+                            : `Rs ${appliedDiscount.discountValue} OFF`}
+                        </p>
+                        <p className="text-[9px] text-zinc-400">{appliedDiscount.dealTitle}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">
+                          Have a discount code?
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={discountCode}
+                            onChange={(e) => {
+                              setDiscountCode(e.target.value);
+                              setCodeError("");
+                            }}
+                            placeholder="Enter code"
+                            className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold focus:outline-none focus:border-[#FACC15] uppercase tracking-wider"
+                          />
+                          <button
+                            onClick={validateDiscountCode}
+                            disabled={isValidating || !discountCode.trim()}
+                            className="px-4 py-2 rounded-xl bg-[#FACC15] text-black font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {isValidating ? "..." : "Apply"}
+                          </button>
+                        </div>
+                        {codeError && (
+                          <p className="text-[10px] text-red-400 font-bold text-center">{codeError}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   {/* Purchase / Download section */}
-                  <div className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                  <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">
                       Rewards Member
                     </p>

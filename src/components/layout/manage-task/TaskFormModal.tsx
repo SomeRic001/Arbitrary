@@ -30,6 +30,9 @@ export type TaskFormPayload = {
   platform: Platform | null;
   socialPostId: string | null;
   socialPostUrl: string | null;
+  socialPlatform?: string | null;
+  targetUrl?: string | null;
+  isActive?: boolean;
   watchDuration: number | null;
   difficulty: "easy" | "medium" | "hard";
   isFlash: boolean;
@@ -120,6 +123,9 @@ export function TaskFormModal({
         : isDailyLogin
           ? null
           : (formData.get("manualUrl") as string) || null,
+      socialPlatform: isYoutube ? "youtube" : null,
+      targetUrl: (formData.get("videoUrl") as string) || null,
+      isActive: true,
       watchDuration: isDailyLogin ? null : watchDuration,
       difficulty: (formData.get("difficulty") as "easy" | "medium" | "hard") || "easy",
       isFlash: flashValue,
@@ -130,7 +136,7 @@ export function TaskFormModal({
   };
 
   const defaultDuration =
-    mode === "edit" ? (task?.watchDuration ?? 60) : 60;
+    mode === "edit" ? ((task as any)?.watchDuration ?? 30) : 30;
 
   return (
     <ModalShell
@@ -339,6 +345,46 @@ export function TaskFormModal({
                 <option value="hard">Hard (50 pts)</option>
               </select>
             </div>
+          </div>
+        </div>
+
+        {/* Type + Points */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="taskType" className={labelClass}>
+              Task Type
+            </label>
+            <select
+              id="taskType"
+              name="taskType"
+              required
+              defaultValue={mode === "edit" ? task?.taskType : ""}
+              className={inputClass}
+            >
+              <option value="">Select type...</option>
+              <option value="daily">Daily</option>
+              <option value="monthly">Monthly</option>
+              <option value="social">Social</option>
+              <option value="special">Special</option>
+              <option value="share">Share</option>
+              <option value="VIDEO_WATCH">Video Watch</option>
+              <option value="social_media">Social Media (YouTube)</option>
+              <option value="SCREENSHOT_UPLOAD">Screenshot Upload</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="points" className={labelClass}>
+              Points
+            </label>
+            <input
+              type="number"
+              id="points"
+              name="points"
+              min="0"
+              required
+              defaultValue={mode === "edit" ? task?.rewardPoint : 10}
+              className={inputClass}
+            />
           </div>
         </div>
 

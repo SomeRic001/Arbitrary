@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import FormInput from "@/src/components/layout/form-input";
-import { fail } from "assert";
 
 const errorMessages: Record<string, string> = {
   OAuthSignin: "Google sign-up failed. Please try again.",
@@ -23,6 +22,7 @@ const UserSignupPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
+  const refCode = searchParams.get("ref");
   const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
@@ -33,6 +33,7 @@ const UserSignupPage = () => {
   const handleGoogleSignup = async () => {
     setIsLoading(true);
     setError("");
+    if (refCode) sessionStorage.setItem("pendingRefCode", refCode);
     try {
       const result = await signIn("google", {
         redirect: true,
@@ -53,6 +54,7 @@ const UserSignupPage = () => {
   const handleFacebookSignup = async () => {
     setIsLoading(true);
     setError("");
+    if (refCode) sessionStorage.setItem("pendingRefCode", refCode);
     try {
       const result = await signIn("facebook", {
         redirect: true,
@@ -89,15 +91,18 @@ const UserSignupPage = () => {
     setError("");
 
     try {
+      const body: Record<string, unknown> = {
+        firstName: formData.get("firstName"),
+        lastName: formData.get("lastName"),
+        email: formData.get("email"),
+        password,
+      };
+      if (refCode) body.referralCode = refCode;
+
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: formData.get("firstName"),
-          lastName: formData.get("lastName"),
-          email: formData.get("email"),
-          password,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -107,18 +112,8 @@ const UserSignupPage = () => {
         return;
       }
 
-      const signInResult = await signIn("credentials", {
-        email: formData.get("email"),
-        password,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        setError("Account created but sign-in failed. Please log in manually.");
-        router.push("/login");
-      } else {
-        router.push("/");
-      }
+      const email = formData.get("email") as string;
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setIsLoading(false);

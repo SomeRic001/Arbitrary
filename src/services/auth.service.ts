@@ -34,6 +34,9 @@ export async function requireUser(): Promise<ServiceResult<SessionUser>> {
 export async function requireAdmin(): Promise<ServiceResult<SessionUser>> {
   const user = await getOptionalUser();
   if (!user) return fail("Unauthorized", 401);
-  if (user.role !== "ADMIN") return fail("Forbidden: Admins only", 403);
+  const role = user.role.toLowerCase();
+  if (role !== "admin" && role !== "super_admin") {
+    return fail("Forbidden: Admins only", 403);
+  }
   return ok(user);
 }
