@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   await sendEmail({
     to: email,
-    subject: "Verify your Arbitary email",
+    subject: "Verify your Arbitrary email",
     html: verifyEmailHtml(user.name || "there", verifyLink),
   });
 

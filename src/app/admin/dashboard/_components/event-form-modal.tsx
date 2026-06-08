@@ -147,7 +147,7 @@ const EventFormModal = ({
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
               {editingEventId
                 ? "Modify existing experience details and media"
-                : "Build a new unique experience for the Arbitary database"}
+                : "Build a new unique experience for the Arbitrary database"}
             </p>
           </div>
           <button

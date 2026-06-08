@@ -64,7 +64,7 @@ const ForgotPasswordPage = () => {
               <span className="text-black font-black text-xl">A</span>
             </div>
             <div>
-              <h1 className="text-white text-2xl font-black tracking-[0.15em] uppercase">Arbitary</h1>
+              <h1 className="text-white text-2xl font-black tracking-[0.15em] uppercase">Arbitrary</h1>
               <p className="text-white/40 text-xs font-semibold uppercase tracking-[0.25em] mt-1">Reset your password</p>
             </div>
           </div>

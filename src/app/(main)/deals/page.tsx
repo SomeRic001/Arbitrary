@@ -35,7 +35,7 @@ export default function DealsPage() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    document.title = "Rewards | Arbitary";
+    document.title = "Rewards | Arbitrary";
   }, []);
 
   const { data: dealsData, isLoading: dealsLoading } = useQuery<{

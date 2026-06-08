@@ -14,7 +14,7 @@ export function resetPasswordHtml(name: string, resetLink: string): string {
       <body>
         <div class="container">
           <div class="header">
-            <h1>ARBITARY</h1>
+            <h1>ARBITRARY</h1>
             <p>Reset Your Password</p>
           </div>
           <div class="content">
@@ -24,7 +24,7 @@ export function resetPasswordHtml(name: string, resetLink: string): string {
             <p>This link will expire in 30 minutes. If you didn't request this, you can safely ignore this email.</p>
           </div>
           <div class="footer">
-            <p>© 2026 Arbitary. All rights reserved.</p>
+            <p>© 2026 Arbitrary. All rights reserved.</p>
             <p>This is an automated email. Please do not reply directly.</p>
           </div>
         </div>

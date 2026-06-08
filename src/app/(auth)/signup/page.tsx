@@ -27,7 +27,7 @@ const UserSignupPage = () => {
 
   useEffect(() => {
     setMounted(true);
-    document.title = "Sign Up | Arbitary";
+    document.title = "Sign Up | Arbitrary";
   }, []);
 
   const handleGoogleSignup = async () => {
@@ -198,7 +198,7 @@ const UserSignupPage = () => {
             </div>
             <div>
               <h1 className="text-white text-2xl font-black tracking-[0.15em] uppercase">
-                Arbitary
+                Arbitrary
               </h1>
               <p className="text-white/40 text-xs font-semibold uppercase tracking-[0.25em] mt-1">
                 Create your account

@@ -293,7 +293,7 @@ function TicketCard({
       <View style={styles.topSection}>
         <View style={styles.decorCircle1} />
         <View style={styles.decorCircle2} />
-        <Text style={styles.brandLabel}>arbitary.com</Text>
+        <Text style={styles.brandLabel}>arbitrary.com</Text>
         <Text style={styles.eventTitle}>{event.title}</Text>
         <Text style={styles.eventSub}>Event Ticket — Digital Pass</Text>
 

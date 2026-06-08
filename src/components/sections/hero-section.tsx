@@ -42,7 +42,7 @@ const HeroSection = () => {
               className={`block text-[#FACC15] font-bold tracking-[0.4em] uppercase text-xs mb-4 transition-all duration-[1200ms] ease-[cubic-bezier(0.23,1,0.32,1)]
               ${hovered === "left" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}`}
             >
-              Arbitary Audio
+              Arbitrary Audio
             </span>
             <h2
               className={`font-black tracking-tighter text-white uppercase transition-all duration-[1200ms] ease-[cubic-bezier(0.23,1,0.32,1)] leading-none whitespace-nowrap

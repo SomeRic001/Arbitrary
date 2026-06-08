@@ -31,7 +31,7 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     <aside className="w-72 bg-black text-white flex flex-col p-8 fixed inset-y-0 left-0 z-30 shadow-2xl">
       <div className="mb-12">
         <h2 className="text-2xl font-black tracking-tighter uppercase">
-          ARBITARY<span className="text-[#FACC15]">.</span>
+          ARBITRARY<span className="text-[#FACC15]">.</span>
         </h2>
         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
           Command Center

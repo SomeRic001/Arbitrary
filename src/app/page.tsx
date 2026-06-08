@@ -45,7 +45,7 @@ const HomePage = () => {
   };
 
   useEffect(() => {
-    document.title = "Home | Arbitary";
+    document.title = "Home | Arbitrary";
   });
   return (
     <div className="bg-white text-black selection:bg-[#FACC15] selection:text-black">
@@ -235,13 +235,13 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* 7. About the Arbitary Section */}
+        {/* 7. About the Arbitrary Section */}
         <section className="py-32 relative overflow-hidden bg-white">
           <div className="container mx-auto px-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
               <div>
                 <h3 className="text-[#FACC15] font-bold uppercase tracking-widest mb-4">
-                  The Arbitary
+                  The Arbitrary
                 </h3>
                 <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 uppercase leading-tight text-black">
                   DEFINING THE <br /> ARBITRARY
@@ -298,7 +298,7 @@ const HomePage = () => {
           </div>
           {/* Background Text Overlay */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20vw] font-black text-black/[0.02] whitespace-nowrap pointer-events-none">
-            ARBITARY ARBITARY
+            ARBITRARY ARBITRARY
           </div>
         </section>
       </main>

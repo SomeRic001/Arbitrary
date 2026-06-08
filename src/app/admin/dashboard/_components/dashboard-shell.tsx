@@ -33,7 +33,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               {activeLabel}
             </h1>
             <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">
-              Arbitary Agency / Control Panel
+              Arbitrary Agency / Control Panel
             </p>
           </div>
           <div className="flex items-center gap-4">

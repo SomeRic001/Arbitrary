@@ -115,7 +115,7 @@ export default function ProfilePage() {
   const completedCount = totalCompleted;
 
   useEffect(() => {
-    document.title = `${TAB_TITLES[activeTab]} | Arbitary`;
+    document.title = `${TAB_TITLES[activeTab]} | Arbitrary`;
   }, [activeTab]);
 
   useEffect(() => {

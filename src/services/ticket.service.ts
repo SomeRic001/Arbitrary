@@ -182,7 +182,7 @@ export const TicketService = {
         if (event && inserted.length > 0) {
           sendEmail({
             to: userEmail,
-            subject: `${quantity > 1 ? `${quantity}x Tickets` : "Ticket"} Confirmed for ${event.title} – Arbitary`,
+            subject: `${quantity > 1 ? `${quantity}x Tickets` : "Ticket"} Confirmed for ${event.title} – Arbitrary`,
             html: bookingConfirmationHtml(
               userName || "there",
               event.title,
@@ -287,7 +287,7 @@ export const TicketService = {
 
     const emailSent = await sendEmail({
       to: userEmail,
-      subject: "Your Arbitary Event Ticket Has Expired",
+      subject: "Your Arbitrary Event Ticket Has Expired",
       html: expiredTicketHtml(
         userName || "there",
         ticketId,
@@ -329,7 +329,7 @@ function bookingConfirmationHtml(
       <body>
         <div class="container">
           <div class="header">
-            <h1>ARBITARY</h1>
+            <h1>ARBITRARY</h1>
             <p>Ticket${quantity > 1 ? "s" : ""} Confirmed</p>
           </div>
           <div class="content">
@@ -342,7 +342,7 @@ function bookingConfirmationHtml(
             <p><a href="${process.env.NEXTAUTH_URL}/profile" class="button">View My Tickets</a></p>
           </div>
           <div class="footer">
-            <p>© 2026 Arbitary. All rights reserved.</p>
+            <p>© 2026 Arbitrary. All rights reserved.</p>
             <p>This is an automated email. Please do not reply directly.</p>
           </div>
         </div>
@@ -371,7 +371,7 @@ function expiredTicketHtml(
       <body>
         <div class="container">
           <div class="header">
-            <h1>ARBITARY</h1>
+            <h1>ARBITRARY</h1>
             <p>Event Ticket Notification</p>
           </div>
           <div class="content">
@@ -386,7 +386,7 @@ function expiredTicketHtml(
             <p><a href="${process.env.NEXTAUTH_URL}/profile" class="button">View My Tickets</a></p>
           </div>
           <div class="footer">
-            <p>© 2026 Arbitary. All rights reserved.</p>
+            <p>© 2026 Arbitrary. All rights reserved.</p>
             <p>This is an automated email. Please do not reply directly.</p>
           </div>
         </div>

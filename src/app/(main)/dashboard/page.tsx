@@ -397,7 +397,7 @@ function DashboardInner() {
   ];
 
   useEffect(() => {
-    document.title = "Dashboard | Arbitary";
+    document.title = "Dashboard | Arbitrary";
   }, []);
 
   // Bind referral code from OAuth signup if one was stashed in sessionStorage

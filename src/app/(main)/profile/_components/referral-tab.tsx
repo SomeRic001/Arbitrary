@@ -244,7 +244,7 @@ export default function ReferralTab() {
                   >
                     <span className="font-black text-sm" style={{ color: "#000000" }}>A</span>
                   </div>
-                  <span className="font-black text-sm tracking-[0.15em]" style={{ color: "#ffffff" }}>ARBITARY</span>
+                  <span className="font-black text-sm tracking-[0.15em]" style={{ color: "#ffffff" }}>ARBITRARY</span>
                 </div>
 
                 <p className="text-xs text-center leading-relaxed max-w-xs" style={{ color: "rgba(255,255,255,0.6)" }}>

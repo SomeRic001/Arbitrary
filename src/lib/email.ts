@@ -19,7 +19,7 @@ type SendEmailParams = {
 export async function sendEmail({ to, subject, html }: SendEmailParams) {
   try {
     await transporter.sendMail({
-      from: `"Arbitary" <${process.env.EMAIL_USER}>`,
+      from: `"Arbitrary" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,

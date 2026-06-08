@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 const Header = () => {
-  const fullText = "ARBITARY";
+  const fullText = "ARBITRARY";
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
   const pathName = usePathname();
@@ -72,7 +72,7 @@ const Header = () => {
           <div className="absolute left-0 top-1/3 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex items-center">
             <img
               src="/arbitary-logo.png"
-              alt="ARBITARY"
+              alt="ARBITRARY"
               className="h-32 md:h-40 w-auto object-contain bg-transparent mix-blend-multiply select-none pointer-events-none transform -translate-x-1"
             />
           </div>

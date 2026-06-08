@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 export default function WorkPage() {
   useEffect(() => {
-    document.title = "Work | Arbitary";
+    document.title = "Work | Arbitrary";
   });
   return (
     <div>

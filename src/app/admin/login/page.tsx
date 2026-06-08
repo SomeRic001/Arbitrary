@@ -68,7 +68,7 @@ const AdminLoginPage = () => {
   };
 
   useEffect(() => {
-    document.title = "Admin Login | Arbitary Agency";
+    document.title = "Admin Login | Arbitrary Agency";
   }, []);
 
   // Show nothing while checking existing session
@@ -93,7 +93,7 @@ const AdminLoginPage = () => {
             <span className="text-[#FACC15] font-black text-xl">A</span>
           </div>
           <h1 className="text-4xl font-black tracking-tighter uppercase mb-2">
-            ARBITARY <span className="text-[#FACC15]">ADMIN</span>
+            ARBITRARY <span className="text-[#FACC15]">ADMIN</span>
           </h1>
           <p className="text-zinc-400 text-xs font-bold uppercase tracking-[0.3em]">
             Authorized Personnel Only
@@ -137,7 +137,7 @@ const AdminLoginPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-6 py-4 bg-zinc-50 border border-black/5 rounded-2xl focus:outline-none focus:border-[#FACC15] focus:ring-4 focus:ring-[#FACC15]/10 transition-all font-bold text-sm"
-                placeholder="admin@arbitary.com"
+                placeholder="admin@arbitrary.com"
                 required
                 autoComplete="email"
               />

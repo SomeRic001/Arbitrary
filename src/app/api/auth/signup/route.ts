@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     await sendEmail({
       to: parsed.data.email,
-      subject: "Verify your Arbitary email",
+      subject: "Verify your Arbitrary email",
       html: verifyEmailHtml(`${parsed.data.firstName} ${parsed.data.lastName}`, verifyLink),
     });
 

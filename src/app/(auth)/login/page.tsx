@@ -92,7 +92,7 @@ const UserLoginPage = () => {
 
   useEffect(() => {
     setMounted(true);
-    document.title = "Login | Arbitary";
+    document.title = "Login | Arbitrary";
   }, []);
 
   const handleGoogleLogin = async () => {
@@ -222,7 +222,7 @@ const UserLoginPage = () => {
             </div>
             <div>
               <h1 className="text-white text-2xl font-black tracking-[0.15em] uppercase">
-                Arbitary
+                Arbitrary
               </h1>
               <p className="text-white/40 text-xs font-semibold uppercase tracking-[0.25em] mt-1">
                 Sign in to your account

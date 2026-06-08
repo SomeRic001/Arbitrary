@@ -11,7 +11,7 @@ const Footer = () => {
           {/* Brand Column */}
           <div className="space-y-6">
             <Link href="/" className="flex items-center gap-2 group">
-              <span className="text-black font-black text-2xl tracking-tighter uppercase">ARBITARY</span>
+              <span className="text-black font-black text-2xl tracking-tighter uppercase">ARBITRARY</span>
             </Link>
             <p className="text-zinc-500 max-w-xs leading-relaxed">
               Pushing the boundaries of digital creativity. We build high-end experiences for brands that dare to be different.
@@ -62,7 +62,7 @@ const Footer = () => {
               </li>
               <li>
                 <p className="text-black font-bold uppercase text-xs tracking-widest mb-1">Inquiries</p>
-                <p>hello@arbitary.com</p>
+                <p>hello@arbitrary.com</p>
                 <p>+1 (555) 000-0000</p>
               </li>
             </ul>
@@ -88,7 +88,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-zinc-400 text-sm font-medium">
-            © {currentYear} ARBITARY AGENCY. ALL RIGHTS RESERVED.
+            © {currentYear} ARBITRARY AGENCY. ALL RIGHTS RESERVED.
           </p>
           <div className="flex gap-8 text-sm text-zinc-400 font-medium">
             <a href="#" className="hover:text-black transition-colors">PRIVACY POLICY</a>

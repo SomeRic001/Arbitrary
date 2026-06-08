@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 
 const LoadingScreen = () => {
-  const fullText = "ARBITARY";
+  const fullText = "ARBITRARY";
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
 
@@ -46,7 +46,7 @@ const LoadingScreen = () => {
         >
           <img
             src="/arbitary-logo.png"
-            alt="ARBITARY"
+            alt="ARBITRARY"
             className="h-32 md:h-48 w-auto object-contain bg-transparent mix-blend-multiply select-none pointer-events-none"
           />
         </div>

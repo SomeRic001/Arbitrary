@@ -202,7 +202,7 @@ export default function EventPage() {
                   PAST <span className="text-[#FACC15]">RECAPS</span>
                 </h2>
                 <p className="text-zinc-400 font-bold uppercase tracking-widest text-sm">
-                  Archived Moments from the Arbitary Journey
+                  Archived Moments from the Arbitrary Journey
                 </p>
               </div>
               <div className="h-[2px] flex-1 bg-black/5 hidden md:block" />
