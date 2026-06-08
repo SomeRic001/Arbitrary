@@ -221,7 +221,7 @@ export function TaskCard({
           >
             <motion.div
               initial={{ scale: 0 }}
-              animate={{ scale: [0, 1.2, 1] }}
+              animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 15 }}
               className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40"

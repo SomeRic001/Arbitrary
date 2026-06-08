@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   brandLabel: {
     fontSize: 8,
     letterSpacing: 2,
-    color: "rgba(250,204,21,0.7)",
+    color: "rgba(255,255,255,0.5)",
     textTransform: "uppercase",
     marginBottom: 8,
     fontFamily: "Courier",
@@ -139,45 +139,10 @@ const styles = StyleSheet.create({
   body: {
     backgroundColor: "#ffffff",
     paddingHorizontal: 32,
-    paddingTop: 28,
+    paddingTop: 32,
     paddingBottom: 24,
   },
-  attendeeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 20,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: YELLOW,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 16,
-    fontFamily: "Helvetica-Bold",
-    color: NAVY,
-  },
-  attendeeName: {
-    fontSize: 15,
-    fontFamily: "Helvetica-Bold",
-    color: NAVY,
-  },
-  attendeeEmail: {
-    fontSize: 10,
-    color: "#64748b",
-    fontFamily: "Courier",
-    marginTop: 2,
-  },
-  bodyDivider: {
-    height: 1,
-    backgroundColor: "#f1f5f9",
-    marginBottom: 20,
-  },
-
+  
   // ── Two-Column Layout ─────────────────────────────
   contentRow: {
     flexDirection: "row",
@@ -213,40 +178,38 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   issuedText: {
-    fontSize: 10,
-    fontFamily: "Courier",
-    color: "#64748b",
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: NAVY,
+    marginTop: 4,
   },
   qrContainer: {
-    width: 100,
-    height: 100,
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+    width: 110,
+    height: 110,
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#f1f5f9",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 20,
   },
   qrImage: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
   },
   scanHint: {
-    marginTop: 16,
-    fontSize: 8,
-    fontFamily: "Courier",
+    marginTop: 24,
+    fontSize: 9,
     color: "#94a3b8",
-    textAlign: "center",
-    letterSpacing: 0.5,
-    lineHeight: 1.4,
+    textAlign: "left",
   },
 
   // ── Footer Strip ──────────────────────────────────────────
   footerStrip: {
-    backgroundColor: NAVY,
+    backgroundColor: YELLOW,
     paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingVertical: 18,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -254,19 +217,17 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: CARD_RADIUS,
   },
   footerId: {
-    fontSize: 10,
-    fontFamily: "Courier",
-    color: YELLOW,
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: NAVY,
     letterSpacing: 0.5,
-    fontWeight: "bold",
+    textTransform: "uppercase",
   },
   footerScan: {
-    fontSize: 9,
-    fontFamily: "Courier",
-    color: "#ffffff",
-    letterSpacing: 1.5,
+    fontSize: 10,
+    color: "rgba(15, 23, 42, 0.7)",
+    letterSpacing: 1,
     textTransform: "uppercase",
-    fontWeight: "bold",
   },
 });
 
@@ -372,18 +333,6 @@ function TicketCard({
 
       {/* ── Body ── */}
       <View style={styles.body}>
-        <View style={styles.attendeeRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
-          </View>
-          <View>
-            <Text style={styles.attendeeName}>{user.name || "Guest"}</Text>
-            <Text style={styles.attendeeEmail}>{user.email}</Text>
-          </View>
-        </View>
-
-        <View style={styles.bodyDivider} />
-
         <View style={styles.contentRow}>
           <View style={styles.leftCol}>
             <View>
@@ -414,7 +363,7 @@ function TicketCard({
         </View>
 
         <Text style={styles.scanHint}>
-          Present this QR code at the entrance{"\n"}Non-transferable
+          Present this QR code at the entrance · Non-transferable
         </Text>
       </View>
 

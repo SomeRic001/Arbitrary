@@ -100,9 +100,24 @@ const EventContentPage = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [codeError, setCodeError] = useState("");
 
-  const parsePrice = (priceStr: string) => {
+  const formatMoney = (priceStr: string | undefined | null) => {
+    if (!priceStr) return "Rs. 0";
+    if (priceStr.toLowerCase() === "free") return "Free";
     const match = priceStr.match(/^([^\d]*)([\d,]+(?:\.\d+)?)/);
-    if (!match) return { prefix: priceStr, value: 0 };
+    if (!match) return priceStr;
+    let prefix = match[1].trim();
+    if (!prefix || prefix.toLowerCase() === "rs" || prefix.toLowerCase() === "rs.") {
+      prefix = "Rs. ";
+    } else {
+      prefix = prefix + " ";
+    }
+    return `${prefix}${match[2]}`;
+  };
+
+  const parsePrice = (priceStr: string) => {
+    const formatted = formatMoney(priceStr);
+    const match = formatted.match(/^([^\d]*)([\d,]+(?:\.\d+)?)/);
+    if (!match) return { prefix: formatted, value: 0 };
     return { prefix: match[1], value: Number(match[2].replace(/,/g, "")) };
   };
 
@@ -356,27 +371,32 @@ const EventContentPage = () => {
                           className={`w-full flex justify-between items-center p-4 rounded-xl border transition-all duration-300 ${
                             isSelected
                               ? "border-[#FACC15] bg-[#FACC15]/10 text-white"
-                              : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/30"
+                              : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/30 hover:bg-white/10"
                           }`}
                         >
-                          <div className="flex flex-col text-left">
-                            <span className="font-bold uppercase text-[11px] tracking-widest">
+                          <div className="flex flex-col text-left justify-center">
+                            <span className={`font-black uppercase text-sm tracking-widest ${isSelected ? "text-[#FACC15]" : "text-zinc-300"}`}>
                               {type.title}
                             </span>
-                            <span className="text-[9px] text-zinc-500 mt-1">
-                              {discounted ? (
-                                <>
-                                  <span className="line-through text-zinc-500 mr-2">{discounted.original}</span>
-                                  {discounted.display}
-                                </>
-                              ) : (
-                                type.price
-                              )}
-                            </span>
                           </div>
-                          <span className="text-lg font-black text-[#FACC15]">
-                            {pointCost} Pts
-                          </span>
+                          
+                          <div className="flex flex-col items-end text-right">
+                            <div className={`font-black text-lg ${isSelected ? "text-white" : "text-zinc-200"}`}>
+                              {discounted ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs line-through text-zinc-500">{formatMoney(discounted.original)}</span>
+                                  <span>{discounted.display}</span>
+                                </div>
+                              ) : (
+                                formatMoney(type.price)
+                              )}
+                            </div>
+                            {pointCost > 0 && (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-[#FACC15] mt-0.5">
+                                OR {pointCost} PTS
+                              </span>
+                            )}
+                          </div>
                         </button>
                       );
                     })}
@@ -413,12 +433,12 @@ const EventContentPage = () => {
                               setCodeError("");
                             }}
                             placeholder="Enter code"
-                            className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold focus:outline-none focus:border-[#FACC15] uppercase tracking-wider"
+                            className="min-w-0 flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold focus:outline-none focus:border-[#FACC15] uppercase tracking-wider"
                           />
                           <button
                             onClick={validateDiscountCode}
                             disabled={isValidating || !discountCode.trim()}
-                            className="px-4 py-2 rounded-xl bg-[#FACC15] text-black font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="shrink-0 px-4 py-2 rounded-xl bg-[#FACC15] text-black font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {isValidating ? "..." : "Apply"}
                           </button>
@@ -459,18 +479,33 @@ const EventContentPage = () => {
                         />
                       </div>
                     ) : (
-                      <button
-                        onClick={handleOpenModal}
-                        disabled={!selectedAccessTypeId}
-                        className={`w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-300
-                          ${
-                            !selectedAccessTypeId
-                              ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                              : "bg-white text-black hover:bg-[#FACC15] hover:scale-[1.02]"
-                          }`}
-                      >
-                        {selectedCost > 0 ? `Redeem for ${selectedCost} Pts` : "Redeem"}
-                      </button>
+                      <div className="flex flex-col gap-3 w-full">
+                        <button
+                          onClick={() => toast.info("Payment gateway integration coming soon!")}
+                          disabled={!selectedAccessTypeId}
+                          className={`w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-300
+                            ${
+                              !selectedAccessTypeId
+                                ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                                : "bg-white text-black hover:bg-[#FACC15] hover:scale-[1.02]"
+                            }`}
+                        >
+                          Buy for {getDiscountedPrice(selectedTier?.price || "0")?.display || formatMoney(selectedTier?.price || "0")}
+                        </button>
+                        
+                        <button
+                          onClick={handleOpenModal}
+                          disabled={!selectedAccessTypeId || selectedCost === 0}
+                          className={`w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-300 border border-white/20
+                            ${
+                              !selectedAccessTypeId || selectedCost === 0
+                                ? "bg-transparent text-white/30 cursor-not-allowed border-white/5"
+                                : "bg-transparent text-white hover:bg-white/10 hover:border-white/40"
+                            }`}
+                        >
+                          {selectedCost > 0 ? `Redeem with ${selectedCost} Pts` : "Points Not Available"}
+                        </button>
+                      </div>
                     )}
                   </div>
                   <p className="text-[9px] text-zinc-500 text-center mt-4 uppercase tracking-widest font-bold">

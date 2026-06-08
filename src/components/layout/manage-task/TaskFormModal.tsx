@@ -8,7 +8,11 @@ import {
   Zap,
   Share2,
   CheckCircle2,
-  Video
+  Video,
+  ThumbsUp,
+  Bell,
+  MessageSquare,
+  Eye,
 } from "lucide-react";
 
 import { ModalShell } from "./ModalShell";
@@ -76,9 +80,27 @@ export function TaskFormModal({
     task?.isShare === true,
   );
 
-  const isSocialPlatform = taskSource !== "manual" && taskSource !== "daily-login";
+  // Detect YouTube action from existing task data when editing
+  const detectYoutubeAction = (): "watch" | "subscribe" | "like" | "comment" => {
+    if (!task) return "watch";
+    const tt = (task.taskType || "").toLowerCase();
+    if (tt === "video_watch") return "watch";
+    const text = ((task.title || "") + " " + (task.description || "")).toLowerCase();
+    if (text.includes("subscribe") || text.includes("sub")) return "subscribe";
+    if (text.includes("like")) return "like";
+    if (text.includes("comment")) return "comment";
+    return "watch";
+  };
+
+  const [youtubeAction, setYoutubeAction] = useState<"watch" | "subscribe" | "like" | "comment">(
+    detectYoutubeAction,
+  );
+
+  const isSocialPlatform = taskSource !== 
+  "manual" && taskSource !== "daily-login";
   const isYoutube = taskSource === "youtube";
   const isDailyLogin = taskSource === "daily-login";
+  const isYtWatch = isYoutube && youtubeAction === "watch";
 
   const handleSourceChange = (source: TaskSource) => {
     setTaskSource(source);
@@ -103,14 +125,20 @@ export function TaskFormModal({
 
     const rawDuration = formData.get("watchDuration");
     const watchDuration =
-      isYoutube && rawDuration ? Math.max(1, Number(rawDuration)) : null;
+      isYtWatch && rawDuration ? Math.max(1, Number(rawDuration)) : null;
 
     const flashValue = formData.get("isFlash") === "on" || isFlash;
+
+    // Auto-set taskType based on YouTube action when YouTube is selected
+    let resolvedTaskType = formData.get("taskType") as string;
+    if (isYoutube) {
+      resolvedTaskType = youtubeAction === "watch" ? "video_watch" : "social_media";
+    }
 
     onSubmit({
       title: formData.get("title") as string,
       description: formData.get("description") as string,
-      taskType: formData.get("taskType") as string,
+      taskType: resolvedTaskType,
       rewardPoint: Number(formData.get("points")),
       videoUrl: isDailyLogin ? null : (formData.get("videoUrl") as string) || null,
       platform: isSocialPlatform || isDailyLogin ? (taskSource as Platform) : null,
@@ -175,6 +203,41 @@ export function TaskFormModal({
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* YouTube Action Sub-selector */}
+            {isYoutube && (
+              <div className="border border-red-200 rounded-2xl p-4 bg-red-50/40 space-y-3">
+                <p className={labelClass}>YouTube Action</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {([
+                    { value: "watch" as const, label: "Watch Video", icon: Eye, desc: "User must watch for a set duration" },
+                    { value: "subscribe" as const, label: "Subscribe", icon: Bell, desc: "User must subscribe to channel" },
+                    { value: "like" as const, label: "Like", icon: ThumbsUp, desc: "User must like the video" },
+                    { value: "comment" as const, label: "Comment", icon: MessageSquare, desc: "User must comment on the video" },
+                  ]).map((action) => (
+                    <button
+                      key={action.value}
+                      type="button"
+                      onClick={() => setYoutubeAction(action.value)}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 text-xs font-black tracking-wider transition-all ${
+                        youtubeAction === action.value
+                          ? "border-red-500 bg-red-500 text-white shadow-md"
+                          : "border-black/5 bg-white text-zinc-500 hover:border-red-300"
+                      }`}
+                    >
+                      <action.icon className="w-4 h-4" />
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-red-400/80 font-medium">
+                  {youtubeAction === "watch" && "Users must watch the video for the specified duration to earn points."}
+                  {youtubeAction === "subscribe" && "Users must subscribe to the YouTube channel. Include the channel URL or handle."}
+                  {youtubeAction === "like" && "Users must like the YouTube video. Verified via YouTube API."}
+                  {youtubeAction === "comment" && "Users must comment on the YouTube video. Verified via YouTube API."}
+                </p>
               </div>
             )}
           </div>
@@ -251,7 +314,7 @@ export function TaskFormModal({
               </div>
             )}
 
-            {isYoutube && (
+            {isYtWatch && (
               <div className="rounded-2xl border border-red-200 bg-red-50/60 p-5 space-y-3">
                 <div className="flex items-center gap-2">
                   <Video className="w-4 h-4 text-red-600" />
@@ -311,14 +374,23 @@ export function TaskFormModal({
                 id="taskType"
                 name="taskType"
                 required
+                disabled={isYoutube}
                 defaultValue={mode === "edit" ? task?.taskType : "social"}
-                className={inputClass}
+                className={`${inputClass} ${isYoutube ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <option value="daily">Daily Task</option>
                 <option value="social">Social Action</option>
                 <option value="share">Share Task</option>
                 <option value="special">Special Task</option>
+                <option value="video_watch">Video Watch</option>
+                <option value="social_media">Social Media</option>
+                <option value="SCREENSHOT_UPLOAD">Screenshot Upload</option>
               </select>
+              {isYoutube && (
+                <p className="text-[9px] text-red-400 font-medium mt-1">
+                  Auto-set to {youtubeAction === "watch" ? "Video Watch" : "Social Media"} based on YouTube action
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="points" className={labelClass}>Points</label>
@@ -348,45 +420,7 @@ export function TaskFormModal({
           </div>
         </div>
 
-        {/* Type + Points */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="taskType" className={labelClass}>
-              Task Type
-            </label>
-            <select
-              id="taskType"
-              name="taskType"
-              required
-              defaultValue={mode === "edit" ? task?.taskType : ""}
-              className={inputClass}
-            >
-              <option value="">Select type...</option>
-              <option value="daily">Daily</option>
-              <option value="monthly">Monthly</option>
-              <option value="social">Social</option>
-              <option value="special">Special</option>
-              <option value="share">Share</option>
-              <option value="VIDEO_WATCH">Video Watch</option>
-              <option value="social_media">Social Media (YouTube)</option>
-              <option value="SCREENSHOT_UPLOAD">Screenshot Upload</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="points" className={labelClass}>
-              Points
-            </label>
-            <input
-              type="number"
-              id="points"
-              name="points"
-              min="0"
-              required
-              defaultValue={mode === "edit" ? task?.rewardPoint : 10}
-              className={inputClass}
-            />
-          </div>
-        </div>
+        {/* Duplicate taskType dropdown removed — merged into Section 3 above */}
 
         {/* SECTION 4: Rules & Expirations */}
         <div className={sectionClass}>

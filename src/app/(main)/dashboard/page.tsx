@@ -23,6 +23,13 @@ function nextMilestoneLabel(days: number) {
   return `${days}-day`;
 }
 
+function formatTabLabel(tab: string) {
+  if (tab === "all") return "All";
+  if (tab === "social_media") return "Social Media";
+  if (tab === "video_watch") return "Watch Videos";
+  return tab.replace(/_/g, " ");
+}
+
 export default function DashboardPage() {
   return (
     <RewardProvider>
@@ -483,7 +490,7 @@ function DashboardInner() {
             </div>
 
             {/* ── Tab pill strip ──────────────────────────────────────── */}
-            <div className="flex p-1 bg-white border border-black/8 rounded-2xl w-fit relative shadow-sm">
+            <div className="flex p-1 bg-white border border-black/8 rounded-2xl w-fit relative shadow-sm overflow-x-auto hide-scrollbar max-w-full">
               {/* Sliding pill — positioned by real DOM measurements */}
               <div
                 className="absolute top-1 bottom-1 rounded-xl bg-slate-900 shadow-sm transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
@@ -503,7 +510,7 @@ function DashboardInner() {
                               transition-colors duration-200 capitalize whitespace-nowrap
                               ${activeTab === tab ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
                 >
-                  {tab === "all" ? "All" : tab}
+                  {formatTabLabel(tab)}
                 </button>
               ))}
             </div>

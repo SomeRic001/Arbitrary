@@ -63,7 +63,7 @@ export default function EventPage() {
             <span className="inline-block text-[#FACC15] font-bold uppercase tracking-[0.4em] text-xs mb-6 px-4 py-2 bg-zinc-50 rounded-full border border-black/5">
               Our Experiences
             </span>
-            <h1 className="text-7xl md:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-10">
+            <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-10">
               Events <br />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
                 & EXPERIENCES
@@ -151,8 +151,8 @@ export default function EventPage() {
                   </div>
 
                   {/* Action Area */}
-                  <div className="flex flex-col items-center justify-center min-w-[180px] h-full relative">
-                    <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col items-center justify-center min-w-[180px] h-full pt-4 md:pt-0">
+                    <div className="flex flex-col items-center gap-2 w-full">
                         <Link
                           href={`/events/${event.id}`}
                           className="w-full px-8 py-5 bg-black text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#FACC15] hover:text-black hover:scale-[1.02] active:scale-95 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:shadow-[0_20px_50px_rgba(250,204,21,0.2)] text-sm text-center"
@@ -167,7 +167,7 @@ export default function EventPage() {
                     {/* View Details Link */}
                     <Link
                       href={`/events/${event.id}`}
-                      className="absolute bottom-0 right-0 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-black transition-colors flex items-center gap-2 group/details"
+                      className="mt-6 self-end text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-black transition-colors flex items-center gap-2 group/details"
                     >
                       View Details
                       <svg

@@ -58,19 +58,14 @@ export function YoutubeModal({
   const [playerReady, setPlayerReady] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [showChallenge, setShowChallenge] = useState(false);
-  const [pendingChallengeToken, setPendingChallengeToken] = useState<string | null>(null);
   const [isSessionReady, setIsSessionReady] = useState(false);
+  const [localRequiredSeconds, setLocalRequiredSeconds] = useState(requiredSeconds);
 
   const playerRef = useRef<YTPlayer | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const completedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const watchedSecondsRef = useRef(0);
-  const sessionTokenRef = useRef<string>("");
-  const expectedHeartbeatsRef = useRef(0);
-  const lastSentHeartbeatRef = useRef(-1);
-  const isSendingRef = useRef(false);
   const isPausedByVisibilityRef = useRef(false);
   const sessionIdRef = useRef<number | null>(null);
   const reportingRef = useRef(false);
@@ -82,30 +77,55 @@ export function YoutubeModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not start watch session");
       sessionIdRef.current = data.sessionId;
+      if (data.requiredSeconds) {
+        setLocalRequiredSeconds(data.requiredSeconds);
+      }
+      setIsSessionReady(true);
       return data.sessionId;
-    } catch {
+    } catch (err: any) {
+      setSessionError(err.message || "Failed to start watch session");
       return null;
     }
   }, [taskId]);
 
-  const reportProgress = useCallback(async () => {
-    if (!playerRef.current || reportingRef.current) return;
+  const handleComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    setIsCompleted(true);
+    if (timerRef.current) clearInterval(timerRef.current);
+    const finalSeconds = watchedSecondsRef.current;
+    const sessId = sessionIdRef.current ?? undefined;
+    setTimeout(() => {
+      onComplete(finalSeconds, sessId);
+    }, 1200);
+  }, [onComplete]);
+
+  const reportProgress = useCallback(async (isFinal = false) => {
+    if (!playerRef.current || reportingRef.current || completedRef.current) return;
     const sessionId = sessionIdRef.current ?? (await startSession());
     if (!sessionId) return;
     reportingRef.current = true;
     try {
       const positionSeconds = Math.floor(playerRef.current.getCurrentTime?.() ?? 0);
-      await fetch(`/api/tasks/${taskId}/watch-session`, {
+      const res = await fetch(`/api/tasks/${taskId}/watch-session`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, positionSeconds }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setSessionError(data.error || "Heartbeat failed");
+        return;
+      }
+      if (data.completed) {
+        handleComplete();
+      }
     } catch {
       // silent — non-critical
     } finally {
       reportingRef.current = false;
     }
-  }, [taskId, startSession]);
+  }, [taskId, startSession, handleComplete]);
 
   const videoId = getYoutubeId(url);
 
@@ -127,7 +147,7 @@ export function YoutubeModal({
     };
   }, [isOpen]);
 
-  // Session pickup on modal open
+  // Session reset on modal open
   useEffect(() => {
     if (!isOpen) return;
 
@@ -138,113 +158,10 @@ export function YoutubeModal({
     setPlayerReady(false);
     completedRef.current = false;
     setSessionError(null);
-    setShowChallenge(false);
-    setPendingChallengeToken(null);
     setIsSessionReady(false);
-    lastSentHeartbeatRef.current = -1;
-    sessionTokenRef.current = "";
-    expectedHeartbeatsRef.current = 0;
-
-    fetch("/api/user/tasks/youtube-pickup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to start session");
-        return data;
-      })
-      .then((data) => {
-        sessionTokenRef.current = data.sessionToken;
-        expectedHeartbeatsRef.current = data.expectedHeartbeats;
-        setIsSessionReady(true);
-      })
-      .catch((err) => {
-        setSessionError(err.message);
-      });
-  }, [isOpen, taskId]);
-
-  async function sendHeartbeat(index: number) {
-    if (isSendingRef.current) return;
-    isSendingRef.current = true;
-
-    try {
-      const body: Record<string, any> = {
-        taskId,
-        heartbeatIndex: index,
-        sessionToken: sessionTokenRef.current,
-      };
-
-      if (pendingChallengeTokenRef.current) {
-        body.responseToken = pendingChallengeTokenRef.current;
-        pendingChallengeTokenRef.current = null;
-      }
-
-      const res = await fetch("/api/user/tasks/youtube-heartbeat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setSessionError(data.error || "Heartbeat failed");
-        return;
-      }
-
-      if (data.completed) {
-        handleComplete();
-        return;
-      }
-
-      if (data.promptRequired && data.challengeToken) {
-        setShowChallenge(true);
-        setPendingChallengeToken(data.challengeToken);
-      }
-    } catch {
-      setSessionError("Network error");
-    } finally {
-      isSendingRef.current = false;
-    }
-  }
-
-  // We store the pending token in a ref too so sendHeartbeat can read it
-  const pendingChallengeTokenRef = useRef<string | null>(null);
-
-  // Sync the state into the ref so sendHeartbeat can read it
-  useEffect(() => {
-    pendingChallengeTokenRef.current = pendingChallengeToken;
-  }, [pendingChallengeToken]);
-
-  // Trigger heartbeat when watchedSeconds crosses a 10s boundary
-  useEffect(() => {
-    if (!isSessionReady || completedRef.current || sessionError) return;
-
-    const currentIdx = Math.floor(watchedSeconds / 10);
-    if (currentIdx > lastSentHeartbeatRef.current) {
-      lastSentHeartbeatRef.current = currentIdx;
-      sendHeartbeat(currentIdx);
-    }
-  }, [watchedSeconds, isSessionReady, sessionError]);
-
-  const handleComplete = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    setIsCompleted(true);
-    if (timerRef.current) clearInterval(timerRef.current);
-    reportProgress();
-    const finalSeconds = watchedSecondsRef.current;
-    const sessId = sessionIdRef.current ?? undefined;
-    setTimeout(() => {
-      onComplete(finalSeconds, sessId);
-    }, 1200);
-  }, [onComplete, reportProgress]);
-
-  const handleChallengeResponse = useCallback(() => {
-    setShowChallenge(false);
-  }, []);
+    setLocalRequiredSeconds(requiredSeconds);
+    sessionIdRef.current = null;
+  }, [isOpen, requiredSeconds]);
 
   // Page Visibility API
   useEffect(() => {
@@ -339,9 +256,9 @@ export function YoutubeModal({
       setPlayerReady(false);
       setIsPlaying(false);
     };
-  }, [isOpen, videoId]);
+  }, [isOpen, videoId, startSession]);
 
-  // Countdown timer
+  // Countdown timer — pure counter, no side effects
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
 
@@ -350,9 +267,6 @@ export function YoutubeModal({
         setWatchedSeconds((prev) => {
           const next = prev + 1;
           watchedSecondsRef.current = next;
-          if (next >= requiredSeconds) {
-            return requiredSeconds;
-          }
           return next;
         });
       }, 1000);
@@ -361,19 +275,104 @@ export function YoutubeModal({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, requiredSeconds]);
+  }, [isPlaying]);
 
-  // Report server progress every 5s while playing
+  // Detect when the required watch time is reached and trigger completion
+  useEffect(() => {
+    if (completedRef.current || !isSessionReady) return;
+    if (watchedSeconds < localRequiredSeconds) return;
+
+    // Time threshold crossed — send a final heartbeat to let the server
+    // mark the session as completed. We bypass the reportingRef mutex here
+    // because this is the critical completion call and must not be silently
+    // dropped by a concurrent periodic heartbeat.
+    const sendFinalHeartbeat = async () => {
+      const sessionId = sessionIdRef.current;
+      if (!sessionId || !playerRef.current) {
+        // No session yet — fall back to direct client-side completion
+        handleComplete();
+        return;
+      }
+
+      try {
+        const positionSeconds = Math.floor(playerRef.current.getCurrentTime?.() ?? 0);
+        const res = await fetch(`/api/tasks/${taskId}/watch-session`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, positionSeconds }),
+        });
+        const data = await res.json();
+
+        if (data.completed) {
+          handleComplete();
+        } else if (res.ok) {
+          // Server hasn't accumulated enough time yet (e.g. heartbeats
+          // were rejected earlier). Retry once after a short delay.
+          setTimeout(async () => {
+            if (completedRef.current) return;
+            try {
+              const pos = Math.floor(playerRef.current?.getCurrentTime?.() ?? 0);
+              const r2 = await fetch(`/api/tasks/${taskId}/watch-session`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId, positionSeconds: pos }),
+              });
+              const d2 = await r2.json();
+              if (d2.completed) {
+                handleComplete();
+              } else {
+                // Server still disagrees — complete on the client side anyway;
+                // the youtube-complete endpoint will do its own final validation.
+                handleComplete();
+              }
+            } catch {
+              handleComplete();
+            }
+          }, 6000);
+        } else {
+          // Server returned an error (e.g. gap too short). Retry after delay.
+          setTimeout(async () => {
+            if (completedRef.current) return;
+            try {
+              const pos = Math.floor(playerRef.current?.getCurrentTime?.() ?? 0);
+              const r2 = await fetch(`/api/tasks/${taskId}/watch-session`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId, positionSeconds: pos }),
+              });
+              const d2 = await r2.json();
+              if (d2.completed) {
+                handleComplete();
+              } else {
+                handleComplete();
+              }
+            } catch {
+              handleComplete();
+            }
+          }, 6000);
+        }
+      } catch {
+        // Network error — still complete on client side
+        handleComplete();
+      }
+    };
+
+    sendFinalHeartbeat();
+  }, [watchedSeconds, localRequiredSeconds, isSessionReady, taskId, handleComplete]);
+
+  // Report server progress every 15s while playing (periodic heartbeat)
   useEffect(() => {
     if (!isPlaying || completedRef.current) return;
-    const interval = setInterval(reportProgress, 5000);
+    const interval = setInterval(() => {
+      reportProgress(false);
+    }, 15000);
     return () => clearInterval(interval);
   }, [isPlaying, reportProgress]);
 
   if (!isOpen || !mounted) return null;
 
-  const progress = Math.min((watchedSeconds / requiredSeconds) * 100, 100);
-  const timeLeft = Math.max(requiredSeconds - watchedSeconds, 0);
+  const progress = Math.min((watchedSeconds / localRequiredSeconds) * 100, 100);
+  const timeLeft = Math.max(localRequiredSeconds - watchedSeconds, 0);
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
   const timeStr =
@@ -387,7 +386,7 @@ export function YoutubeModal({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/85 backdrop-blur-md"
-        onClick={() => !isCompleted && !showChallenge && onClose()}
+        onClick={() => !isCompleted && onClose()}
         style={{ zIndex: 0 }}
       />
 
@@ -516,59 +515,6 @@ export function YoutubeModal({
             </div>
           )}
 
-          {/* Challenge prompt overlay */}
-          {showChallenge && (
-            <div
-              className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6"
-              style={{
-                background: "rgba(0,0,0,0.85)",
-                backdropFilter: "blur(6px)",
-                animation: "fadeIn 0.3s ease forwards",
-              }}
-            >
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg,#f59e0b,#d97706)",
-                  boxShadow: "0 0 24px rgba(245,158,11,0.5)",
-                }}
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-              </div>
-              <p
-                className="text-white font-bold text-lg text-center"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                Are you still watching?
-              </p>
-              <p
-                className="text-white/50 text-sm text-center max-w-sm"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                Click the button below to confirm you&apos;re still watching the
-                video.
-              </p>
-              <button
-                onClick={handleChallengeResponse}
-                className="text-sm font-bold text-black bg-[#FACC15] hover:bg-[#eab308] px-6 py-2.5 rounded-full transition-all duration-200 active:scale-95"
-              >
-                I&apos;m watching
-              </button>
-            </div>
-          )}
 
           {/* Completed overlay */}
           {isCompleted && (

@@ -21,7 +21,7 @@ export async function getTopUsers(limit: number = 100): Promise<TopUser[]> {
       image: usersTable.image,
       points: usersTable.lifetimePoints,
       tasks: usersTable.completedTasksCount,
-      referrals: sql<number>`(select count(*) from ${referralsTable} where ${referralsTable.referrerId} = ${usersTable.id})`,
+      referrals: sql<number>`(select count(*)::int from ${referralsTable} where ${referralsTable.referrerId} = users.id)`,
     })
     .from(usersTable)
     .where(eq(usersTable.role, 'user'))

@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { User, Settings, LogOut } from "lucide-react";
 
 const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
@@ -48,8 +48,11 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const queryClient = useQueryClient();
+
   const handleLogout = async () => {
     setIsOpen(false);
+    queryClient.clear();
     await signOut({ redirect: false });
     router.push(redirectUrl);
   };

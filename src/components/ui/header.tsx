@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import ProfileDropdown from "./profile-dropdown";
 import { usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
 
 const Header = () => {
   const fullText = "ARBITARY";
@@ -11,6 +12,7 @@ const Header = () => {
   const [isTyping, setIsTyping] = useState(true);
   const pathName = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -78,7 +80,7 @@ const Header = () => {
 
         {/* Navigation Pill and Profile */}
         <div className="pointer-events-auto flex items-center gap-3 shrink-0">
-          <nav className="bg-black/5 backdrop-blur-md px-1.5 py-1.5 rounded-full border border-black/10 flex items-center gap-0.5">
+          <nav className="hidden lg:flex bg-black/5 backdrop-blur-md px-1.5 py-1.5 rounded-full border border-black/10 items-center gap-0.5">
             {["Home", "Work", "Events", "Leaderboard", "Dashboard", "Rewards", "About", "Contact"].map(
               (item) => {
                 const href = item === "Home" ? "/" : item === "Rewards"? "/deals" : `/${item.toLowerCase()}`;
@@ -104,8 +106,44 @@ const Header = () => {
 
           {/* Profile Dropdown */}
           <ProfileDropdown redirectUrl="/" />
+          
+          {/* Mobile Menu Toggle */}
+          <button 
+            className="lg:hidden p-2 rounded-full bg-black/5 text-black hover:bg-black/10 transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden absolute top-full left-0 right-0 mt-2 mx-4 bg-white/90 backdrop-blur-xl border border-black/10 rounded-3xl shadow-xl overflow-hidden p-4 flex flex-col gap-2 z-50">
+          {["Home", "Work", "Events", "Leaderboard", "Dashboard", "Rewards", "About", "Contact"].map(
+            (item) => {
+              const href = item === "Home" ? "/" : item === "Rewards"? "/deals" : `/${item.toLowerCase()}`;
+              const isActive = pathName === href;
+              return (
+                <Link
+                  key={item}
+                  href={href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-6 py-3 rounded-2xl font-bold transition-all duration-200 text-xs
+                     uppercase tracking-wider text-center
+                ${
+                  isActive
+                    ? "bg-black text-white shadow-md"
+                    : "text-black/70 hover:text-black hover:bg-black/5"
+                }`}
+                >
+                  {item}
+                </Link>
+              );
+            },
+          )}
+        </div>
+      )}
     </header>
   );
 };
