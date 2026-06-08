@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { UserService } from "@/src/services/user.service";
 import { rateLimit, getClientIp } from "@/src/lib/rate-limit";
+import { sendEmail } from "@/src/lib/email";
+import { verifyEmailHtml } from "@/src/lib/emails/verify-email";
 import { z } from "zod";
 
 const signupSchema = z.object({
@@ -32,10 +36,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await UserService.signup(parsed.data);
+    const rawToken = crypto.randomUUID();
+    const tokenHash = await bcrypt.hash(rawToken, 10);
+
+    const result = await UserService.signup(parsed.data, {
+      verificationToken: tokenHash,
+      verificationTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: (result as any).status ?? 400 });
     }
+
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const verifyLink = `${baseUrl}/verify-email/${rawToken}`;
+
+    await sendEmail({
+      to: parsed.data.email,
+      subject: "Verify your Arbitary email",
+      html: verifyEmailHtml(`${parsed.data.firstName} ${parsed.data.lastName}`, verifyLink),
+    });
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {

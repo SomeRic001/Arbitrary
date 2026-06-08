@@ -1,6 +1,9 @@
 import NextAuth from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/src/auth";
+import { db } from "@/src/db";
+import { usersTable } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
 import { getClientIp, rateLimit } from "@/src/lib/rate-limit";
 
 const handler = NextAuth(authOptions);
@@ -25,6 +28,17 @@ async function POST(
       const errorUrl = new URL("/api/auth/callback/credentials", req.nextUrl.origin);
       errorUrl.searchParams.set("error", `RATE_LIMITED:${retry}`);
       return NextResponse.json({ url: errorUrl.toString() }, { status: 429 });
+    }
+
+    const [user] = await db
+      .select({ isVerified: usersTable.isVerified })
+      .from(usersTable)
+      .where(eq(usersTable.email, email.toLowerCase()));
+
+    if (user && !user.isVerified) {
+      const errorUrl = new URL("/api/auth/callback/credentials", req.nextUrl.origin);
+      errorUrl.searchParams.set("error", "VERIFY_EMAIL");
+      return NextResponse.json({ url: errorUrl.toString() }, { status: 403 });
     }
   }
 

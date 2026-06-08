@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import FormInput from "@/src/components/layout/form-input";
-import { fail } from "assert";
 
 const errorMessages: Record<string, string> = {
   OAuthSignin: "Google sign-up failed. Please try again.",
@@ -113,18 +112,8 @@ const UserSignupPage = () => {
         return;
       }
 
-      const signInResult = await signIn("credentials", {
-        email: formData.get("email"),
-        password,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        setError("Account created but sign-in failed. Please log in manually.");
-        router.push("/login");
-      } else {
-        router.push("/");
-      }
+      const email = formData.get("email") as string;
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setIsLoading(false);

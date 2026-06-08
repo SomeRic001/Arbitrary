@@ -112,6 +112,9 @@ export const usersTable = pgTable("users", {
     lifetimePoints: integer("lifetime_points").notNull().default(0),
     referredBy: integer("referred_by").references((): AnyPgColumn => usersTable.id),
     referralRewarded: boolean("referral_rewarded").default(false),
+    isVerified: boolean("is_verified").default(false).notNull(),
+    verificationToken: text("verification_token"),
+    verificationTokenExpiresAt: timestamp("verification_token_expires_at"),
 
 })
 

@@ -11,6 +11,7 @@ const errorMessages: Record<string, string> = {
   OAuthAccountNotLinked: "This email is already linked to another account.",
   CredentialsSignin: "Invalid email or password.",
   AccessDenied: "Access was denied.",
+  VERIFY_EMAIL: "Please verify your email before signing in. Check your inbox for the verification link.",
   Default: "An unexpected error occurred.",
 };
 

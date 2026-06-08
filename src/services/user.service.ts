@@ -102,6 +102,9 @@ export const UserService = {
     email: string;
     password: string;
     referralCode?: string;
+  }, verification?: {
+    verificationToken: string;
+    verificationTokenExpiresAt: Date;
   }): Promise<ServiceResult<{ success: true }>> {
     const existing = await db.select().from(usersTable).where(eq(usersTable.email, data.email)).limit(1);
     if (existing.length > 0) {
@@ -115,7 +118,8 @@ export const UserService = {
       name: `${data.firstName} ${data.lastName}`,
       password: hashPassword,
       provider: "credentials",
-      lastLoginAt: new Date(),
+      verificationToken: verification?.verificationToken,
+      verificationTokenExpiresAt: verification?.verificationTokenExpiresAt,
     }).returning();
 
     // Assign a unique referral code

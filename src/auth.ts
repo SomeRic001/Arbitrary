@@ -136,6 +136,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                             name: user.name,
                             image: user.image,
                             lastLoginAt: new Date(),
+                            isVerified: true,
                         };
                         if (account.provider === "google" && !existingUser.googleId) {
                             updateData.googleId = account.providerAccountId;
@@ -161,6 +162,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                             provider: account.provider,
                             role: "USER",
                             lastLoginAt: new Date(),
+                            isVerified: true,
                         }).returning({ id: usersTable.id });
 
                         if (newUser) {
