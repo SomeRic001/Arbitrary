@@ -24,7 +24,7 @@ export async function getTopUsers(limit: number = 100): Promise<TopUser[]> {
       referrals: sql<number>`(select count(*)::int from ${referralsTable} where ${referralsTable.referrerId} = users.id)`,
     })
     .from(usersTable)
-    .where(eq(usersTable.role, 'user'))
+    .where(eq(usersTable.role, 'USER'))
     .orderBy(desc(usersTable.lifetimePoints))
     .limit(limit);
 

@@ -254,6 +254,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                         }
                     }
                     if (dbUser.facebookId) token.facebookId = dbUser.facebookId;
+                    if (dbUser.instagramUsername) token.instagramUsername = dbUser.instagramUsername;
                 } else if (trigger === "signIn") {
                     console.warn("JWT signIn: DB user not found for email", token.email);
                 }
@@ -276,6 +277,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                 session.user.location = token.location as string;
                 session.user.phoneNumber = token.phoneNumber as string;
                 session.user.googleId = token.googleId as string;
+                session.user.instagramUsername = token.instagramUsername as string | undefined;
                 session.facebookAccessToken = token.facebookAccessToken as string;
                 session.facebookId = token.facebookId as string;
                 session.googleAccessToken = token.googleAccessToken as string;

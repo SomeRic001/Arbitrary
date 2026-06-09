@@ -206,6 +206,7 @@ function DashboardInner() {
         exact: true,
       });
       queryClient.invalidateQueries({ queryKey: ["user-points"], exact: true });
+      queryClient.invalidateQueries({ queryKey: ["user-tasks", "completed"] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -236,6 +237,7 @@ function DashboardInner() {
         exact: true,
       });
       queryClient.invalidateQueries({ queryKey: ["user-points"], exact: true });
+      queryClient.invalidateQueries({ queryKey: ["user-tasks", "completed"] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -266,6 +268,7 @@ function DashboardInner() {
         exact: true,
       });
       queryClient.invalidateQueries({ queryKey: ["user-points"], exact: true });
+      queryClient.invalidateQueries({ queryKey: ["user-tasks", "completed"] });
     },
     onError: (err: Error) => toast.error(err.message),
   });

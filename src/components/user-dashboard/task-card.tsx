@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { YoutubeModal } from "./youtube-modal";
 import { FacebookModal } from "./facebook-modal";
+import { InstagramModal } from "./instagram-modal";
 import { SubscribeModal } from "./subscribe-modal";
 import { YouTubeActionModal } from "./youtube-action-modal";
 import { isYtLike, isYtSubscribe, isYtComment } from "@/src/lib/task-detector";
@@ -59,6 +60,7 @@ export function TaskCard({
   const gradient = gradients[index % gradients.length];
   const [isYoutubeModalOpen, setIsYoutubeModalOpen] = useState(false);
   const [isFacebookModalOpen, setIsFacebookModalOpen] = useState(false);
+  const [isInstagramModalOpen, setIsInstagramModalOpen] = useState(false);
   const [fingerprint, setFingerprint] = useState<string | undefined>(undefined);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -425,6 +427,34 @@ export function TaskCard({
                           : "Cancel"}
                       </button>
                     </div>
+                  ) : task.platform === "instagram" ? (
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsInstagramModalOpen(true);
+                        }}
+                        className="text-xs font-bold text-white bg-pink-500/80 hover:bg-pink-500
+                                         px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                                         hover:scale-105 flex-1"
+                      >
+                        📷 Verify with Instagram
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCancel(task.id);
+                        }}
+                        disabled={cancelPending}
+                        className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
+                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                                   hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {cancelPending && cancelVariable === task.id
+                          ? "..."
+                          : "Cancel"}
+                      </button>
+                    </div>
                   ) : isYtSubscribe(task) ? (
                     <div className="flex gap-1.5">
                       <button
@@ -672,6 +702,18 @@ export function TaskCard({
         task={task}
         isOpen={isFacebookModalOpen}
         onClose={() => setIsFacebookModalOpen(false)}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["user-points"] });
+          return;
+        }}
+        fingerprint={fingerprint}
+      />
+
+      <InstagramModal
+        task={task}
+        isOpen={isInstagramModalOpen}
+        onClose={() => setIsInstagramModalOpen(false)}
         onComplete={() => {
           queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
           queryClient.invalidateQueries({ queryKey: ["user-points"] });

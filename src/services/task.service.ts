@@ -16,6 +16,7 @@ import {
   checkUserCommentedOnPost,
   getVerificationCode,
 } from "@/src/lib/facebook";
+import { InstagramService } from "@/src/lib/instagram";
 import { YouTubeService } from "./youtube.service";
 import { ReferralService } from "./referral.service";
 import { isYtLike, isYtSubscribe, isYtComment } from "@/src/lib/task-detector";
@@ -75,6 +76,12 @@ export type DailyLoginResult = {
 };
 
 export type FacebookCompleteResult = {
+  message: string;
+  pointsAwarded: number;
+  verificationCode?: string;
+};
+
+export type InstagramCompleteResult = {
   message: string;
   pointsAwarded: number;
   verificationCode?: string;
@@ -917,11 +924,24 @@ export const TaskService = {
     facebookId?: string,
     fingerprint?: string,
   ): Promise<ServiceResult<FacebookCompleteResult>> {
+    // ... implementation ...
+  },
+
+  async completeInstagramTask(
+    userId: number,
+    taskId: number,
+    fingerprint?: string,
+  ): Promise<ServiceResult<InstagramCompleteResult>> {
     const [user] = await db
-      .select({ currentStreak: usersTable.currentStreak })
+      .select({ currentStreak: usersTable.currentStreak, instagramUsername: usersTable.instagramUsername })
       .from(usersTable)
       .where(eq(usersTable.id, userId));
-    const multiplier = getStreakMultiplier(user?.currentStreak || 0);
+
+    if (!user?.instagramUsername) {
+      return fail("Please link your Instagram username in your profile first", 401);
+    }
+
+    const multiplier = getStreakMultiplier(user.currentStreak || 0);
 
     const [userTaskWithTask] = await db
       .select({
@@ -944,38 +964,29 @@ export const TaskService = {
     }
 
     const { userTask, task } = userTaskWithTask;
-    if (task.platform !== "facebook") {
-      return fail("This endpoint is only for Facebook tasks", 400);
+    if (task.platform !== "instagram") {
+      return fail("This endpoint is only for Instagram tasks", 400);
     }
 
     const postId = task.socialPostId;
     if (!postId) {
-      return fail("This task has no Facebook post linked", 400);
+      return fail("This task has no Instagram post linked", 400);
     }
 
     const code = getVerificationCode(Number(userId), Number(taskId));
-    const codeResult = await findCodeInComments(postId, code);
 
-    if (codeResult.error) {
-      return fail(
-        `Facebook API error: ${codeResult.error}`,
-        500,
-      );
-    }
+    try {
+      const verification = await InstagramService.findCodeInComments(postId, code, user.instagramUsername);
 
-    if (codeResult.liked) {
-      return await awardFacebookPoints(userId, task, userTask, multiplier, fingerprint);
-    }
-
-    if (facebookId) {
-      const asidResult = await checkUserCommentedOnPost(postId, "", facebookId);
-      if (asidResult.liked) {
-        return await awardFacebookPoints(userId, task, userTask, multiplier, fingerprint);
+      if (verification.found) {
+        return await awardInstagramPoints(userId, task, userTask, multiplier, fingerprint);
       }
+    } catch (error: any) {
+      return fail(`Instagram API error: ${error.message}`, 500);
     }
 
     return fail(
-      `Couldn't find your comment with code "${code}" on the post.`,
+      `Couldn't find your comment with code "${code}" on the post. Make sure you're using your linked Instagram account.`,
       429,
     );
   },
@@ -1903,6 +1914,63 @@ async function awardFacebookPoints(
 
   return ok({
     message: "Facebook task completed and points awarded!",
+    pointsAwarded: taskPoints,
+  });
+}
+
+async function awardInstagramPoints(
+  userId: number,
+  task: Task,
+  userTask: UserTask,
+  multiplier: number,
+  fingerprint?: string,
+): Promise<ServiceResult<InstagramCompleteResult>> {
+  const taskPoints = Math.round((task.points || 0) * multiplier);
+  const completionDurationSeconds =
+    userTask.assignedAt
+      ? Math.round((Date.now() - new Date(userTask.assignedAt).getTime()) / 1000)
+      : null;
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(userTasksTable)
+      .set({
+        status: "Completed",
+        completedAt: new Date(),
+        submissionFingerprint: fingerprint ?? null,
+        completionDurationSeconds: completionDurationSeconds ?? null,
+      })
+      .where(eq(userTasksTable.id, userTask.id));
+
+    const [currentUser] = await tx
+      .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .for("update");
+
+    if (currentUser) {
+      await tx
+        .update(usersTable)
+        .set({
+          points: sql`${usersTable.points} + ${taskPoints}`,
+          lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
+          completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
+        })
+        .where(eq(usersTable.id, userId));
+
+      await tx.insert(pointsLogTable).values({
+        userId,
+        taskId: task.id,
+        points: taskPoints,
+        reason: `Instagram task: ${task.title}`,
+      });
+    }
+  });
+
+  await ReferralService.awardReferralBonusIfEligible(userId);
+
+  return ok({
+    message: "Instagram task completed and points awarded!",
     pointsAwarded: taskPoints,
   });
 }

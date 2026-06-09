@@ -20,7 +20,7 @@ export type UserPointsResult = {
 export type UserProfile = Pick<
   User,
   "id" | "name" | "email" | "image" | "bio" | "location" | "phoneNumber" | "referralCode" | "points"
-> & { lifetimePoints: number; referredBy: number | null; referredByName: string | null };
+> & { lifetimePoints: number; referredBy: number | null; referredByName: string | null; instagramUsername?: string | null };
 
 export const UserService = {
   async getUserPoints(userId: number): Promise<ServiceResult<UserPointsResult>> {
@@ -52,13 +52,14 @@ export const UserService = {
 
   async updateProfile(
     userId: number,
-    data: { name?: string; phone?: string; bio?: string; location?: string },
+    data: { name?: string; phone?: string; bio?: string; location?: string; instagramUsername?: string },
   ): Promise<ServiceResult<{ success: true }>> {
     const updates: Record<string, unknown> = {};
     if (data.name !== undefined) updates.name = data.name;
     if (data.phone !== undefined) updates.phoneNumber = data.phone;
     if (data.bio !== undefined) updates.bio = data.bio;
     if (data.location !== undefined) updates.location = data.location;
+    if (data.instagramUsername !== undefined) updates.instagramUsername = data.instagramUsername;
 
     if (Object.keys(updates).length === 0) return fail("No fields to update", 400);
 
@@ -82,6 +83,7 @@ export const UserService = {
         lifetimePoints: usersTable.lifetimePoints,
         referredBy: usersTable.referredBy,
         referredByName: referrerAlias.name,
+        instagramUsername: usersTable.instagramUsername,
       })
       .from(usersTable)
       .leftJoin(referrerAlias, eq(usersTable.referredBy, referrerAlias.id))

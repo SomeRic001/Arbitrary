@@ -15,6 +15,7 @@ declare module "next-auth" {
             phoneNumber?: string | null;
             bio?: string | null;
             location?: string | null;
+            instagramUsername?: string | null;
             googleId?: string | null;
             facebookId?: string;
         } & DefaultSession["user"];
@@ -24,6 +25,7 @@ declare module "next-auth" {
         googleRefreshToken?: string;
         googleTokenExpiry?: number;
     }
+
 }
 
 declare module "next-auth/jwt" {
@@ -38,5 +40,6 @@ declare module "next-auth/jwt" {
         googleAccessToken?: string;
         googleRefreshToken?: string;
         googleTokenExpiry?: number;
+        instagramUsername?: string | null;
     }
 }

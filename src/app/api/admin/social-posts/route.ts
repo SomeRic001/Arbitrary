@@ -114,29 +114,33 @@ async function fetchFacebookPosts(): Promise<SocialPost[]> {
   }));
 }
 
-async function fetchInstagramPosts(): Promise<SocialPost[]> {
-  const igUserId = process.env.INSTAGRAM_USER_ID;
-  const token = process.env.INSTAGRAM_ACCESS_TOKEN;
-  if (!igUserId || !token) throw new Error("Instagram env vars missing");
+async function fetchInstagramPosts(type?: string): Promise<SocialPost[]> {
+    const { InstagramService } = await import("@/src/lib/instagram");
 
-  const url = new URL(`https://graph.facebook.com/v19.0/${igUserId}/media`);
-  url.searchParams.set("access_token", token);
-  url.searchParams.set("fields", "id,caption,media_type,media_url,thumbnail_url,permalink,like_count,timestamp");
-  url.searchParams.set("limit", "10");
+  try {
+    const media = await InstagramService.getInstagramMedia();
 
-  const res = await fetch(url.toString());
-  const data = (await res.json()) as { data?: InstagramMediaItem[]; error?: { message: string } };
-  if (data.error) throw new Error(data.error.message);
+    let filteredMedia = media;
+    if (type === 'reels') {
+      filteredMedia = media.filter(m => m.media_type === 'VIDEO');
+    } else if (type === 'posts') {
+      filteredMedia = media.filter(m => m.media_type !== 'VIDEO');
+    }
 
-  return (data.data || []).map((p: InstagramMediaItem) => ({
-    id: p.id,
-    platform: "instagram" as Platform,
-    title: p.caption?.slice(0, 80) || "Instagram Post",
-    thumbnailUrl: p.thumbnail_url || p.media_url,
-    url: p.permalink,
-    likeCount: p.like_count,
-    publishedAt: p.timestamp,
-  }));
+    return filteredMedia.map((p) => ({
+      id: p.id,
+      platform: "instagram" as Platform,
+      title: p.caption?.slice(0, 80) || "Instagram Post",
+      thumbnailUrl: p.media_type === 'VIDEO' ? p.thumbnail_url : p.media_url,
+      url: p.permalink,
+      likeCount: 0, // Not fetched in the a-sync getInstagramMedia currently
+      publishedAt: "", // Not fetched in the current lib implementation
+    }));
+  } catch (err: any) {
+    const customErr = new Error(err.message) as CustomError;
+    customErr.statusCode = 502;
+    throw customErr;
+  }
 }
 
 async function fetchYoutubePosts(): Promise<SocialPost[]> {
@@ -172,11 +176,11 @@ async function fetchTiktokPosts(): Promise<SocialPost[]> {
   return [];
 }
 
-const FETCHERS: Record<string, () => Promise<SocialPost[]>> = {
-  facebook: fetchFacebookPosts,
-  instagram: fetchInstagramPosts,
-  youtube: fetchYoutubePosts,
-  tiktok: fetchTiktokPosts,
+const FETCHERS: Record<string, (type?: string) => Promise<SocialPost[]>> = {
+  facebook: () => fetchFacebookPosts(),
+  instagram: (type) => fetchInstagramPosts(type),
+  youtube: () => fetchYoutubePosts(),
+  tiktok: () => fetchTiktokPosts(),
 };
 
 export async function GET(req: NextRequest) {
@@ -187,14 +191,16 @@ export async function GET(req: NextRequest) {
   }
 
   const platform = req.nextUrl.searchParams.get("platform");
+  const type = req.nextUrl.searchParams.get("type");
   if (!platform || !FETCHERS[platform]) {
     return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
   }
 
   try {
-    const posts = await FETCHERS[platform]();
+    const posts = await FETCHERS[platform](type);
     return NextResponse.json({ posts });
   } catch (err: unknown) {
+
     const customErr = err as CustomError;
     const statusCode = customErr.statusCode || 500;
     const message = customErr.message || "An unexpected error occurred";

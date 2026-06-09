@@ -8,6 +8,7 @@ const profileUpdateSchema = z.object({
   phone: z.string().max(20).regex(/^[+\d\s()-]*$/, "Invalid phone format").optional(),
   bio: z.string().max(500).optional(),
   location: z.string().max(100).optional(),
+  instagramUsername: z.string().max(50).transform(val => val.replace(/^@/, '').trim().toLowerCase()).optional(),
 }).strict();
 
 export async function GET() {
