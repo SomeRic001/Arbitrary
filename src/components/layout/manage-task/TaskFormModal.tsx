@@ -533,7 +533,7 @@ export function TaskFormModal({
           <button
             type="submit"
             disabled={isSaving}
-            className="px-6 py-2.5 text-xs font-black uppercase tracking-wider text-black bg-[#FACC15] hover:bg-black hover:text-[#FACC15] rounded-2xl transition-all hover:scale-[1.0 la] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="px-6 py-2.5 text-xs font-black uppercase tracking-wider text-black bg-[#FACC15] hover:bg-black hover:text-[#FACC15] rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             {isSaving
               ? "Saving..."

@@ -89,8 +89,9 @@ export type InstagramCompleteResult = {
 };
 
 export type YoutubeCompleteResult = {
-  message: string;
+  message?: string;
   requiresScreenshot?: boolean;
+  privacyBlocked?: boolean;
 };
 
 export type CompletedTodayResult = {
@@ -1045,6 +1046,9 @@ export const TaskService = {
       }
       const subResult = await YouTubeService.verifySubscription(resolvedId, accessToken);
       if (!subResult.verified) {
+        if (subResult.privacyBlocked) {
+          return ok({ privacyBlocked: true });
+        }
         if (subResult.needsScreenshot) {
           await db
             .update(userTasksTable)

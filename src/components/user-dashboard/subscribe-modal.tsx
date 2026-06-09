@@ -20,6 +20,7 @@ export function SubscribeModal({
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [needsScreenshot, setNeedsScreenshot] = useState(false);
+  const [privacyBlocked, setPrivacyBlocked] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -35,6 +36,8 @@ export function SubscribeModal({
   const handleVerify = async () => {
     setVerifying(true);
     setError("");
+    setPrivacyBlocked(false);
+    setNeedsScreenshot(false);
     try {
       const res = await fetch("/api/user/tasks/youtube-complete", {
         method: "POST",
@@ -44,6 +47,11 @@ export function SubscribeModal({
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Verification failed");
+      }
+      if (data.privacyBlocked) {
+        setPrivacyBlocked(true);
+        setVerifying(false);
+        return;
       }
       if (data.requiresScreenshot) {
         setNeedsScreenshot(true);
@@ -65,6 +73,9 @@ export function SubscribeModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
@@ -148,12 +159,44 @@ export function SubscribeModal({
               <p className="text-lg font-black text-emerald-600">Subscribed!</p>
               <p className="text-sm text-gray-500">Points have been awarded.</p>
             </div>
+          ) : privacyBlocked ? (
+            <div className="flex flex-col gap-4">
+              <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200">
+                <p className="text-sm font-bold text-blue-800 mb-2">
+                  Your subscription list is set to private
+                </p>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  YouTube&apos;s API cannot verify your subscription when your subscriptions are
+                  private. Please unprivate them and try again:
+                </p>
+                <ol className="text-xs text-blue-700 mt-3 space-y-1.5 list-decimal list-inside font-medium">
+                  <li>Go to <span className="font-bold">YouTube Settings</span></li>
+                  <li>Click <span className="font-bold">Privacy</span></li>
+                  <li>Uncheck <span className="font-bold">&quot;Keep all my subscriptions private&quot;</span></li>
+                  <li>Come back here and tap <span className="font-bold">&quot;Retry Verification&quot;</span></li>
+                </ol>
+              </div>
+              {error && (
+                <div className="p-3 bg-red-50 rounded-2xl border border-red-200">
+                  <p className="text-xs font-medium text-red-600">{error}</p>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setPrivacyBlocked(false);
+                  setError("");
+                }}
+                className="w-full py-3 px-5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-sm rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+              >
+                Retry Verification
+              </button>
+            </div>
           ) : needsScreenshot ? (
             <div className="flex flex-col gap-4">
-              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
-                <p className="text-xs font-bold text-amber-700">
-                  Your subscription privacy settings prevent automatic verification.
-                  Please upload a screenshot showing you are subscribed to this channel.
+              <div className="p-3 bg-red-50 rounded-2xl border border-red-200">
+                <p className="text-xs font-bold text-red-700">
+                  Automatic verification failed. Please upload a screenshot showing you are
+                  subscribed to this channel as proof.
                 </p>
               </div>
               <label

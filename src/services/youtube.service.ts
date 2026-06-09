@@ -127,7 +127,7 @@ export const YouTubeService = {
   async verifySubscription(
     channelId: string,
     accessToken: string,
-  ): Promise<{ verified: boolean; needsScreenshot: boolean }> {
+  ): Promise<{ verified: boolean; needsScreenshot?: boolean; privacyBlocked?: boolean }> {
     try {
       const res = await fetch(
         `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&forChannelId=${channelId}&mine=true`,
@@ -135,15 +135,15 @@ export const YouTubeService = {
       );
       if (!res.ok) {
         console.error(`[youtube] verifySubscription failed: ${res.status}`, await res.text().catch(() => ""));
-        if (res.status === 403) return { verified: false, needsScreenshot: true };
-        return { verified: false, needsScreenshot: false };
+        if (res.status === 403) return { verified: false, privacyBlocked: true };
+        return { verified: false, needsScreenshot: true };
       }
       const data = await res.json();
-      if (data.items?.length > 0) return { verified: true, needsScreenshot: false };
-      return { verified: false, needsScreenshot: true };
+      if (data.items?.length > 0) return { verified: true };
+      return { verified: false };
     } catch (e) {
       console.error("[youtube] verifySubscription exception:", e);
-      return { verified: false, needsScreenshot: false };
+      return { verified: false, needsScreenshot: true };
     }
   },
 
