@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import LoadingScreen from "@/src/components/layout/loading-screen";
 
 export default function LoadingWrapper({
@@ -10,28 +11,19 @@ export default function LoadingWrapper({
 }) {
   const [isLoading, setIsLoading] = useState(true);
   const [shouldRenderContent, setShouldRenderContent] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    // 3 second loading time
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      setIsTransitioning(true);
-
-      // Remove the transform after the animation completes (1.2s)
-      // This is crucial because 'fixed' elements don't work inside 'transform'
-      setTimeout(() => {
-        setIsTransitioning(false);
-      }, 1500);
-    }, 3000);
-
     const renderTimer = setTimeout(() => {
       setShouldRenderContent(true);
     }, 100);
 
+    const loadTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+
     return () => {
-      clearTimeout(timer);
       clearTimeout(renderTimer);
+      clearTimeout(loadTimer);
     };
   }, []);
 
@@ -39,22 +31,39 @@ export default function LoadingWrapper({
     <div
       className={`relative min-h-screen bg-white ${isLoading ? "overflow-hidden h-screen" : "overflow-visible"}`}
     >
-      {/* Loading Screen stays on top until finished */}
-      <div
-        className={`transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] fixed inset-0 z-[100]
-        ${isLoading ? "opacity-100" : "opacity-0 pointer-events-none -translate-y-full"}`}
-      >
-        <LoadingScreen />
-      </div>
+      {/* Loading Screen — slides up and out */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            className="fixed inset-0 z-[100]"
+            initial={{ y: 0, opacity: 1 }}
+            exit={{
+              y: "-100%",
+              opacity: 0,
+              transition: {
+                duration: 1,
+                ease: [0.23, 1, 0.32, 1],
+              },
+            }}
+          >
+            <LoadingScreen />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Main Content slides up from the bottom */}
-      {/* We only apply the transform during the transition phase */}
-      <div
-        className={`transition-all duration-[1200ms] ease-[cubic-bezier(0.23,1,0.32,1)]
-          ${isLoading ? "translate-y-32 opacity-0" : isTransitioning ? "translate-y-0 opacity-100" : "opacity-100"}`}
+      {/* Main Content — slides up into view */}
+      <motion.div
+        className="min-h-screen"
+        initial={{ y: "8vw", opacity: 0 }}
+        animate={!isLoading ? { y: 0, opacity: 1 } : { y: "8vw", opacity: 0 }}
+        transition={{
+          duration: 1.2,
+          ease: [0.23, 1, 0.32, 1],
+          delay: 0.1,
+        }}
       >
         {shouldRenderContent && children}
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { eq, and, isNull, inArray, sql } from "drizzle-orm";
 import { ServiceResult, ok, fail } from "./result";
 import { rateLimit } from "@/src/lib/rate-limit";
 
-const REFERRAL_BONUS = 100;
+export const REFERRAL_BONUS = 100;
 
 export const ReferralService = {
   async assignReferralCode(userId: number): Promise<ServiceResult<{ code: string }>> {

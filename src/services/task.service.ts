@@ -534,7 +534,8 @@ export const TaskService = {
   async getCompletedTasks(
     userId: number,
     limit: number = 50,
-  ): Promise<ServiceResult<UserTaskItem[]>> {
+    cursor?: { completedAt: string; id: number } | null,
+  ): Promise<ServiceResult<UserTasksPage>> {
     const now = new Date();
     const todayStart = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
@@ -543,6 +544,31 @@ export const TaskService = {
     // Inline filter: mirrors getValidCompletedTaskIds() logic for inclusion (vs exclusion in dashboard)
     // Uses the same or() clause directly to avoid a second round-trip for completed data.
     // Keep this condition in sync with getValidCompletedTaskIds().
+    const conditions: (SQL | undefined)[] = [
+      eq(userTasksTable.userId, userId),
+      inArray(userTasksTable.status, ['Completed', 'Verified']),
+      or(
+        not(eq(tasksTable.taskType, 'daily')),
+        and(
+          eq(tasksTable.taskType, 'daily'),
+          isNotNull(userTasksTable.assignedAt),
+          gte(userTasksTable.assignedAt, todayStart),
+        ),
+      ),
+    ];
+
+    if (cursor) {
+      conditions.push(
+        or(
+          lt(userTasksTable.completedAt, new Date(cursor.completedAt)),
+          and(
+            eq(userTasksTable.completedAt, new Date(cursor.completedAt)),
+            lt(userTasksTable.taskId, cursor.id),
+          ),
+        ),
+      );
+    }
+
     const rows = await db
       .select({
         userTask: userTasksTable,
@@ -550,24 +576,14 @@ export const TaskService = {
       })
       .from(userTasksTable)
       .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
-      .where(
-        and(
-          eq(userTasksTable.userId, userId),
-          inArray(userTasksTable.status, ['Completed', 'Verified']),
-          or(
-            not(eq(tasksTable.taskType, 'daily')),
-            and(
-              eq(tasksTable.taskType, 'daily'),
-              isNotNull(userTasksTable.assignedAt),
-              gte(userTasksTable.assignedAt, todayStart),
-            ),
-          ),
-        ),
-      )
-      .orderBy(desc(userTasksTable.completedAt))
-      .limit(limit);
+      .where(and(...conditions))
+      .orderBy(desc(userTasksTable.completedAt), desc(userTasksTable.taskId))
+      .limit(limit + 1);
 
-    const taskIds = rows.map((r) => r.task.id);
+    const hasNextPage = rows.length > limit;
+    const pageRows = hasNextPage ? rows.slice(0, limit) : rows;
+
+    const taskIds = pageRows.map((r) => r.task.id);
     const shareTasks = taskIds.length > 0
       ? await db
         .select()
@@ -583,7 +599,7 @@ export const TaskService = {
 
     const seenTaskIds = new Set<number>();
     const items: UserTaskItem[] = [];
-    for (const r of rows) {
+    for (const r of pageRows) {
       if (seenTaskIds.has(r.task.id)) continue;
       seenTaskIds.add(r.task.id);
       const task = r.task;
@@ -614,7 +630,14 @@ export const TaskService = {
       });
     }
 
-    return ok(items);
+    const nextCursor: string | null = hasNextPage && pageRows.length > 0
+      ? JSON.stringify({
+          completedAt: pageRows[pageRows.length - 1].userTask.completedAt?.toISOString(),
+          id: pageRows[pageRows.length - 1].task.id,
+        })
+      : null;
+
+    return ok({ tasks: items, nextCursor });
   },
 
   async pickUpTask(
@@ -636,54 +659,9 @@ export const TaskService = {
     if (!targetTask) return fail("Task not found", 404);
 
     if (targetTask.platform === "daily-login") {
-      const today = new Date().toISOString().split("T")[0];
-
-      return await db.transaction(async (tx) => {
-        const [user] = await tx
-          .select()
-          .from(usersTable)
-          .where(eq(usersTable.id, userId))
-          .for("update");
-        if (!user) return fail("User not found", 404);
-
-        const dailyLoginStr = toDateStr(user.dailyLoginDate);
-        if (dailyLoginStr === today) {
-          return fail("You already claimed your daily login reward today", 429);
-        }
-
-        const { newStreak, bonus } = calculateStreak(
-          user.dailyLoginDate,
-          user.currentStreak || 0,
-        );
-        const newLongest = Math.max(user.longestStreak || 0, newStreak);
-        const basePoints = targetTask.points || 0;
-        const bonusPoints = bonus;
-        await tx
-          .update(usersTable)
-          .set({
-            dailyLoginDate: new Date(today),
-            currentStreak: newStreak,
-            longestStreak: newLongest,
-            points: sql`${usersTable.points} + ${basePoints + bonusPoints}`,
-            lifetimePoints: sql`${usersTable.lifetimePoints} + ${basePoints + bonusPoints}`,
-            completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
-            lastLoginAt: new Date(),
-          })
-          .where(eq(usersTable.id, userId));
-
-        await tx
-          .insert(userTasksTable)
-          .values({
-            userId,
-            taskId,
-            status: "Completed",
-            assignedAt: new Date(today),
-            completedAt: new Date(),
-          })
-          .returning();
-
-        return ok({ message: "Daily login reward claimed!" });
-      });
+      const dlResult = await this.claimDailyLogin(userId, taskId);
+      if (!dlResult.success) return dlResult;
+      return ok({ message: dlResult.data.message });
     }
 
     // Re-claim: delete any previous rejected entry for this task

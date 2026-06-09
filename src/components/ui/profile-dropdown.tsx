@@ -65,28 +65,27 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
   if (status === "loading") {
     return <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />;
   }
-
-  if (status === "unauthenticated") {
-    return (
-      <div className="flex items-center gap-2">
-        <Link
-          href="/login"
-          className="px-5 py-2 text-sm font-semibold text-gray-700 hover:text-gray-900
-                     border border-gray-200 hover:border-gray-300 rounded-xl
-                     transition-all duration-200 hover:bg-gray-50"
-        >
-          Sign in
-        </Link>
-        <Link
-          href="/signup"
-          className="px-5 py-2 text-sm font-bold text-black bg-[#FACC15] hover:bg-[#eab308]
-                     rounded-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] shadow-sm"
-        >
-          Sign up
-        </Link>
-      </div>
-    );
-  }
+if (status === "unauthenticated") {
+  return (
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      <Link
+        href="/login"
+        className="px-2.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 hover:text-gray-900
+                   border border-gray-200 hover:border-gray-300 rounded-xl
+                   transition-all duration-200 hover:bg-gray-50 whitespace-nowrap"
+      >
+        Sign in
+      </Link>
+      <Link
+        href="/signup"
+        className="px-2.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-bold text-black bg-[#FACC15] hover:bg-[#eab308]
+                   rounded-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] shadow-sm whitespace-nowrap"
+      >
+        Sign up
+      </Link>
+    </div>
+  );
+}
 
   const initials = session?.user?.name?.substring(0, 2).toUpperCase() || "AD";
 

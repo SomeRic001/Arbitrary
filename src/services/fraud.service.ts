@@ -4,7 +4,7 @@ import {
   userTasksTable,
   tasksTable,
 } from "@/src/db/schema";
-import { eq, and, sql, gte, desc } from "drizzle-orm";
+import { eq, and, sql, gte, desc, inArray, ne } from "drizzle-orm";
 import { ServiceResult, ok } from "./result";
 
 export type FraudBreakdown = {
@@ -51,88 +51,130 @@ export const FraudService = {
       .where(sql`LOWER(${usersTable.role}) = 'user'`)
       .orderBy(desc(usersTable.completedTasksCount));
 
+    const userIds = allUsers.map((u) => u.id);
+    if (userIds.length === 0) {
+      return ok({ flaggedUsers: [], totalUsersScanned: 0, flaggedCount: 0 });
+    }
+
+    // ── 1 & 2: Shared fingerprint / multiple accounts ──
+    // Find all fingerprints that belong to more than one user
+    const sharedFpRows = await db
+      .select({
+        fingerprint: userTasksTable.submissionFingerprint,
+      })
+      .from(userTasksTable)
+      .where(
+        and(
+          inArray(userTasksTable.userId, userIds),
+          sql`${userTasksTable.submissionFingerprint} IS NOT NULL`,
+        ),
+      )
+      .groupBy(userTasksTable.submissionFingerprint)
+      .having(sql`count(DISTINCT ${userTasksTable.userId}) > 1`);
+
+    const sharedFingerprints = sharedFpRows
+      .map((r) => r.fingerprint)
+      .filter(Boolean) as string[];
+
+    // For each shared fingerprint, get all distinct users
+    const fpUserRows = sharedFingerprints.length > 0
+      ? await db
+        .select({
+          fingerprint: userTasksTable.submissionFingerprint,
+          userId: userTasksTable.userId,
+        })
+        .from(userTasksTable)
+        .where(
+          and(
+            inArray(userTasksTable.submissionFingerprint, sharedFingerprints),
+            inArray(userTasksTable.userId, userIds),
+          ),
+        )
+        .groupBy(userTasksTable.submissionFingerprint, userTasksTable.userId)
+      : [];
+
+    // Group: fingerprint -> Set<userId>
+    const fpToUsers = new Map<string, Set<number>>();
+    for (const row of fpUserRows) {
+      const fp = row.fingerprint;
+      if (!fp) continue;
+      let users = fpToUsers.get(fp);
+      if (!users) {
+        users = new Set();
+        fpToUsers.set(fp, users);
+      }
+      users.add(row.userId);
+    }
+
+    // Build per-user fingerprint scores
+    const fingerprintScores = new Map<number, { sharedFingerprint: number; multipleAccounts: number }>();
+    for (const [fp, users] of fpToUsers) {
+      const userCount = users.size;
+      for (const uid of users) {
+        const entry = fingerprintScores.get(uid) || { sharedFingerprint: 0, multipleAccounts: 0 };
+        entry.sharedFingerprint += SHARED_FINGERPRINT_PTS;
+        if (userCount >= 3) {
+          entry.multipleAccounts += MULTIPLE_ACCOUNTS_PTS;
+        }
+        fingerprintScores.set(uid, entry);
+      }
+    }
+
+    // ── 3: Fast completion per user ──
+    const fastCompletionRows = await db
+      .select({
+        userId: userTasksTable.userId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(userTasksTable)
+      .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
+      .where(
+        and(
+          inArray(userTasksTable.userId, userIds),
+          sql`${userTasksTable.completionDurationSeconds} IS NOT NULL`,
+          sql`${tasksTable.watchDuration} IS NOT NULL`,
+          sql`${tasksTable.watchDuration} > 0`,
+          sql`${userTasksTable.completionDurationSeconds} < ${tasksTable.watchDuration} * ${FAST_COMPLETION_RATIO}::numeric`,
+        ),
+      )
+      .groupBy(userTasksTable.userId);
+
+    const fastCompletionMap = new Map<number, number>(
+      fastCompletionRows.map((r) => [r.userId, r.count]),
+    );
+
+    // ── 4: High submission volume per user ──
+    const oneHourAgo = new Date(
+      Date.now() - HIGH_VOLUME_WINDOW_HOURS * 60 * 60 * 1000,
+    );
+    const volumeRows = await db
+      .select({
+        userId: userTasksTable.userId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(userTasksTable)
+      .where(
+        and(
+          inArray(userTasksTable.userId, userIds),
+          sql`${userTasksTable.status} IN ('Completed', 'Verified')`,
+          gte(userTasksTable.completedAt, oneHourAgo),
+        ),
+      )
+      .groupBy(userTasksTable.userId);
+
+    const volumeMap = new Map<number, number>(
+      volumeRows.map((r) => [r.userId, r.count]),
+    );
+
+    // ── Build results ──
     const flaggedUsers: FraudUser[] = [];
 
     for (const user of allUsers) {
-      const userId = user.id;
-      let sharedFingerprint = 0;
-      let multipleAccounts = 0;
-      let fastCompletion = 0;
-      let highVolume = 0;
-
-      // 1 & 2: Shared fingerprint / multiple accounts
-      const userFingerprints = await db
-        .select({ fingerprint: userTasksTable.submissionFingerprint })
-        .from(userTasksTable)
-        .where(
-          and(
-            eq(userTasksTable.userId, userId),
-            sql`${userTasksTable.submissionFingerprint} IS NOT NULL`,
-          ),
-        )
-        .groupBy(userTasksTable.submissionFingerprint);
-
-      for (const row of userFingerprints) {
-        const fp = row.fingerprint;
-        if (!fp) continue;
-
-        const otherUsers = await db
-          .select({ uid: userTasksTable.userId })
-          .from(userTasksTable)
-          .where(
-            and(
-              eq(userTasksTable.submissionFingerprint, fp),
-              sql`${userTasksTable.userId} != ${userId}`,
-            ),
-          )
-          .groupBy(userTasksTable.userId);
-
-        if (otherUsers.length > 0) {
-          sharedFingerprint += SHARED_FINGERPRINT_PTS;
-        }
-
-        if (otherUsers.length + 1 >= 3) {
-          multipleAccounts += MULTIPLE_ACCOUNTS_PTS;
-        }
-      }
-
-      // 3: Fast completion (duration < 30% of required watch time)
-      const [fastResult] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(userTasksTable)
-        .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
-        .where(
-          and(
-            eq(userTasksTable.userId, userId),
-            sql`${userTasksTable.completionDurationSeconds} IS NOT NULL`,
-            sql`${tasksTable.watchDuration} IS NOT NULL`,
-            sql`${tasksTable.watchDuration} > 0`,
-            sql`${userTasksTable.completionDurationSeconds} < ${tasksTable.watchDuration} * ${FAST_COMPLETION_RATIO}::numeric`,
-          ),
-        );
-
-      if ((fastResult?.count ?? 0) > 0) {
-        fastCompletion += FAST_COMPLETION_PTS;
-      }
-
-      // 4: High submission volume (>=20 in the last hour)
-      const oneHourAgo = new Date(
-        Date.now() - HIGH_VOLUME_WINDOW_HOURS * 60 * 60 * 1000,
-      );
-      const [volumeResult] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(userTasksTable)
-        .where(
-          and(
-            eq(userTasksTable.userId, userId),
-            sql`${userTasksTable.status} IN ('Completed', 'Verified')`,
-            gte(userTasksTable.completedAt, oneHourAgo),
-          ),
-        );
-
-      if ((volumeResult?.count ?? 0) >= HIGH_VOLUME_LIMIT) {
-        highVolume += HIGH_VOLUME_PTS;
-      }
+      const fpScore = fingerprintScores.get(user.id);
+      const sharedFingerprint = fpScore?.sharedFingerprint ?? 0;
+      const multipleAccounts = fpScore?.multipleAccounts ?? 0;
+      const fastCompletion = (fastCompletionMap.get(user.id) ?? 0) > 0 ? FAST_COMPLETION_PTS : 0;
+      const highVolume = (volumeMap.get(user.id) ?? 0) >= HIGH_VOLUME_LIMIT ? HIGH_VOLUME_PTS : 0;
 
       const riskScore =
         sharedFingerprint + multipleAccounts + fastCompletion + highVolume;
@@ -143,11 +185,11 @@ export const FraudService = {
           fraudRiskScore: riskScore,
           isFlagged: riskScore > FLAG_THRESHOLD,
         })
-        .where(eq(usersTable.id, userId));
+        .where(eq(usersTable.id, user.id));
 
       if (riskScore > FLAG_THRESHOLD) {
         flaggedUsers.push({
-          userId,
+          userId: user.id,
           userName: user.name,
           userEmail: user.email,
           riskScore,

@@ -16,6 +16,7 @@ import { ActivitySidebar } from "@/src/components/user-dashboard/activity-sideba
 import { RewardProvider } from "@/src/components/rewards/reward-context";
 import { UserTaskItem, DashboardResponse } from "@/src/services/task.service";
 import { useSubmissionSSE } from "@/src/hooks/use-submission-sse";
+import { isDailyTaskValid } from "@/src/lib/task-validity";
 
 function nextMilestoneLabel(days: number) {
   if (days === 5) return "5-day";
@@ -316,7 +317,7 @@ function DashboardInner() {
   });
 
   // ── Completed tasks (sidecar query for sidebar) ──
-  const { data: completedData } = useQuery<UserTaskItem[]>({
+  const { data: completedData } = useQuery<{ tasks: UserTaskItem[]; nextCursor: string | null }>({
     queryKey: ["user-tasks", "completed"],
     queryFn: async () => {
       const res = await fetch("/api/user/tasks/completed?limit=50");
@@ -350,19 +351,12 @@ function DashboardInner() {
   const rejectedTasks = firstPage?.rejected ?? [];
   const systemTasks = firstPage?.systemTasks ?? [];
   // Client-side safety filter: exclude daily tasks completed before today (belt-and-suspenders)
-  // Mirrors getValidCompletedTaskIds() / getCompletedTasks() server-side logic
   const filteredCompletedTasks = useMemo(() => {
-    if (!completedData) return [];
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    const tasks = completedData?.tasks ?? [];
+    if (!tasks) return [];
+    return tasks.filter((t: UserTaskItem) =>
+      isDailyTaskValid(t.taskType, t.userAssignedAt ?? t.completedAt)
     );
-    return completedData.filter((t) => {
-      if (t.taskType !== "daily") return true;
-      const referenceDate = t.userAssignedAt ?? t.completedAt;
-      if (!referenceDate) return false;
-      return new Date(referenceDate) >= todayStart;
-    });
   }, [completedData]);
 
   // ── Pill position (ref-based, fixes the slider) ───────────────────────────

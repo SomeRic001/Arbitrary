@@ -72,12 +72,16 @@ export const EventService = {
       .where(gte(eventsTable.eventDate, now))
       .orderBy(desc(eventsTable.eventDate));
 
-    db.delete(eventsTable)
-      .where(lt(eventsTable.eventDate, now))
-      .then(() => {})
-      .catch((err) => console.error("Failed to delete past events:", err));
-
     return ok(events);
+  },
+
+  async cleanupPastEvents(): Promise<void> {
+    const now = new Date();
+    try {
+      await db.delete(eventsTable).where(lt(eventsTable.eventDate, now));
+    } catch (err) {
+      console.error("Failed to delete past events:", err);
+    }
   },
 
   async getEventById(eventId: number): Promise<ServiceResult<EventWithRelations>> {
@@ -331,7 +335,7 @@ export const EventService = {
       return finalEvent;
     });
 
-    revalidatePath("/api/events");
+    revalidatePath("/events");
 
     return ok(result);
   },
@@ -343,7 +347,7 @@ export const EventService = {
       .returning();
 
     if (!deleted) return fail("Event not found", 404);
-    revalidatePath("/api/events");
+    revalidatePath("/events");
     return ok({ message: "Event deleted successfully" });
   },
 };

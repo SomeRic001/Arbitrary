@@ -42,7 +42,7 @@ export function StatsHeader({
         </div>
 
         {/* Stats row */}
-        <div className="relative z-10 grid grid-cols-3 gap-2.5">
+        <div className="relative z-10 grid grid-cols-3 gap-1.5 sm:gap-2.5">
           {[
             {
               label: "Points",

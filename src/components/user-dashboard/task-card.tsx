@@ -255,7 +255,7 @@ export function TaskCard({
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 flex items-center justify-between">
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         {/* Left: icon + text */}
         <div className="flex items-center gap-3.5">
           <div
@@ -270,7 +270,7 @@ export function TaskCard({
             </h3>
             <div className="mt-0.5">
               <p
-                className={`text-xs text-white/70 leading-snug max-w-[280px]
+                className={`text-xs text-white/70 leading-snug max-w-[280px] sm:max-w-[280px]
                              ${!expandedTasks[task.id] && (task.description?.length ?? 0) > 60 ? "line-clamp-2" : ""}`}
               >
                 {task.description}
@@ -302,7 +302,7 @@ export function TaskCard({
         </div>
 
         {/* Right: badges + action */}
-        <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
+        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1.5 shrink-0">
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
             {task.isFlash && task.expiresAt && (
               <FlashCountdown expiresAt={task.expiresAt} />

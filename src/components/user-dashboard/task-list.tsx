@@ -176,7 +176,7 @@ export function TaskList({
               {...cardProps}
             />
             <TaskSection
-              title="Rejected — Re-claim"
+              title="Rejected"
               accent="bg-red-400"
               tasks={rejectedTasks}
               {...cardProps}
@@ -202,13 +202,6 @@ export function TaskList({
                 </button>
               </div>
             )}
-
-            <TaskSection
-              title="Rejected"
-              accent="bg-red-400"
-              tasks={rejectedTasks}
-              {...cardProps}
-            />
           </div>
         )}
 

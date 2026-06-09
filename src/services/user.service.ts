@@ -1,10 +1,11 @@
 import { db } from "@/src/db";
 import { usersTable, referralsTable, userTasksTable, tasksTable } from "@/src/db/schema";
-import { eq, desc, sql, aliasedTable } from "drizzle-orm";
+import { eq, and, desc, sql, aliasedTable } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { toDateStr } from "@/src/lib/streak-helper";
 import { getStreakMultiplier } from "@/src/lib/gamification";
-import { ReferralService } from "./referral.service";
+import { rateLimit } from "@/src/lib/rate-limit";
+import { ReferralService, REFERRAL_BONUS } from "./referral.service";
 import { ServiceResult, ok, fail } from "./result";
 import type { User } from "@/src/types/db";
 
@@ -140,6 +141,9 @@ export const UserService = {
     userId: number,
     taskId: number,
   ): Promise<ServiceResult<{ pointsAwarded: number }>> {
+    const rl = await rateLimit(`claim:profile:${userId}`, 5, 60_000);
+    if (!rl.allowed) return fail("Too many attempts. Try again later.", 429);
+
     const [task] = await db.select({ points: tasksTable.points }).from(tasksTable).where(eq(tasksTable.id, taskId));
     if (!task) return fail("Task not found", 404);
 
@@ -150,31 +154,48 @@ export const UserService = {
       return fail("Complete your profile first (bio, phone, and location required)", 400);
     }
 
-    const existing = await db
-      .select()
-      .from(userTasksTable)
-      .where(
-        sql`${userTasksTable.userId} = ${userId} AND ${userTasksTable.taskId} = ${taskId} AND ${userTasksTable.status} = 'Completed'`,
-      );
-    if (existing.length > 0) return fail("You already completed this task", 429);
-
     const multiplier = getStreakMultiplier(user.currentStreak || 0);
     const taskPoints = Math.round((task.points ?? 0) * multiplier);
 
     await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(userTasksTable)
+        .where(
+          and(
+            eq(userTasksTable.userId, userId),
+            eq(userTasksTable.taskId, taskId),
+            eq(userTasksTable.status, 'Completed'),
+          ),
+        )
+        .for("update");
+
+      if (existing) throw new Error("You already completed this task");
+
       await tx
         .insert(userTasksTable)
         .values({ userId, taskId, status: "Completed", completedAt: new Date() })
         .returning();
 
-      await tx
-        .update(usersTable)
-        .set({
-          points: sql`${usersTable.points} + ${taskPoints}`,
-          lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
-          completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
-        })
-        .where(eq(usersTable.id, userId));
+      const [lockedUser] = await tx
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .for("update");
+
+      if (lockedUser) {
+        await tx
+          .update(usersTable)
+          .set({
+            points: sql`${usersTable.points} + ${taskPoints}`,
+            lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
+            completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
+          })
+          .where(eq(usersTable.id, userId));
+      }
+    }).catch((err) => {
+      if (err instanceof Error) return fail(err.message, 429);
+      throw err;
     });
 
     return ok({ pointsAwarded: taskPoints });
@@ -184,58 +205,77 @@ export const UserService = {
     userId: number,
     taskId: number,
   ): Promise<ServiceResult<{ pointsAwarded: number; referralCount: number }>> {
-    const [task] = await db.select({ points: tasksTable.points }).from(tasksTable).where(eq(tasksTable.id, taskId));
-    if (!task) return fail("Task not found", 404);
-    const taskPoints = task.points ?? 0;
+    const rl = await rateLimit(`claim:referral:${userId}`, 5, 60_000);
+    if (!rl.allowed) return fail("Too many attempts. Try again later.", 429);
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
     if (!user) return fail("User not found", 404);
 
-    const existing = await db
-      .select()
-      .from(userTasksTable)
-      .where(
-        sql`${userTasksTable.userId} = ${userId} AND ${userTasksTable.taskId} = ${taskId} AND ${userTasksTable.status} = 'Completed'`,
-      );
-    if (existing.length > 0) return fail("You already completed this task", 429);
+    try {
+      const totalReferralPoints = await db.transaction(async (tx) => {
+        const [existing] = await tx
+          .select()
+          .from(userTasksTable)
+          .where(
+            and(
+              eq(userTasksTable.userId, userId),
+              eq(userTasksTable.taskId, taskId),
+              eq(userTasksTable.status, 'Completed'),
+            ),
+          )
+          .for("update");
 
-    const referrals = await db
-      .select()
-      .from(referralsTable)
-      .where(eq(referralsTable.referrerId, userId))
-      .orderBy(desc(referralsTable.createdAt));
+        if (existing) throw new Error("You already completed this task");
 
-    const unclaimedReferrals = referrals.filter((r) => r.pointsAwarded === 0);
-    if (unclaimedReferrals.length === 0) {
-      return fail("No referrals found. Share your referral code to invite friends!", 400);
-    }
+        const referrals = await tx
+          .select()
+          .from(referralsTable)
+          .where(eq(referralsTable.referrerId, userId))
+          .orderBy(desc(referralsTable.createdAt))
+          .for("update");
 
-    const multiplier = getStreakMultiplier(user.currentStreak || 0);
-    const totalReferralPoints = unclaimedReferrals.length * Math.round(taskPoints * multiplier);
+        const unclaimedReferrals = referrals.filter((r) => r.pointsAwarded === 0);
+        if (unclaimedReferrals.length === 0) {
+          throw new Error("No referrals found. Share your referral code to invite friends!");
+        }
 
-    await db.transaction(async (tx) => {
-      await tx
-        .insert(userTasksTable)
-        .values({ userId, taskId, status: "Completed", completedAt: new Date() })
-        .returning();
+        const points = unclaimedReferrals.length * REFERRAL_BONUS;
 
-      await tx
-        .update(usersTable)
-        .set({
-          points: sql`${usersTable.points} + ${totalReferralPoints}`,
-          lifetimePoints: sql`${usersTable.lifetimePoints} + ${totalReferralPoints}`,
-          completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
-        })
-        .where(eq(usersTable.id, userId));
-
-      for (const ref of unclaimedReferrals) {
         await tx
-          .update(referralsTable)
-          .set({ pointsAwarded: taskPoints })
-          .where(eq(referralsTable.id, ref.id));
-      }
-    });
+          .insert(userTasksTable)
+          .values({ userId, taskId, status: "Completed", completedAt: new Date() })
+          .returning();
 
-    return ok({ pointsAwarded: totalReferralPoints, referralCount: unclaimedReferrals.length });
+        const [lockedUser] = await tx
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.id, userId))
+          .for("update");
+
+        if (lockedUser) {
+          await tx
+            .update(usersTable)
+            .set({
+              points: sql`${usersTable.points} + ${points}`,
+              lifetimePoints: sql`${usersTable.lifetimePoints} + ${points}`,
+              completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
+            })
+            .where(eq(usersTable.id, userId));
+        }
+
+        for (const ref of unclaimedReferrals) {
+          await tx
+            .update(referralsTable)
+            .set({ pointsAwarded: REFERRAL_BONUS })
+            .where(eq(referralsTable.id, ref.id));
+        }
+
+        return points;
+      });
+
+      return ok({ pointsAwarded: totalReferralPoints, referralCount: Math.floor(totalReferralPoints / REFERRAL_BONUS) });
+    } catch (err) {
+      return fail(err instanceof Error ? err.message : "An error occurred", 400);
+    }
   },
 };
