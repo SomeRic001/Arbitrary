@@ -57,7 +57,7 @@ export const usersTable = pgTable("users", {
     image: text("image"),
     phoneNumber: varchar("phone_number", { length: 255 }).unique(),
     bio: text("bio"),
-    location: text("Location"),
+    Location: text("Location"),
     instagramUsername: varchar("instagram_username", { length: 255 }),
     provider: text("provider").notNull().default("credentials"),
     googleId: varchar("google_id", { length: 255 }).unique(),

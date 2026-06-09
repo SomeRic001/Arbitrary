@@ -81,9 +81,9 @@ const Header = () => {
         {/* Navigation Pill and Profile */}
         <div className="pointer-events-auto flex items-center gap-3 shrink-0">
           <nav className="hidden lg:flex bg-black/5 backdrop-blur-md px-1.5 py-1.5 rounded-full border border-black/10 items-center gap-0.5">
-            {["Home", "Work", "Events", "Leaderboard", "Dashboard", "Rewards", "About", "Contact"].map(
+            {["Home", "Work", "Events", "Leaderboard", "Dashboard", "About", "Contact"].map(
               (item) => {
-                const href = item === "Home" ? "/" : item === "Rewards"? "/deals" : `/${item.toLowerCase()}`;
+                const href = item === "Home" ? "/" : `/${item.toLowerCase()}`;
                 const isActive = pathName === href;
                 return (
                   <Link
@@ -120,9 +120,9 @@ const Header = () => {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="lg:hidden absolute top-full left-0 right-0 mt-2 mx-4 bg-white/90 backdrop-blur-xl border border-black/10 rounded-3xl shadow-xl overflow-hidden p-4 flex flex-col gap-2 z-50">
-          {["Home", "Work", "Events", "Leaderboard", "Dashboard", "Rewards", "About", "Contact"].map(
+          {["Home", "Work", "Events", "Leaderboard", "Dashboard", "About", "Contact"].map(
             (item) => {
-              const href = item === "Home" ? "/" : item === "Rewards"? "/deals" : `/${item.toLowerCase()}`;
+              const href = item === "Home" ? "/" : `/${item.toLowerCase()}`;
               const isActive = pathName === href;
               return (
                 <Link

@@ -127,7 +127,7 @@ const HomePage = () => {
                           href={`/eventcontent?id=${event.id}`}
                           className="px-10 py-4 bg-black text-white rounded-xl hover:bg-[#FACC15] hover:text-black transition-all duration-500 font-black uppercase tracking-[0.2em] text-[10px] shadow-xl hover:shadow-[0_20px_50px_rgba(250,204,21,0.2)]"
                         >
-                          Get Tickets
+                          View Event
                         </Link>
                       </div>
                     </div>

@@ -157,7 +157,7 @@ export default function EventPage() {
                           href={`/events/${event.id}`}
                           className="w-full px-8 py-5 bg-black text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#FACC15] hover:text-black hover:scale-[1.02] active:scale-95 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:shadow-[0_20px_50px_rgba(250,204,21,0.2)] text-sm text-center"
                         >
-                          Get Tickets
+                          View Details
                         </Link>
                       <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
                         Limited spots
