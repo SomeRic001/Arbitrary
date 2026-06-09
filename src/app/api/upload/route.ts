@@ -49,10 +49,16 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
   if (!cloudName || !apiKey || !apiSecret) {
-    return NextResponse.json({ error: "Upload service not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Upload service not configured — missing Cloudinary credentials" }, { status: 500 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  let buffer;
+  try {
+    buffer = Buffer.from(await file.arrayBuffer());
+  } catch {
+    return NextResponse.json({ error: "Failed to read file" }, { status: 400 });
+  }
+
   const base64 = buffer.toString("base64");
   const dataUri = `data:${file.type};base64,${base64}`;
 
@@ -72,26 +78,36 @@ export async function POST(req: NextRequest) {
     .join("&");
   const signature = crypto.createHash("sha1").update(`${paramString}${apiSecret}`).digest("hex");
 
-  const uploadRes = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        file: dataUri,
-        folder,
-        public_id: publicId,
-        timestamp,
-        api_key: apiKey,
-        signature,
-      }),
-    },
-  );
+  let uploadRes;
+  try {
+    uploadRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: dataUri,
+          folder,
+          public_id: publicId,
+          timestamp,
+          api_key: apiKey,
+          signature,
+        }),
+      },
+    );
+  } catch (err) {
+    return NextResponse.json({ error: `Failed to reach Cloudinary: ${err instanceof Error ? err.message : "network error"}` }, { status: 502 });
+  }
 
-  const uploadData = await uploadRes.json();
+  let uploadData;
+  try {
+    uploadData = await uploadRes.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid response from Cloudinary" }, { status: 502 });
+  }
 
   if (!uploadRes.ok) {
-    return NextResponse.json({ error: uploadData.error?.message || "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: uploadData.error?.message || "Cloudinary upload failed" }, { status: 500 });
   }
 
   return NextResponse.json({ url: uploadData.secure_url });

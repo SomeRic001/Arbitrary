@@ -85,6 +85,7 @@ export type InstagramCompleteResult = {
   message: string;
   pointsAwarded: number;
   verificationCode?: string;
+  requiresScreenshot?: boolean;
 };
 
 export type YoutubeCompleteResult = {
@@ -819,16 +820,22 @@ export const TaskService = {
       );
     if (!userTask) return fail("Task not found", 404);
 
-    if (userTask.status === status) {
-      return fail("Task is already in this status", 400);
+    const updateData: Record<string, unknown> = {};
+
+    // Allow idempotent status re-apply when attaching proof
+    if (userTask.status !== status) {
+      updateData.status = status;
     }
 
-    const updateData: Record<string, unknown> = { status };
     if (proofUrl) updateData.proofUrl = proofUrl;
     if (proofImageUrl) {
       updateData.proofImageUrl = proofImageUrl;
     } else if (proofUrl) {
       updateData.proofImageUrl = proofUrl;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return fail("Task is already in this status", 400);
     }
 
     const [updated] = await db
@@ -985,10 +992,18 @@ export const TaskService = {
       return fail(`Instagram API error: ${error.message}`, 500);
     }
 
-    return fail(
-      `Couldn't find your comment with code "${code}" on the post. Make sure you're using your linked Instagram account.`,
-      429,
-    );
+    // Fallback: auto-verification failed — set to Pending Verification for admin review
+    await db
+      .update(userTasksTable)
+      .set({ status: "Pending Verification" })
+      .where(eq(userTasksTable.id, userTask.id));
+
+    return ok({
+      message:
+        "Could not verify your comment automatically. Please upload a screenshot as proof.",
+      pointsAwarded: 0,
+      requiresScreenshot: true,
+    });
   },
 
   async completeYoutubeTask(

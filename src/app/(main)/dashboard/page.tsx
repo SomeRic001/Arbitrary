@@ -15,6 +15,7 @@ import { TaskList } from "@/src/components/user-dashboard/task-list";
 import { ActivitySidebar } from "@/src/components/user-dashboard/activity-sidebar";
 import { RewardProvider } from "@/src/components/rewards/reward-context";
 import { UserTaskItem, DashboardResponse } from "@/src/services/task.service";
+import { useSubmissionSSE } from "@/src/hooks/use-submission-sse";
 
 function nextMilestoneLabel(days: number) {
   if (days === 5) return "5-day";
@@ -51,6 +52,8 @@ function DashboardInner() {
   const [pillStyle, setPillStyle] = useState({ width: 0, left: 0 });
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const queryClient = useQueryClient();
+
+  useSubmissionSSE();
 
   const handleTabChange = (tab: string) => {
     if (tab === activeTab || isAnimating) return;

@@ -23,9 +23,14 @@ export function InstagramModal({
   const { data: session } = useSession();
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [submittedForReview, setSubmittedForReview] = useState(false);
   const [error, setError] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [codeLoading, setCodeLoading] = useState(false);
+  const [needsScreenshot, setNeedsScreenshot] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   const instagramUsername = session?.user?.instagramUsername;
 
@@ -33,6 +38,9 @@ export function InstagramModal({
     if (isOpen && task.id) {
       setCodeLoading(true);
       setError("");
+      setNeedsScreenshot(false);
+      setSelectedFile(null);
+      setPreviewUrl("");
       fetch(`/api/user/tasks/instagram-complete?taskId=${task.id}`)
         .then(async (res) => {
           if (!res.ok) {
@@ -86,6 +94,11 @@ export function InstagramModal({
       if (!res.ok) {
         throw new Error(data.error || "Verification failed");
       }
+      if (data.requiresScreenshot) {
+        setNeedsScreenshot(true);
+        setVerifying(false);
+        return;
+      }
       setVerified(true);
       setTimeout(() => {
         onComplete(task.id);
@@ -96,6 +109,58 @@ export function InstagramModal({
       setError(error.message);
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleScreenshotSubmit = async () => {
+    if (!selectedFile) {
+      setError("Please select a screenshot to upload");
+      return;
+    }
+    setIsUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!uploadRes.ok) {
+        const d = await uploadRes.json();
+        throw new Error(d.error || "Upload failed");
+      }
+      const uploadData = await uploadRes.json();
+
+      const proofRes = await fetch("/api/user/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: task.id,
+          status: "Pending Verification",
+          proofUrl: uploadData.url,
+          proofImageUrl: uploadData.url,
+        }),
+      });
+      if (!proofRes.ok) {
+        const d = await proofRes.json();
+        throw new Error(d.error || "Failed to submit proof");
+      }
+      setSubmittedForReview(true);
+      setTimeout(() => onComplete(task.id), 100);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -159,6 +224,26 @@ export function InstagramModal({
               <p className="text-lg font-black text-emerald-600">Verified!</p>
               <p className="text-sm text-gray-500">Points have been awarded.</p>
             </div>
+          ) : submittedForReview ? (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
+                <svg
+                  className="w-7 h-7 text-amber-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <p className="text-lg font-black text-amber-600">Submitted for Review</p>
+              <p className="text-sm text-gray-500">An admin will review your proof and award points.</p>
+            </div>
           ) : !instagramUsername ? (
             <div className="flex flex-col items-center gap-4 py-4">
               <div className="w-14 h-14 rounded-full bg-pink-100 flex items-center justify-center">
@@ -176,6 +261,45 @@ export function InstagramModal({
               >
                 Go to Profile Settings
               </a>
+            </div>
+          ) : needsScreenshot ? (
+            <div className="flex flex-col gap-4">
+              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
+                <p className="text-xs font-bold text-amber-700">
+                  Could not verify your comment automatically. Please upload a screenshot showing your comment with the code on the Instagram post.
+                </p>
+              </div>
+              <label
+                className="flex flex-col items-center justify-center gap-1.5 px-3 py-2.5
+                           rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 border-dashed
+                           cursor-pointer hover:bg-white/20 transition-all duration-200"
+              >
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Preview" className="w-full max-h-32 object-contain rounded-lg" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <svg className="w-6 h-6 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-[10px] text-zinc-500 font-medium">Tap to upload screenshot</span>
+                  </div>
+                )}
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
+              </label>
+              {error && (
+                <div className="p-3 bg-red-50 rounded-2xl border border-red-200">
+                  <p className="text-xs font-medium text-red-600">{error}</p>
+                </div>
+              )}
+              {previewUrl && (
+                <button
+                  onClick={handleScreenshotSubmit}
+                  disabled={isUploading}
+                  className="w-full py-3 px-5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 text-white font-bold text-sm rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {isUploading ? "Uploading..." : "Submit Screenshot"}
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-4">

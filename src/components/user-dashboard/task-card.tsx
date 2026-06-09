@@ -94,13 +94,14 @@ export function TaskCard({
     if (prevStatus === currentStatus) return;
 
     if (
-      (currentStatus === "pending verification" || currentStatus === "verified") &&
-      prevStatus !== currentStatus
+      currentStatus === "verified" ||
+      currentStatus === "pending verification"
     ) {
+      if (prevStatus === currentStatus) return;
       const msg = currentStatus === "verified" ? "Verified!" : "Submitted!";
       setSuccessMsg(msg);
       setShowSuccess(true);
-      if (cardRef.current) {
+      if (currentStatus === "verified" && cardRef.current) {
         const rect = cardRef.current.getBoundingClientRect();
         triggerReward(rect.left + rect.width / 2, rect.top - 20, task.points || 0);
       }
@@ -345,23 +346,36 @@ export function TaskCard({
                 Claim
               </button>
             ) : (
-              <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur-sm
-                  ${
-                    task.userStatus.toLowerCase() === "verified"
-                      ? "bg-green-400/30 text-white"
-                      : task.userStatus.toLowerCase() === "rejected"
-                        ? "bg-red-400/30 text-white"
-                        : "bg-white/20 text-white"
-                  }`}
-              >
-                {task.userStatus.toUpperCase()}
-              </span>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={task.userStatus}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur-sm
+                    ${
+                      task.userStatus.toLowerCase() === "verified"
+                        ? "bg-green-400/30 text-white"
+                        : task.userStatus.toLowerCase() === "rejected"
+                          ? "bg-red-400/30 text-white"
+                          : "bg-white/20 text-white"
+                    }`}
+                >
+                  {task.userStatus.toUpperCase()}
+                </motion.span>
+              </AnimatePresence>
             )
           ) : task.userStatus ? (
             <div className="flex flex-col items-end gap-1.5">
-              <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur-sm
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={task.userStatus}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur-sm
                                 ${
                                   task.userStatus.toLowerCase() === "verified"
                                     ? "bg-green-400/30 text-white"
@@ -373,9 +387,10 @@ export function TaskCard({
                                         ? "bg-red-400/30 text-white"
                                         : "bg-white/20 text-white animate-pulse"
                                 }`}
-              >
-                {task.userStatus.toUpperCase()}
-              </span>
+                >
+                  {task.userStatus.toUpperCase()}
+                </motion.span>
+              </AnimatePresence>
 
               {task.userStatus.toLowerCase() === "rejected" ? (
                 <button
