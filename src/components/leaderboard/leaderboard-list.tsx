@@ -50,14 +50,14 @@ function Avatar({
       <img
         src={src}
         alt={name ?? "User"}
-        className={`w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 ${border} flex-shrink-0`}
+        className={`w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 ${border} flex-shrink-0`}
       />
     );
   }
 
   return (
     <div
-      className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 ${border} flex-shrink-0 bg-zinc-100 flex items-center justify-center text-xs font-black uppercase tracking-wider`}
+      className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 ${border} flex-shrink-0 bg-zinc-100 flex items-center justify-center text-[10px] md:text-xs font-black uppercase tracking-wider`}
     >
       {getInitials(name)}
     </div>
@@ -91,7 +91,7 @@ function TierBadge({ tier }: { tier: string }) {
         }}
       >
         <span className="text-xs">{meta.icon}</span>
-        {meta.label}
+        <span className="hidden md:inline">{meta.label}</span>
     </span>
   );
 }
@@ -107,7 +107,7 @@ function StatPill({
 }) {
   return (
     <span
-      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-zinc-50 border border-black/5 text-xs font-bold uppercase tracking-wider"
+      className="inline-flex items-center gap-1 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-zinc-50 border border-black/5 text-[10px] md:text-xs font-bold uppercase tracking-wider"
       style={
         color
           ? {
@@ -150,7 +150,7 @@ function StatPill({
         </svg>
       )}
       <span>{value}</span>
-      <span className="text-zinc-400 font-medium normal-case">{label}</span>
+      <span className="hidden md:inline text-zinc-400 font-medium normal-case">{label}</span>
     </span>
   );
 }
@@ -196,7 +196,7 @@ function LeaderboardRow({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.035, 1.2), ease: "easeOut", layout: { duration: 0.3 } }}
       className={[
-        "relative grid grid-cols-[48px_1fr] md:grid-cols-[48px_48px_1fr_auto] gap-4 px-4 md:px-6 py-4 md:py-5 items-center transition-all duration-300",
+        "relative transition-all duration-300",
         isCurrentUser ? "bg-[#FACC15]/10 border-b-2 border-[#FACC15]/30" : "",
         "hover:bg-zinc-50 hover:shadow-lg hover:scale-[1.005] hover:z-10",
         isTop3 ? "" : "border-b border-black/5",
@@ -210,39 +210,52 @@ function LeaderboardRow({
       {/* Gold/Silver/Bronze glow for top 3 */}
       {isTop3 && <ShineOverlay />}
 
-      {/* Rank */}
-      <RankBadge rank={rank} />
+      {/* Main row: rank + avatar + name */}
+      <div className="grid grid-cols-[32px_32px_1fr] md:grid-cols-[48px_48px_1fr_auto] gap-2 md:gap-4 px-3 md:px-6 pt-3 md:pt-5 items-center">
+        {/* Rank */}
+        <RankBadge rank={rank} />
 
-      {/* Avatar */}
-      <Avatar src={user.image} name={user.name} rank={rank} />
+        {/* Avatar */}
+        <Avatar src={user.image} name={user.name} rank={rank} />
 
-      {/* Name + points + tier */}
-      <div className="flex flex-col min-w-0 relative z-10">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className={`font-black uppercase tracking-tight truncate text-sm md:text-base ${
-              isCurrentUser ? "text-[#FACC15]" : isTop3 ? "text-black" : "text-zinc-700"
-            }`}
-          >
-            {user.name ?? "Anonymous"}
-            {isCurrentUser && (
-              <span className="ml-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-[#FACC15]">
-                (You)
-              </span>
-            )}
+        {/* Name + points + tier */}
+        <div className="flex flex-col min-w-0 relative z-10">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+            <span
+              className={`font-black uppercase tracking-tight truncate text-sm md:text-base ${
+                isCurrentUser ? "text-[#FACC15]" : isTop3 ? "text-black" : "text-zinc-700"
+              }`}
+            >
+              {user.name ?? "Anonymous"}
+              {isCurrentUser && (
+                <span className="ml-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-[#FACC15]">
+                  (You)
+                </span>
+              )}
+            </span>
+            <TierBadge tier={user.tier} />
+          </div>
+          <span className="text-xs font-bold text-zinc-400 flex items-center gap-1">
+            <span className="text-[#FACC15]">✦</span>
+            <span>{user.points.toLocaleString()} pts</span>
           </span>
-          <TierBadge tier={user.tier} />
         </div>
-        <span className="text-xs font-bold text-zinc-400 flex items-center gap-1">
-          <span className="text-[#FACC15]">✦</span>
-          <span>{user.points.toLocaleString()} pts</span>
-        </span>
+
+        {/* Desktop stats */}
+        <div className="hidden md:flex items-center gap-2 justify-end flex-wrap relative z-10">
+          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
+          <StatPill label="referrals" value={user.referrals} />
+        </div>
       </div>
 
-      {/* Task & Referral counts */}
-      <div className="flex items-center gap-2 justify-start md:justify-end flex-wrap relative z-10">
-        <StatPill label="tasks" value={user.tasks} color="#FACC15" />
-        <StatPill label="referrals" value={user.referrals} />
+      {/* Mobile stats row */}
+      <div className="grid md:hidden grid-cols-[32px_32px_1fr] gap-2 px-3 pb-3">
+        <div />
+        <div />
+        <div className="flex items-center gap-2 flex-wrap relative z-10">
+          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
+          <StatPill label="referrals" value={user.referrals} />
+        </div>
       </div>
     </motion.div>
   );
@@ -261,35 +274,47 @@ function CurrentUserStickyRow({
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 1.5, ease: "easeOut" }}
-      className="sticky bottom-0 grid grid-cols-[48px_1fr] md:grid-cols-[48px_48px_1fr_auto] gap-4 px-4 md:px-6 py-4 md:py-5 items-center bg-white/90 backdrop-blur-xl border-t-2 border-[#FACC15]/40 shadow-[0_-8px_30px_rgba(250,204,21,0.12)]"
+      className="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t-2 border-[#FACC15]/40 shadow-[0_-8px_30px_rgba(250,204,21,0.12)]"
     >
-      {/* Rank */}
-      <RankBadge rank={rank} />
+      <div className="grid grid-cols-[32px_32px_1fr] md:grid-cols-[48px_48px_1fr_auto] gap-2 md:gap-4 px-3 md:px-6 pt-3 md:pt-5 items-center">
+        {/* Rank */}
+        <RankBadge rank={rank} />
 
-      {/* Avatar */}
-      <Avatar src={user.image} name={user.name} rank={rank} />
+        {/* Avatar */}
+        <Avatar src={user.image} name={user.name} rank={rank} />
 
-      {/* Name + points */}
-      <div className="flex flex-col min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-black uppercase tracking-tight truncate text-sm md:text-base text-[#FACC15]">
-            {user.name ?? "Anonymous"}
-            <span className="ml-1.5 text-[9px] font-black uppercase tracking-[0.15em]">
-              (You)
+        {/* Name + points */}
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+            <span className="font-black uppercase tracking-tight truncate text-sm md:text-base text-[#FACC15]">
+              {user.name ?? "Anonymous"}
+              <span className="ml-1.5 text-[9px] font-black uppercase tracking-[0.15em]">
+                (You)
+              </span>
             </span>
+            <TierBadge tier={user.tier} />
+          </div>
+          <span className="text-xs font-bold text-zinc-400 flex items-center gap-1">
+            <span className="text-[#FACC15]">✦</span>
+            <span>{user.points.toLocaleString()} pts</span>
           </span>
-          <TierBadge tier={user.tier} />
         </div>
-        <span className="text-xs font-bold text-zinc-400 flex items-center gap-1">
-          <span className="text-[#FACC15]">✦</span>
-          <span>{user.points.toLocaleString()} pts</span>
-        </span>
+
+        {/* Desktop stats */}
+        <div className="hidden md:flex items-center gap-2 justify-end flex-wrap">
+          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
+          <StatPill label="referrals" value={user.referrals} />
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex items-center gap-2 justify-start md:justify-end flex-wrap">
-        <StatPill label="tasks" value={user.tasks} color="#FACC15" />
-        <StatPill label="referrals" value={user.referrals} />
+      {/* Mobile stats row */}
+      <div className="grid md:hidden grid-cols-[32px_32px_1fr] gap-2 px-3 pb-3">
+        <div />
+        <div />
+        <div className="flex items-center gap-2 flex-wrap">
+          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
+          <StatPill label="referrals" value={user.referrals} />
+        </div>
       </div>
     </motion.div>
   );
