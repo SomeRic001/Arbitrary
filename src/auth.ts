@@ -274,6 +274,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                 session.user.googleId = token.googleId as string;
                 session.user.instagramUsername = token.instagramUsername as string | undefined;
                 session.user.facebookId = token.facebookId as string;
+                session.user.facebookAccessToken = token.facebookAccessToken as string | undefined;
             }
             return session;
         },

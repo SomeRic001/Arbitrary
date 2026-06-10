@@ -221,7 +221,7 @@ export default function ProfilePage() {
                 userEmail={user?.email}
                 provider={user?.provider}
                 googleId={user?.googleId}
-                facebookId={session?.facebookId}
+                facebookId={session?.user?.facebookId}
                 instagramUsername={session?.user?.instagramUsername}
                 onUpdateSession={update}
               />

@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || !session.facebookAccessToken) {
+  if (!session || !session.user?.facebookAccessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

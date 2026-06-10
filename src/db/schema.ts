@@ -1,5 +1,6 @@
 import { integer, pgTable, varchar, text, timestamp, serial, boolean, index, AnyPgColumn, jsonb } from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
+import { smallint } from "drizzle-orm/gel-core";
 
 // --- Events Tables ---
 
@@ -246,6 +247,21 @@ export const shareClicksTable = pgTable("share_clicks", {
     fingerprint: varchar("fingerprint", { length: 255 }),
     userAgent: varchar("user_agent", { length: 500 }),
     clickedAt: timestamp("clicked_at").defaultNow(),
+});
+
+
+export const recordsTable = pgTable("records",{
+    id: serial("id").primaryKey(),
+    title: varchar("title",{length:255}).notNull(),
+    artist: varchar("artist",{length:255}).notNull(),
+    releaseMonth: integer("release_month"),
+    releaseYear: integer("release_year"),
+    genre: varchar("genre",{length:100}),
+    coverImageUrl: text("cover_image_url"),
+    labelColor: varchar("label_color",{length:7}),
+    youtubeUrl: text("youtube_url"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // --- Relations ---

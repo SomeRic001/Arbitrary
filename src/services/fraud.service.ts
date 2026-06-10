@@ -103,7 +103,7 @@ export const FraudService = {
         users = new Set();
         fpToUsers.set(fp, users);
       }
-      users.add(row.userId);
+      if (row.userId) users.add(row.userId);
     }
 
     // Build per-user fingerprint scores
@@ -140,7 +140,7 @@ export const FraudService = {
       .groupBy(userTasksTable.userId);
 
     const fastCompletionMap = new Map<number, number>(
-      fastCompletionRows.map((r) => [r.userId, r.count]),
+      fastCompletionRows.filter((r) => r.userId !== null).map((r) => [r.userId as number, r.count]),
     );
 
     // ── 4: High submission volume per user ──
@@ -163,7 +163,7 @@ export const FraudService = {
       .groupBy(userTasksTable.userId);
 
     const volumeMap = new Map<number, number>(
-      volumeRows.map((r) => [r.userId, r.count]),
+      volumeRows.filter((r) => r.userId !== null).map((r) => [r.userId as number, r.count]),
     );
 
     // ── Build results ──

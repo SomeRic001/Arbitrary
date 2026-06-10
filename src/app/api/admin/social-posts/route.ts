@@ -197,7 +197,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const posts = await FETCHERS[platform](type);
+    const posts = await FETCHERS[platform](type ?? undefined);
     return NextResponse.json({ posts });
   } catch (err: unknown) {
 

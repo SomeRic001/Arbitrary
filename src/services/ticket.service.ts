@@ -137,9 +137,9 @@ export const TicketService = {
           });
 
         discountApplied = {
-          type: matchedCode.discountType,
-          value: matchedCode.discountValue,
-          maxAmount: matchedCode.discountMaxAmount,
+          type: deal.discountType,
+          value: deal.discountValue,
+          maxAmount: deal.discountMaxAmount,
         };
       }
 

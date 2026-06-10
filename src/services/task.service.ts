@@ -918,7 +918,79 @@ export const TaskService = {
     facebookId?: string,
     fingerprint?: string,
   ): Promise<ServiceResult<FacebookCompleteResult>> {
-    // ... implementation ...
+    const [user] = await db
+      .select({ currentStreak: usersTable.currentStreak })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    if (!user) return fail("User not found", 404);
+
+    const multiplier = getStreakMultiplier(user.currentStreak || 0);
+
+    const [userTaskWithTask] = await db
+      .select({
+        userTask: userTasksTable,
+        task: tasksTable,
+      })
+      .from(userTasksTable)
+      .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
+      .where(
+        and(
+          eq(userTasksTable.userId, userId),
+          eq(userTasksTable.taskId, taskId),
+          sql`LOWER(${userTasksTable.status}) NOT IN ('completed', 'verified', 'cancelled')`,
+        ),
+      )
+      .orderBy(desc(userTasksTable.assignedAt));
+
+    if (!userTaskWithTask) {
+      return fail("Task not found or not picked up by you", 404);
+    }
+
+    const { userTask, task } = userTaskWithTask;
+    if (task.platform !== "facebook") {
+      return fail("This endpoint is only for Facebook tasks", 400);
+    }
+
+    const postId = task.socialPostId;
+    if (!postId) {
+      return fail("This task has no Facebook post linked", 400);
+    }
+
+    const code = getVerificationCode(Number(userId), Number(taskId));
+
+    try {
+      const verification = await findCodeInComments(postId, code);
+
+      if (verification.liked) {
+        return await db.transaction(async (tx) => {
+          const [userTaskLocked] = await tx
+            .select()
+            .from(userTasksTable)
+            .where(eq(userTasksTable.id, userTask.id))
+            .for("update");
+
+          if (!userTaskLocked || ['completed', 'verified', 'cancelled'].includes(userTaskLocked.status?.toLowerCase())) {
+            return fail("Task has already been completed or cancelled", 400);
+          }
+
+          return await awardFacebookPoints(tx, userId, task, userTask, multiplier, fingerprint);
+        });
+      }
+    } catch (error: any) {
+      return fail(`Facebook API error: ${error.message}`, 500);
+    }
+
+    await db
+      .update(userTasksTable)
+      .set({ status: "Pending Verification" })
+      .where(eq(userTasksTable.id, userTask.id));
+
+    return ok({
+      message:
+        "Could not verify your comment automatically. Please upload a screenshot as proof.",
+      pointsAwarded: 0,
+    });
   },
 
   async completeInstagramTask(

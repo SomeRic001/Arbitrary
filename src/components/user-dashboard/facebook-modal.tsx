@@ -27,7 +27,7 @@ export function FacebookModal({
   const [verificationCode, setVerificationCode] = useState("");
   const [codeLoading, setCodeLoading] = useState(false);
 
-  const isConnected = !!session?.facebookAccessToken;
+  const isConnected = !!session?.user?.facebookAccessToken;
 
   useEffect(() => {
     if (isOpen && isConnected && task.id) {
