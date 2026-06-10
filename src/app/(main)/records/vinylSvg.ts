@@ -18,6 +18,7 @@ export type Song = {
   tilt: number;
   desc: string;
   tags: string[];
+  coverImageUrl?: string | null;
 };
 
 const MONTHS = [
@@ -69,6 +70,7 @@ export function mapRecordToSong(rec: {
   const labelColor = rec.labelColor || "#c0392b";
   const accentColor = lighten(labelColor, 0.45);
   const tilt = ((rec.id * 37) % 9) - 4; // deterministic -4..4 lean
+  const hasCover = !!rec.coverImageUrl;
   const tags = [
     rec.genre || "Single",
     rec.releaseYear ? String(rec.releaseYear) : null,
@@ -83,7 +85,7 @@ export function mapRecordToSong(rec: {
     labelColor,
     accentColor,
     coverColor: lighten(labelColor, 0.7),
-    sleeveText: "#1a1a1a",
+    sleeveText: hasCover ? "#ffffff" : "#1a1a1a",
     accent: labelColor,
     tilt,
     desc:
@@ -91,6 +93,7 @@ export function mapRecordToSong(rec: {
       (rec.genre ? ` — a ${rec.genre.toLowerCase()} release` : "") +
       (rec.releaseYear ? ` from ${rec.releaseYear}.` : "."),
     tags,
+    coverImageUrl: rec.coverImageUrl,
   };
 }
 

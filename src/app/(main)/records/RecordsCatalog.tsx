@@ -509,7 +509,7 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
                   />
                   <div
                     className="rc-sleeve-card"
-                    style={{ background: song.coverColor, color: song.sleeveText }}
+                    style={song.coverImageUrl ? { backgroundImage: `url(${song.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: song.sleeveText } : { background: song.coverColor, color: song.sleeveText }}
                   >
                     <svg
                       className="rc-sleeve-lines"

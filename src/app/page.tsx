@@ -8,8 +8,8 @@ import Link from "next/link";
 interface HomePageEvent {
   id: number;
   title: string;
-  date: string;
-  category: string;
+  eventDate: string;
+  eventType: string;
   status: string;
   venue: string | null;
   description: string | null;
@@ -70,7 +70,7 @@ const HomePage = () => {
             <div className="grid grid-cols-1 gap-6">
               {events.length > 0 ? (
                 events.slice(0, 3).map((event) => {
-                  const dateInfo = formatDate(event.date);
+                  const dateInfo = formatDate(event.eventDate);
                   return (
                     <div
                       key={event.id}

@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AnimatePresence } from "framer-motion";
+import { ModalShell } from "@/src/components/layout/manage-task/ModalShell";
 
 type RecordItem = {
   id: number;
@@ -42,6 +44,7 @@ export default function AdminRecords() {
   const [form, setForm] = useState({ ...emptyForm });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState("");
+  const [removeCover, setRemoveCover] = useState(false);
 
   useEffect(() => {
     fetchRecords();
@@ -62,6 +65,7 @@ export default function AdminRecords() {
     setForm({ ...emptyForm });
     setCoverFile(null);
     setCoverPreview("");
+    setRemoveCover(false);
     setIsModalOpen(true);
   };
 
@@ -79,6 +83,7 @@ export default function AdminRecords() {
     });
     setCoverPreview(record.coverImageUrl ?? "");
     setCoverFile(null);
+    setRemoveCover(false);
     setIsModalOpen(true);
   };
 
@@ -121,9 +126,10 @@ export default function AdminRecords() {
         releaseMonth: form.releaseMonth ? parseInt(form.releaseMonth, 10) : null,
         releaseYear: form.releaseYear ? parseInt(form.releaseYear, 10) : null,
         genre: form.genre || null,
-        coverImageUrl: coverUrl || null,
+        coverImageUrl: removeCover ? null : (coverUrl || null),
         labelColor: form.labelColor || null,
         youtubeUrl: form.youtubeUrl || null,
+        removeCover: removeCover || undefined,
       };
       if (editingId) payload.id = editingId;
 
@@ -281,25 +287,32 @@ export default function AdminRecords() {
         </div>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-2 md:mx-4 max-h-[90vh] overflow-y-auto p-4 md:p-8">
-            <div className="flex justify-between items-center mb-6 md:mb-8">
-              <h3 className="text-lg md:text-xl font-black uppercase tracking-tight">
-                {editingId ? "Edit Record" : "New Record"}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-5">
+      <AnimatePresence>
+        {isModalOpen && (
+          <ModalShell
+            onClose={() => setIsModalOpen(false)}
+            title={editingId ? "Edit Record" : "New Record"}
+            subtitle="Records Catalog"
+            scrollableBody
+            footer={
+              <>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex-1 py-3 rounded-xl bg-black text-white text-sm font-black uppercase tracking-wider hover:bg-[#FACC15] hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "Saving..." : editingId ? "Update" : "Create"}
+                </button>
+              </>
+            }
+          >
+            <div className="p-4 md:p-6 space-y-5">
               <div>
                 <label className={labelClass}>Title</label>
                 <input
@@ -359,7 +372,7 @@ export default function AdminRecords() {
               <div>
                 <label className={labelClass}>Cover Image</label>
                 <label className="flex flex-col items-center justify-center gap-2 px-4 py-6 bg-zinc-50 border-2 border-dashed border-black/10 rounded-xl cursor-pointer hover:bg-zinc-100 transition-colors">
-                  {coverPreview ? (
+                  {coverPreview && !removeCover ? (
                     <img src={coverPreview} alt="Cover preview" className="w-24 h-24 object-cover rounded-lg" />
                   ) : (
                     <svg className="w-8 h-8 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -367,10 +380,28 @@ export default function AdminRecords() {
                     </svg>
                   )}
                   <span className="text-[10px] text-zinc-400 font-medium">
-                    {coverPreview ? "Tap to change" : "Tap to upload cover art"}
+                    {coverPreview && !removeCover ? "Tap to change" : "Tap to upload cover art"}
                   </span>
                   <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
                 </label>
+                {coverPreview && !removeCover && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setRemoveCover(true); setCoverFile(null); }}
+                    className="mt-2 text-xs font-bold text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    Remove cover
+                  </button>
+                )}
+                {removeCover && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setRemoveCover(false); }}
+                    className="mt-2 text-xs font-bold text-blue-500 hover:text-blue-700 transition-colors"
+                  >
+                    Undo remove
+                  </button>
+                )}
               </div>
 
               <div>
@@ -401,25 +432,9 @@ export default function AdminRecords() {
                 />
               </div>
             </div>
-
-            <div className="flex gap-3 mt-8">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-3 rounded-xl border border-black/10 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-1 py-3 rounded-xl bg-black text-white text-sm font-black uppercase tracking-wider hover:bg-[#FACC15] hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSaving ? "Saving..." : editingId ? "Update" : "Create"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </ModalShell>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

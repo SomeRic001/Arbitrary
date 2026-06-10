@@ -1,26 +1,29 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Footer from "@/src/components/ui/footer";
 import Header from "@/src/components/ui/header";
-import { db } from "@/src/db";
-import { recordsTable } from "@/src/db/schema";
 import RecordsCatalog from "./RecordsCatalog";
 import { mapRecordToSong } from "./vinylSvg";
+import type { Song } from "./vinylSvg";
 
-export const dynamic = "force-dynamic";
+export default function RecordsPage() {
+  const [songs, setSongs] = useState<Song[]>([]);
 
-export const metadata = {
-  title: "Records | Arbitrary",
-};
-
-export default async function RecordsPage() {
-  const rows = await db.select().from(recordsTable);
-  const songs = rows.map(mapRecordToSong);
+  useEffect(() => {
+    document.title = "Records | Arbitrary";
+    fetch("/api/records")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setSongs(d.records.map(mapRecordToSong));
+      })
+      .catch(() => {});
+  }, []);
 
   return (
-    <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
+    <div className="pt-20">
       <Header />
-      <main className="pt-32 pb-20 overflow-hidden">
-        <RecordsCatalog songs={songs} />
-      </main>
+      <RecordsCatalog songs={songs} />
       <Footer />
     </div>
   );
