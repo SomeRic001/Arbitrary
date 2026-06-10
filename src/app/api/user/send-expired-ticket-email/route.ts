@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await TicketService.sendExpiredTicketEmail(
+    auth.data.id,
     Number(ticketId),
     auth.data.email ?? undefined,
     auth.data.name ?? undefined,

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { db } from "@/src/db";
 import { usersTable, referralsTable, userTasksTable, pointsLogTable } from "@/src/db/schema";
-import { eq, and, isNull, inArray, sql } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { ServiceResult, ok, fail } from "./result";
 import { rateLimit } from "@/src/lib/rate-limit";
 
@@ -146,20 +146,22 @@ export const ReferralService = {
   },
 
   async awardReferralBonusIfEligible(userId: number): Promise<void> {
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, userId));
-    const referredBy = user?.referredBy;
-    if (!referredBy || user?.referralRewarded) return;
-
-    const [referrer] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, referredBy));
-    if (!referrer) return;
-
     await db.transaction(async (tx) => {
+      const [user] = await tx
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .for("update");
+
+      const referredBy = user?.referredBy;
+      if (!referredBy || user?.referralRewarded) return;
+
+      const [referrer] = await tx
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, referredBy));
+      if (!referrer) return;
+
       await tx
         .update(usersTable)
         .set({ referralRewarded: true })

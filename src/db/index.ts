@@ -2,9 +2,16 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
 
-// Create a single PostgreSQL connection pool
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+    throw new Error('DATABASE_URL is not set');
+}
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL!,
+    connectionString,
+    ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: true },
+    max: 20,
+    idleTimeoutMillis: 30000,
 });
 
 export const db = drizzle(pool, { schema });

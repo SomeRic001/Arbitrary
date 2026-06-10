@@ -31,6 +31,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const emailRl = await rateLimit(`verify-email:email:${email}`, 2, 60_000);
+  if (!emailRl.allowed) {
+    return NextResponse.json(
+      { error: `Too many attempts. Try again in ${emailRl.retryAfterSeconds}s.` },
+      { status: 429 },
+    );
+  }
+
   const [user] = await db
     .select()
     .from(usersTable)
@@ -41,7 +49,9 @@ export async function POST(req: NextRequest) {
   }
 
   const rawToken = crypto.randomUUID();
-  const tokenHash = await bcrypt.hash(rawToken, 10);
+  const bcryptHash = await bcrypt.hash(rawToken, 10);
+  const lookupKey = crypto.createHash("sha256").update(rawToken).digest("hex").slice(0, 16);
+  const tokenHash = `${lookupKey}:${bcryptHash}`;
 
   await db
     .update(usersTable)

@@ -284,7 +284,7 @@ export function TaskCard({
                   {expandedTasks[task.id] ? "See less" : "See more"}
                 </button>
               )}
-              {task.postUrl && (
+              {task.postUrl?.startsWith("https://") && (
                 <div className="mt-2">
                   <a
                     href={task.postUrl}

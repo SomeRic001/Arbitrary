@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
     }
 
     const rawToken = crypto.randomUUID();
-    const tokenHash = await bcrypt.hash(rawToken, 10);
+    const bcryptHash = await bcrypt.hash(rawToken, 10);
+    const lookupKey = crypto.createHash("sha256").update(rawToken).digest("hex").slice(0, 16);
+    const tokenHash = `${lookupKey}:${bcryptHash}`;
 
     const result = await UserService.signup(parsed.data, {
       verificationToken: tokenHash,

@@ -6,8 +6,8 @@ const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
 function getKey(): Buffer {
-  const secret = process.env.NEXTAUTH_SECRET;
-  if (!secret) throw new Error('NEXTAUTH_SECRET is required to encrypt tokens');
+  const secret = process.env.TOKEN_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET;
+  if (!secret) throw new Error('TOKEN_ENCRYPTION_KEY or NEXTAUTH_SECRET is required to encrypt tokens');
   return crypto.createHash('sha256').update(secret).digest();
 }
 

@@ -44,9 +44,10 @@ export const SecurityService = {
   },
 
   generateVerificationCode(userId: number, taskId: number, salt: string = "default"): string {
+    const secret = process.env.YOUTUBE_CHALLENGE_SECRET || process.env.NEXTAUTH_SECRET;
     return `#v${crypto
       .createHash("sha256")
-      .update(`${salt}:${userId}:${taskId}:${process.env.NEXTAUTH_SECRET}`)
+      .update(`${salt}:${userId}:${taskId}:${secret}`)
       .digest("hex")
       .slice(0, 8)}`;
   },

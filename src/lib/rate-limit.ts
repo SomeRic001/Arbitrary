@@ -12,7 +12,12 @@ function getHeader(headers: Headers | Record<string, string | string[] | undefin
 
 export function getClientIp(req: { headers: Headers | Record<string, string | string[] | undefined> }): string {
     const xff = getHeader(req.headers, 'x-forwarded-for');
-    return xff?.split(',')[0]?.trim() ?? 'unknown';
+    if (xff) {
+        return xff.split(',')[0]?.trim() || 'unknown';
+    }
+    const cf = getHeader(req.headers, 'cf-connecting-ip');
+    if (cf) return cf.trim();
+    return 'unknown';
 }
 
 export interface RateLimitResult {

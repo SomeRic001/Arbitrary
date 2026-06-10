@@ -1,51 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { usersTable, passwordResetTokensTable } from "@/src/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, like } from "drizzle-orm";
 
 const resetPasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters").max(100),
 });
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ token: string }> },
-) {
-  const { token } = await params;
-
-  const allTokens = await db
+async function findToken(rawToken: string) {
+  const lookupKey = crypto.createHash("sha256").update(rawToken).digest("hex").slice(0, 16);
+  const candidates = await db
     .select()
     .from(passwordResetTokensTable)
     .where(
       and(
         isNull(passwordResetTokensTable.usedAt),
+        like(passwordResetTokensTable.tokenHash, `${lookupKey}:%`),
       ),
     );
 
   const now = new Date();
-  let validToken: typeof passwordResetTokensTable.$inferSelect | null = null;
-
-  for (const t of allTokens) {
-    const isValid = await bcrypt.compare(token, t.tokenHash);
+  for (const t of candidates) {
+    const bcryptHash = t.tokenHash.split(":").slice(1).join(":") || t.tokenHash;
+    const isValid = await bcrypt.compare(rawToken, bcryptHash);
     if (isValid) {
       if (now > t.expiresAt) {
         await db
           .update(passwordResetTokensTable)
           .set({ usedAt: now })
           .where(eq(passwordResetTokensTable.id, t.id));
-        return NextResponse.json({ valid: false, error: "Token has expired" });
+        return { token: null, expired: true };
       }
-      validToken = t;
-      break;
+      return { token: t, expired: false };
     }
   }
+  return { token: null, expired: false };
+}
 
-  if (!validToken) {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ token: string }> },
+) {
+  const { token } = await params;
+  const result = await findToken(token);
+  if (result.expired) {
+    return NextResponse.json({ valid: false, error: "Token has expired" });
+  }
+  if (!result.token) {
     return NextResponse.json({ valid: false, error: "Invalid or expired reset link" });
   }
-
   return NextResponse.json({ valid: true });
 }
 
@@ -61,34 +67,11 @@ export async function POST(
     return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
   }
 
-  const allTokens = await db
-    .select()
-    .from(passwordResetTokensTable)
-    .where(
-      and(
-        isNull(passwordResetTokensTable.usedAt),
-      ),
-    );
-
-  const now = new Date();
-  let matchedToken: typeof passwordResetTokensTable.$inferSelect | null = null;
-
-  for (const t of allTokens) {
-    const isValid = await bcrypt.compare(token, t.tokenHash);
-    if (isValid) {
-      if (now > t.expiresAt) {
-        await db
-          .update(passwordResetTokensTable)
-          .set({ usedAt: now })
-          .where(eq(passwordResetTokensTable.id, t.id));
-        return NextResponse.json({ error: "Reset link has expired" }, { status: 400 });
-      }
-      matchedToken = t;
-      break;
-    }
+  const result = await findToken(token);
+  if (result.expired) {
+    return NextResponse.json({ error: "Reset link has expired" }, { status: 400 });
   }
-
-  if (!matchedToken) {
+  if (!result.token) {
     return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 });
   }
 
@@ -98,12 +81,12 @@ export async function POST(
     await tx
       .update(usersTable)
       .set({ password: passwordHash })
-      .where(eq(usersTable.email, matchedToken!.email));
+      .where(eq(usersTable.email, result.token!.email));
 
     await tx
       .update(passwordResetTokensTable)
-      .set({ usedAt: now })
-      .where(eq(passwordResetTokensTable.id, matchedToken!.id));
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokensTable.id, result.token!.id));
   });
 
   return NextResponse.json({ success: true });

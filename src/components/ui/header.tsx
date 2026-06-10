@@ -5,6 +5,7 @@ import Link from "next/link";
 import ProfileDropdown from "./profile-dropdown";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Header = () => {
   const fullText = "ARBITRARY";
@@ -21,6 +22,16 @@ const Header = () => {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1280) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -75,7 +86,7 @@ const Header = () => {
         {/* Right side */}
         <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Desktop Nav */}
-          <nav className="hidden lg:flex bg-black/5 backdrop-blur-md px-1.5 py-1.5 rounded-full border border-black/10 items-center gap-0.5">
+          <nav className="hidden xl:flex bg-black/5 backdrop-blur-md px-1.5 py-1.5 rounded-full border border-black/10 items-center gap-0.5">
             {[
               "Home",
               "Work",
@@ -106,44 +117,72 @@ const Header = () => {
 
           {/* Mobile Menu Toggle */}
           <button
-            className="lg:hidden p-2 rounded-full bg-black/5 text-black hover:bg-black/10 transition-colors"
+            className="xl:hidden p-2 rounded-full bg-black/5 text-black hover:bg-black/10 transition-colors cursor-pointer"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden absolute top-full left-0 right-0 mt-2 mx-4 bg-white/90 backdrop-blur-xl border border-black/10 rounded-3xl shadow-xl overflow-hidden p-4 flex flex-col gap-2 z-50">
-          {[
-            "Home",
-            "Work",
-            "Events",
-            "Records",
-            "Leaderboard",
-            "Dashboard",
-            "About",
-            "Contact",
-          ].map((item) => {
-            const href = item === "Home" ? "/" : `/${item.toLowerCase()}`;
-
-            const isActive = pathName === href;
-            return (
-              <Link
-                key={item}
-                href={href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`px-4 py-2.5 rounded-2xl font-bold transition-all duration-200 text-xs uppercase tracking-wider text-center
-                    ${isActive ? "bg-black text-white shadow-md" : "text-black/70 hover:text-black hover:bg-black/5"}`}
-              >
-                {item}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      {/* Mobile Dropdown Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+            className={`absolute left-0 right-0 top-full overflow-hidden xl:hidden
+              ${
+                scrolled
+                  ? "mt-2 rounded-[30px] bg-white/90 backdrop-blur-2xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+                  : "border-b border-black/5 bg-white shadow-lg"
+              }`}
+          >
+            <div className={`flex flex-col gap-1 py-4 px-6 ${scrolled ? "" : "border-t border-black/5"}`}>
+              {[
+                "Home",
+                "Work",
+                "Events",
+                "Records",
+                "Leaderboard",
+                "Dashboard",
+                "About",
+                "Contact",
+              ].map((item, idx) => {
+                const href = item === "Home" ? "/" : `/${item.toLowerCase()}`;
+                const isActive = pathName === href;
+                return (
+                  <motion.div
+                    key={item}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                  >
+                    <Link
+                      href={href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center justify-between py-3 px-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all duration-200
+                        ${
+                          isActive
+                            ? "bg-black text-white"
+                            : "text-black/70 hover:text-black hover:bg-black/5"
+                        }`}
+                    >
+                      <span>{item}</span>
+                      {isActive && (
+                        <span className="w-2 h-2 rounded-full bg-[#FACC15]" />
+                      )}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };

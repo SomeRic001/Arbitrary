@@ -168,6 +168,7 @@ export const FraudService = {
 
     // ── Build results ──
     const flaggedUsers: FraudUser[] = [];
+    const updates: { id: number; riskScore: number; isFlagged: boolean }[] = [];
 
     for (const user of allUsers) {
       const fpScore = fingerprintScores.get(user.id);
@@ -179,13 +180,7 @@ export const FraudService = {
       const riskScore =
         sharedFingerprint + multipleAccounts + fastCompletion + highVolume;
 
-      await db
-        .update(usersTable)
-        .set({
-          fraudRiskScore: riskScore,
-          isFlagged: riskScore > FLAG_THRESHOLD,
-        })
-        .where(eq(usersTable.id, user.id));
+      updates.push({ id: user.id, riskScore, isFlagged: riskScore > FLAG_THRESHOLD });
 
       if (riskScore > FLAG_THRESHOLD) {
         flaggedUsers.push({
@@ -202,6 +197,23 @@ export const FraudService = {
           completedTasks: user.completedTasksCount,
         });
       }
+    }
+
+    // Batch updates to avoid O(N) round-trips and table locking
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+      const batch = updates.slice(i, i + BATCH_SIZE);
+      await db.transaction(async (tx) => {
+        for (const u of batch) {
+          await tx
+            .update(usersTable)
+            .set({
+              fraudRiskScore: u.riskScore,
+              isFlagged: u.isFlagged,
+            })
+            .where(eq(usersTable.id, u.id));
+        }
+      });
     }
 
     return ok({

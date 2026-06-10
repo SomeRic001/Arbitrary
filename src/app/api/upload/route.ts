@@ -30,14 +30,16 @@ export async function POST(req: NextRequest) {
   }
 
   const file = formData.get("file") as File | null;
-  const type = (formData.get("type") as string) || "task-proofs";
+  const rawType = (formData.get("type") as string) || "task-proofs";
+  const allowedFolders = ["task-proofs", "profile-pictures", "event-heroes"];
+  const type = allowedFolders.includes(rawType) ? rawType : "task-proofs";
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-  if (!allowedTypes.includes(file.type)) {
+  const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowedMimes.includes(file.type)) {
     return NextResponse.json({ error: "Only JPEG, PNG, and WebP images are allowed" }, { status: 400 });
   }
 

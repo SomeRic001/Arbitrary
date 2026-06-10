@@ -1,5 +1,5 @@
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export function useAuth() {
@@ -7,9 +7,8 @@ export function useAuth() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to login if not authenticated
     if (status === "unauthenticated") {
-      router.push("/admin/adminloginpage");
+      router.push("/login");
     }
   }, [status, router]);
 

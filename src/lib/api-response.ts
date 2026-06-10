@@ -6,7 +6,7 @@ export function toNextResponse<T>(result: ServiceResult<T>, successStatus = 200)
     return NextResponse.json(result.data, { status: successStatus });
   }
   return NextResponse.json(
-    { error: result.error, details: result.details },
+    { error: result.error },
     { status: result.status },
   );
 }

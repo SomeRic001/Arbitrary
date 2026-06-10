@@ -18,7 +18,7 @@ export type TicketWithDetails = {
   id: number;
   status: string;
   redemptionToken: string;
-  event: { title: string; eventDate: string; venue: string | null } | null;
+  event: { id: number; title: string; eventDate: string; venue: string | null } | null;
   user: { name: string | null; email: string };
   accessType: { title: string } | null;
 };
@@ -86,25 +86,27 @@ export const TicketService = {
       // Validate deal code if provided
       if (dealCode && dealId) {
         const normalized = dealCode.trim().toUpperCase();
+
+        const [deal] = await tx
+          .select()
+          .from(dealsTable)
+          .where(and(eq(dealsTable.id, dealId), eq(dealsTable.isActive, true)));
+
+        if (!deal) {
+          return fail("Deal not found or inactive", 400);
+        }
+
         const codes = await tx
-          .select({
-            id: dealCodesTable.id,
-            code: dealCodesTable.code,
-            dealTitle: dealsTable.title,
-            discountType: dealsTable.discountType,
-            discountValue: dealsTable.discountValue,
-            discountMaxAmount: dealsTable.discountMaxAmount,
-          })
+          .select()
           .from(dealCodesTable)
-          .innerJoin(dealsTable, eq(dealCodesTable.dealId, dealsTable.id))
           .where(
             and(
               eq(dealCodesTable.dealId, dealId),
               eq(dealCodesTable.isRedeemed, false),
               eq(dealCodesTable.claimedBy, userId),
-              eq(dealsTable.isActive, true),
             ),
-          );
+          )
+          .for("update");
 
         let matchedCode: (typeof codes)[0] | undefined;
         for (const c of codes) {
@@ -224,6 +226,7 @@ export const TicketService = {
       redemptionToken: ticket.redemptionToken,
       event: ticket.event
         ? {
+          id: ticket.event.id,
           title: ticket.event.title,
           eventDate: formatDate(ticket.event.eventDate),
           venue: ticket.event.venue,
@@ -243,33 +246,53 @@ export const TicketService = {
     token: string,
     adminId: number,
   ): Promise<ServiceResult<{ message: string; alreadyRedeemed?: boolean; redeemedAt?: string }>> {
-    const ticket = await db.query.userTicketsTable.findFirst({
-      where: eq(userTicketsTable.redemptionToken, token),
-      with: { event: true, user: true, accessType: true },
+    return await db.transaction(async (tx) => {
+      const [ticketWithEvent] = await tx
+        .select({
+          ticket: userTicketsTable,
+          event: eventsTable,
+        })
+        .from(userTicketsTable)
+        .innerJoin(eventsTable, eq(userTicketsTable.eventId, eventsTable.id))
+        .where(eq(userTicketsTable.redemptionToken, token))
+        .for("update");
+
+      if (!ticketWithEvent) return fail("Ticket not found", 404);
+
+      const { ticket, event } = ticketWithEvent;
+
+      // Temporal Validation: Reject if event date is in the past
+      const eventDate = new Date(event.eventDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (eventDate < today) {
+        return fail("This ticket is for a past event and cannot be redeemed", 400);
+      }
+
+      if (ticket.status === "used") {
+        return ok({
+          message: "Ticket has already been redeemed",
+          alreadyRedeemed: true,
+          redeemedAt: ticket.redeemedAt ? ticket.redeemedAt.toISOString() : undefined,
+        });
+      }
+
+      await tx
+        .update(userTicketsTable)
+        .set({
+          status: "used",
+          redeemedBy: adminId,
+          redeemedAt: new Date(),
+        })
+        .where(eq(userTicketsTable.id, ticket.id));
+
+      return ok({ message: "Ticket redeemed successfully" });
     });
-
-    if (!ticket) return fail("Ticket not found", 404);
-    if (ticket.status === "used") {
-      return ok({
-        message: "Ticket has already been redeemed",
-        alreadyRedeemed: true,
-        redeemedAt: ticket.redeemedAt ? ticket.redeemedAt.toISOString() : undefined,
-      });
-    }
-
-    await db
-      .update(userTicketsTable)
-      .set({
-        status: "used",
-        redeemedBy: adminId,
-        redeemedAt: new Date(),
-      })
-      .where(eq(userTicketsTable.id, ticket.id));
-
-    return ok({ message: "Ticket redeemed successfully" });
   },
 
   async sendExpiredTicketEmail(
+    userId: number,
     ticketId: number,
     userEmail?: string,
     userName?: string,
@@ -281,6 +304,10 @@ export const TicketService = {
 
     if (!ticket || !ticket.event) {
       return fail("Ticket not found", 404);
+    }
+
+    if (ticket.userId !== userId) {
+      return fail("Ticket does not belong to this user", 403);
     }
 
     if (!userEmail) return fail("User email is required", 400);

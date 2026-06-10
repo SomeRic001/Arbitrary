@@ -17,24 +17,29 @@ export async function GET() {
   return NextResponse.json({ tickets: result.data, serverTime: new Date().toISOString() });
 }
 
+import { z } from "zod";
+
+const redeemTicketSchema = z.object({
+  eventId: z.union([z.number(), z.string().transform(Number)]).pipe(z.number().positive()),
+  accessTypeId: z.union([z.number(), z.string().transform(Number)]).pipe(z.number().positive()),
+});
+
 export async function POST(req: NextRequest) {
   const auth = await requireUser();
   if (!auth.success) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
-  const { eventId, accessTypeId } = await req.json();
-  if (!eventId || !accessTypeId) {
-    return NextResponse.json(
-      { error: "Event ID and Access Type ID are required" },
-      { status: 400 },
-    );
+  const body = await req.json();
+  const parsed = redeemTicketSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   const result = await TicketService.redeemTicket(
     auth.data.id,
-    Number(eventId),
-    Number(accessTypeId),
+    parsed.data.eventId,
+    parsed.data.accessTypeId,
     auth.data.email ?? undefined,
     auth.data.name ?? undefined,
   );

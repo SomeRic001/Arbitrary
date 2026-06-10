@@ -665,73 +665,81 @@ export const TaskService = {
       return ok({ message: dlResult.data.message });
     }
 
-    // Re-claim: delete any previous rejected entry for this task
-    const existingRejected = await db
-      .select()
-      .from(userTasksTable)
-      .where(
-        and(
-          eq(userTasksTable.userId, userId),
-          eq(userTasksTable.taskId, taskId),
-          eq(userTasksTable.status, "Rejected"),
-        ),
-      )
-      .then((rows) => rows[0]);
+    const now = new Date();
 
-    if (existingRejected) {
-      if (existingRejected.proofImageUrl) {
-        await deleteCloudinaryImage(existingRejected.proofImageUrl);
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM ${usersTable} WHERE id = ${userId} FOR UPDATE`);
+
+      // Delete any previous rejected entry for this task
+      const [existingRejected] = await tx
+        .select()
+        .from(userTasksTable)
+        .where(
+          and(
+            eq(userTasksTable.userId, userId),
+            eq(userTasksTable.taskId, taskId),
+            eq(userTasksTable.status, "Rejected"),
+          ),
+        );
+
+      if (existingRejected) {
+        if (existingRejected.proofImageUrl) {
+          await deleteCloudinaryImage(existingRejected.proofImageUrl);
+        }
+        await tx
+          .delete(userTasksTable)
+          .where(eq(userTasksTable.id, existingRejected.id));
       }
-      await db
-        .delete(userTasksTable)
-        .where(eq(userTasksTable.id, existingRejected.id));
-    }
 
-    // Prevent re-picking the same task (In Progress, Completed, Verified, Pending Verification)
-    const existingNonRejected = await db
-      .select()
-      .from(userTasksTable)
-      .where(
-        and(
-          eq(userTasksTable.userId, userId),
-          eq(userTasksTable.taskId, taskId),
-          ne(userTasksTable.status, "Rejected"),
-        ),
-      )
-      .then((rows) => rows[0]);
+      // Prevent re-picking the same task (In Progress, Completed, Verified, Pending Verification)
+      const [existingNonRejected] = await tx
+        .select()
+        .from(userTasksTable)
+        .where(
+          and(
+            eq(userTasksTable.userId, userId),
+            eq(userTasksTable.taskId, taskId),
+            ne(userTasksTable.status, "Rejected"),
+          ),
+        );
 
-    if (existingNonRejected) {
-      return fail("You have already picked up this task", 400);
-    }
+      if (existingNonRejected) {
+        return fail("You have already picked up this task", 400);
+      }
 
-    const existingActiveTasks = await db
-      .select({ userTask: userTasksTable, task: tasksTable })
-      .from(userTasksTable)
-      .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
-      .where(
-        and(
-          eq(userTasksTable.userId, userId),
-          eq(userTasksTable.status, "In Progress"),
-          eq(tasksTable.taskType, targetTask.taskType!),
-        ),
-      );
+      const existingActiveTasks = await tx
+        .select({ userTask: userTasksTable, task: tasksTable })
+        .from(userTasksTable)
+        .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
+        .where(
+          and(
+            eq(userTasksTable.userId, userId),
+            inArray(userTasksTable.status, ['In Progress', 'Pending Verification']),
+            eq(tasksTable.taskType, targetTask.taskType!),
+          ),
+        );
 
-    if (existingActiveTasks.length > 0) {
-      return fail(
-        `You can only pick up one ${targetTask.taskType} task at a time.`,
-        400,
-      );
-    }
+      if (existingActiveTasks.length > 0) {
+        return fail(
+          `You can only pick up one ${targetTask.taskType} task at a time.`,
+          400,
+        );
+      }
 
-    await db
-      .insert(userTasksTable)
-      .values({
-        userId,
-        taskId,
-        status: "In Progress",
-        assignedAt: new Date(),
-      })
-      .returning();
+      await tx
+        .insert(userTasksTable)
+        .values({
+          userId,
+          taskId,
+          status: "In Progress",
+          assignedAt: now,
+        })
+        .returning();
+
+      return ok(null);
+    });
+
+    if (!result.success) return result;
 
     if (targetTask.isShare) {
       const shareCode = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
@@ -965,7 +973,19 @@ export const TaskService = {
       const verification = await InstagramService.findCodeInComments(postId, code, user.instagramUsername);
 
       if (verification.found) {
-        return await awardInstagramPoints(userId, task, userTask, multiplier, fingerprint);
+        return await db.transaction(async (tx) => {
+          const [userTaskLocked] = await tx
+            .select()
+            .from(userTasksTable)
+            .where(eq(userTasksTable.id, userTask.id))
+            .for("update");
+
+          if (!userTaskLocked || ['completed', 'verified', 'cancelled'].includes(userTaskLocked.status?.toLowerCase())) {
+            return fail("Task has already been completed or cancelled", 400);
+          }
+
+          return await awardInstagramPoints(tx, userId, task, userTask, multiplier, fingerprint);
+        });
       }
     } catch (error: any) {
       return fail(`Instagram API error: ${error.message}`, 500);
@@ -1139,7 +1159,18 @@ export const TaskService = {
         : null;
 
     const taskPoints = Math.round((task.points || 0) * multiplier);
-    await db.transaction(async (tx) => {
+
+    return await db.transaction(async (tx) => {
+      const [userTaskLocked] = await tx
+        .select()
+        .from(userTasksTable)
+        .where(eq(userTasksTable.id, userTask.id))
+        .for("update");
+
+      if (!userTaskLocked || ['completed', 'verified', 'cancelled'].includes(userTaskLocked.status?.toLowerCase())) {
+        return fail("Task has already been completed or cancelled", 400);
+      }
+
       await tx
         .update(userTasksTable)
         .set({
@@ -1179,14 +1210,14 @@ export const TaskService = {
           reason,
         });
       }
+
+      await ReferralService.awardReferralBonusIfEligible(userId);
+
+      const msg = isYtSubscribe(task)
+        ? "YouTube subscription verified and points awarded!"
+        : "YouTube task completed and points awarded!";
+      return ok({ message: msg });
     });
-
-    await ReferralService.awardReferralBonusIfEligible(userId);
-
-    const msg = isYtSubscribe(task)
-      ? "YouTube subscription verified and points awarded!"
-      : "YouTube task completed and points awarded!";
-    return ok({ message: msg });
   },
 
   async getCompletedTodayCount(
@@ -1241,80 +1272,88 @@ export const TaskService = {
       return ok({ allowed: false, reason: "owner", redirectUrl: targetUrl });
     }
 
-    if (fingerprint) {
-      const existingClick = await db
+    const result = await db.transaction(async (tx) => {
+      const [shareTaskRow] = await tx
         .select()
-        .from(shareClicksTable)
-        .where(
-          and(
-            eq(shareClicksTable.shareCode, shareCode),
-            eq(shareClicksTable.fingerprint, fingerprint),
-            userAgent
-              ? eq(shareClicksTable.userAgent, userAgent)
-              : sql`1=1`,
-          ),
-        );
+        .from(shareTasksTable)
+        .where(eq(shareTasksTable.shareCode, shareCode))
+        .for("update");
 
-      if (existingClick.length > 0) {
+      if (!shareTaskRow) return ok({ allowed: false, redirectUrl: targetUrl });
+
+      if (shareTaskRow.pointsAwarded) {
         return ok({
           allowed: false,
-          reason: "duplicate",
+          reason: "completed",
           redirectUrl: targetUrl,
         });
       }
-    }
 
-    if (shareTask.pointsAwarded) {
-      return ok({
-        allowed: false,
-        reason: "completed",
-        redirectUrl: targetUrl,
+      if (fingerprint) {
+        const existingClick = await tx
+          .select()
+          .from(shareClicksTable)
+          .where(
+            and(
+              eq(shareClicksTable.shareCode, shareCode),
+              eq(shareClicksTable.fingerprint, fingerprint),
+              userAgent
+                ? eq(shareClicksTable.userAgent, userAgent)
+                : sql`1=1`,
+            ),
+          );
+
+        if (existingClick.length > 0) {
+          return ok({
+            allowed: false,
+            reason: "duplicate",
+            redirectUrl: targetUrl,
+          });
+        }
+      }
+
+      await tx.insert(shareClicksTable).values({
+        shareCode,
+        visitorIp: ip || null,
+        fingerprint: fingerprint || null,
+        userAgent: userAgent || null,
       });
-    }
 
-    await db.insert(shareClicksTable).values({
-      shareCode,
-      visitorIp: ip || null,
-      fingerprint: fingerprint || null,
-      userAgent: userAgent || null,
-    });
+      const [updated] = await tx
+        .update(shareTasksTable)
+        .set({
+          clickCount: sql`${shareTasksTable.clickCount} + 1`,
+          uniqueClicks: fingerprint
+            ? sql`${shareTasksTable.uniqueClicks} + 1`
+            : sql`${shareTasksTable.uniqueClicks}`,
+        })
+        .where(eq(shareTasksTable.shareCode, shareCode))
+        .returning();
 
-    const [updated] = await db
-      .update(shareTasksTable)
-      .set({
-        clickCount: sql`${shareTasksTable.clickCount} + 1`,
-        uniqueClicks: fingerprint
-          ? sql`${shareTasksTable.uniqueClicks} + 1`
-          : sql`${shareTasksTable.uniqueClicks}`,
-      })
-      .where(eq(shareTasksTable.shareCode, shareCode))
-      .returning();
+      if (
+        updated &&
+        !updated.pointsAwarded &&
+        updated.uniqueClicks >= updated.clickThreshold &&
+        updated.userId != null &&
+        updated.taskId != null
+      ) {
+        const [userTask] = await tx
+          .select()
+          .from(userTasksTable)
+          .where(
+            and(
+              eq(userTasksTable.userId, updated.userId),
+              eq(userTasksTable.taskId, updated.taskId),
+              eq(userTasksTable.status, "In Progress"),
+            ),
+          );
 
-    if (
-      updated &&
-      !updated.pointsAwarded &&
-      updated.uniqueClicks >= updated.clickThreshold &&
-      updated.userId != null &&
-      updated.taskId != null
-    ) {
-      const [userTask] = await db
-        .select()
-        .from(userTasksTable)
-        .where(
-          and(
-            eq(userTasksTable.userId, updated.userId),
-            eq(userTasksTable.taskId, updated.taskId),
-            eq(userTasksTable.status, "In Progress"),
-          ),
-        );
+        const [task] = await tx
+          .select({ points: tasksTable.points })
+          .from(tasksTable)
+          .where(eq(tasksTable.id, updated.taskId));
 
-      const [task] = await db
-        .select({ points: tasksTable.points })
-        .from(tasksTable)
-        .where(eq(tasksTable.id, updated.taskId));
-
-      if (userTask) {
-        await db.transaction(async (tx) => {
+        if (userTask) {
           await tx
             .update(userTasksTable)
             .set({ status: "Completed", completedAt: new Date() })
@@ -1330,28 +1369,36 @@ export const TaskService = {
             .update(shareTasksTable)
             .set({ pointsAwarded: true, completedAt: new Date() })
             .where(eq(shareTasksTable.shareCode, shareCode));
-        });
+        }
       }
-    }
 
-    return ok({ allowed: true, redirectUrl: targetUrl });
+      return ok({ allowed: true, redirectUrl: targetUrl });
+    });
+
+    return result;
   },
 
   async setOwnerFingerprint(
+    userId: number,
     shareCode: string,
     fingerprint: string,
   ): Promise<ServiceResult<{ success: true }>> {
     const [shareTask] = await db
       .select()
       .from(shareTasksTable)
-      .where(eq(shareTasksTable.shareCode, shareCode));
+      .where(
+        and(
+          eq(shareTasksTable.shareCode, shareCode),
+          eq(shareTasksTable.userId, userId),
+        ),
+      );
 
-    if (!shareTask) return fail("Share task not found", 404);
+    if (!shareTask) return fail("Share task not found or unauthorized", 404);
 
     await db
       .update(shareTasksTable)
       .set({ ownerFingerprint: fingerprint })
-      .where(eq(shareTasksTable.shareCode, shareCode));
+      .where(eq(shareTasksTable.id, shareTask.id));
 
     return ok({ success: true });
   },
@@ -1871,6 +1918,7 @@ function mapTasksToItems(ctx: MapTasksContext): UserTaskItem[] {
 }
 
 async function awardFacebookPoints(
+  tx: any,
   userId: number,
   task: Task,
   userTask: UserTask,
@@ -1883,41 +1931,39 @@ async function awardFacebookPoints(
       ? Math.round((Date.now() - new Date(userTask.assignedAt).getTime()) / 1000)
       : null;
 
-  await db.transaction(async (tx) => {
+  await tx
+    .update(userTasksTable)
+    .set({
+      status: "Completed",
+      completedAt: new Date(),
+      submissionFingerprint: fingerprint ?? null,
+      completionDurationSeconds: completionDurationSeconds ?? null,
+    })
+    .where(eq(userTasksTable.id, userTask.id));
+
+  const [currentUser] = await tx
+    .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .for("update");
+
+  if (currentUser) {
     await tx
-      .update(userTasksTable)
+      .update(usersTable)
       .set({
-        status: "Completed",
-        completedAt: new Date(),
-        submissionFingerprint: fingerprint ?? null,
-        completionDurationSeconds: completionDurationSeconds ?? null,
+        points: sql`${usersTable.points} + ${taskPoints}`,
+        lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
+        completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
-      .where(eq(userTasksTable.id, userTask.id));
+      .where(eq(usersTable.id, userId));
 
-    const [currentUser] = await tx
-      .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
-      .from(usersTable)
-      .where(eq(usersTable.id, userId))
-      .for("update");
-
-    if (currentUser) {
-      await tx
-        .update(usersTable)
-        .set({
-          points: sql`${usersTable.points} + ${taskPoints}`,
-          lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
-          completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
-        })
-        .where(eq(usersTable.id, userId));
-
-      await tx.insert(pointsLogTable).values({
-        userId,
-        taskId: task.id,
-        points: taskPoints,
-        reason: `Facebook task: ${task.title}`,
-      });
-    }
-  });
+    await tx.insert(pointsLogTable).values({
+      userId,
+      taskId: task.id,
+      points: taskPoints,
+      reason: `Facebook task: ${task.title}`,
+    });
+  }
 
   await ReferralService.awardReferralBonusIfEligible(userId);
 
@@ -1928,6 +1974,7 @@ async function awardFacebookPoints(
 }
 
 async function awardInstagramPoints(
+  tx: any,
   userId: number,
   task: Task,
   userTask: UserTask,
@@ -1940,41 +1987,39 @@ async function awardInstagramPoints(
       ? Math.round((Date.now() - new Date(userTask.assignedAt).getTime()) / 1000)
       : null;
 
-  await db.transaction(async (tx) => {
+  await tx
+    .update(userTasksTable)
+    .set({
+      status: "Completed",
+      completedAt: new Date(),
+      submissionFingerprint: fingerprint ?? null,
+      completionDurationSeconds: completionDurationSeconds ?? null,
+    })
+    .where(eq(userTasksTable.id, userTask.id));
+
+  const [currentUser] = await tx
+    .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .for("update");
+
+  if (currentUser) {
     await tx
-      .update(userTasksTable)
+      .update(usersTable)
       .set({
-        status: "Completed",
-        completedAt: new Date(),
-        submissionFingerprint: fingerprint ?? null,
-        completionDurationSeconds: completionDurationSeconds ?? null,
+        points: sql`${usersTable.points} + ${taskPoints}`,
+        lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
+        completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
-      .where(eq(userTasksTable.id, userTask.id));
+      .where(eq(usersTable.id, userId));
 
-    const [currentUser] = await tx
-      .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
-      .from(usersTable)
-      .where(eq(usersTable.id, userId))
-      .for("update");
-
-    if (currentUser) {
-      await tx
-        .update(usersTable)
-        .set({
-          points: sql`${usersTable.points} + ${taskPoints}`,
-          lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
-          completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
-        })
-        .where(eq(usersTable.id, userId));
-
-      await tx.insert(pointsLogTable).values({
-        userId,
-        taskId: task.id,
-        points: taskPoints,
-        reason: `Instagram task: ${task.title}`,
-      });
-    }
-  });
+    await tx.insert(pointsLogTable).values({
+      userId,
+      taskId: task.id,
+      points: taskPoints,
+      reason: `Instagram task: ${task.title}`,
+    });
+  }
 
   await ReferralService.awardReferralBonusIfEligible(userId);
 

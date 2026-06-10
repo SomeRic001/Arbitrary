@@ -64,11 +64,9 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                         return null;
                     }
 
-                    // Google account check
+                    // Google account check - use generic message to prevent enumeration
                     if (!dbUser.password) {
-                        throw new Error(
-                            "This email is linked to a Google account. Please sign in with Google.",
-                        );
+                        return null;
                     }
 
                     // Compare password
@@ -96,9 +94,6 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                         image: dbUser.image,
                     };
                 } catch (error) {
-                    if (error instanceof Error && error.message.includes("linked to a Google account")) {
-                        throw error;
-                    }
                     console.error("authorize error:", error);
                     return null;
                 }
@@ -278,11 +273,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
                 session.user.phoneNumber = token.phoneNumber as string;
                 session.user.googleId = token.googleId as string;
                 session.user.instagramUsername = token.instagramUsername as string | undefined;
-                session.facebookAccessToken = token.facebookAccessToken as string;
-                session.facebookId = token.facebookId as string;
-                session.googleAccessToken = token.googleAccessToken as string;
-                session.googleRefreshToken = token.googleRefreshToken as string;
-                session.googleTokenExpiry = token.googleTokenExpiry as number;
+                session.user.facebookId = token.facebookId as string;
             }
             return session;
         },

@@ -66,7 +66,23 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   } catch {
-    // Allow request through if middleware fails
+    // Fail closed: on error, deny access to protected routes
+    const pathname = request.nextUrl.pathname;
+    const isProtected = protectedRoutes.some((route) =>
+      pathname === route || pathname.startsWith(route + "/"),
+    );
+    const isAdminApi = pathname.startsWith("/api/admin");
+    const isAdminRoute = pathname.startsWith("/admin");
+
+    if (isAdminApi) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (isAdminRoute) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    if (isProtected) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
   }
 
   return NextResponse.next();

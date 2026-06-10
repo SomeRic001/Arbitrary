@@ -18,12 +18,8 @@ declare module "next-auth" {
             instagramUsername?: string | null;
             googleId?: string | null;
             facebookId?: string;
+            facebookId?: string;
         } & DefaultSession["user"];
-        facebookAccessToken?: string;
-        facebookId?: string;
-        googleAccessToken?: string;
-        googleRefreshToken?: string;
-        googleTokenExpiry?: number;
     }
 
 }

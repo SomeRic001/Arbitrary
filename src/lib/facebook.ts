@@ -106,7 +106,7 @@ export async function findCodeInComments(
     }
 
     const found = Array.isArray(data.data) && data.data.some(
-        (c: { message?: string }) =>
+        (c: { message?: string; from?: { id: string; name: string } }) =>
             c.message && c.message.includes(code)
     );
 

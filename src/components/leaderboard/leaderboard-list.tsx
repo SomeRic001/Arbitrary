@@ -1,24 +1,46 @@
+// leaderboard-list.tsx — redesigned + enhanced animations
+
 "use client";
 
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import type { TopUser } from "@/src/db/user-queries";
+import Image from "next/image";
 
 interface LeaderboardListProps {
   users: TopUser[];
   currentUserId?: number;
 }
 
-// ─── Tier System ──────────────────────────────────────────────
-const TIER_META: Record<string, { label: string; icon: string; color: string }> = {
-  bronze: { label: "Bronze", icon: "🥉", color: "#CD7F32" },
-  silver: { label: "Silver", icon: "🥈", color: "#A8A8A8" },
-  gold: { label: "Gold", icon: "🥇", color: "#FACC15" },
-  elite: { label: "Arbitrary Elite", icon: "💎", color: "#6366f1" },
+const TIER_META: Record<
+  string,
+  { label: string; color: string; bg: string; border: string }
+> = {
+  bronze: {
+    label: "Bronze",
+    color: "#92400E",
+    bg: "#FEF3C7",
+    border: "#FCD34D",
+  },
+  silver: {
+    label: "Silver",
+    color: "#475569",
+    bg: "#F1F5F9",
+    border: "#CBD5E1",
+  },
+  gold: { label: "Gold", color: "#A16207", bg: "#FEF9C3", border: "#FDE047" },
+  elite: { label: "Elite", color: "#5B21B6", bg: "#EDE9FE", border: "#C4B5FD" },
 };
 
-// ─── Helpers ──────────────────────────────────────────────────
-function getInitials(name: string | null): string {
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+const TOP_BG = ["bg-[#FEFCE8]", "bg-[#FAFAFA]", "bg-[#FFF8F3]"];
+
+// Easing curves
+const EASE_OUT_QUART = [0.25, 1, 0.5, 1] as const;
+const EASE_SPRING = { type: "spring", stiffness: 380, damping: 30 } as const;
+
+function getInitials(name: string | null) {
   if (!name) return "?";
   return name
     .split(" ")
@@ -28,154 +50,58 @@ function getInitials(name: string | null): string {
     .slice(0, 2);
 }
 
-const MEDAL_EMOJIS = ["🥇", "🥈", "🥉"];
-const TOP_BORDER = ["border-[#FACC15]", "border-zinc-300", "border-amber-700"];
-
-// ─── Sub-components ───────────────────────────────────────────
-
 function Avatar({
   src,
   name,
   rank,
+  isMe,
 }: {
   src: string | null;
   name: string | null;
   rank: number;
+  isMe: boolean;
 }) {
-  const isTop3 = rank <= 3;
-  const border = isTop3 ? TOP_BORDER[rank - 1] : "border-black/10";
+  const ringStyles: Record<number, string> = {
+    1: "border-[#FDE047] bg-[#FEF9C3] text-[#A16207]",
+    2: "border-[#CBD5E1] bg-[#F1F5F9] text-[#475569]",
+    3: "border-[#FCD34D] bg-[#FEF3C7] text-[#92400E]",
+  };
+  const base = isMe
+    ? "border-[#FACC15] bg-[#FEF9C3] text-[#A16207]"
+    : (ringStyles[rank] ?? "border-black/10 bg-zinc-100 text-zinc-500");
+
+  const cls = `w-9 h-9 rounded-full border-[1.5px] flex-shrink-0 flex items-center justify-center text-[11px] font-medium ${base}`;
 
   if (src) {
     return (
-      <img
+      <Image
         src={src}
         alt={name ?? "User"}
-        className={`w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 ${border} flex-shrink-0`}
+        width={36}
+        height={36}
+        className={`w-9 h-9 rounded-full object-cover border-[1.5px] flex-shrink-0 ${base}`}
       />
     );
   }
-
-  return (
-    <div
-      className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 ${border} flex-shrink-0 bg-zinc-100 flex items-center justify-center text-[10px] md:text-xs font-black uppercase tracking-wider`}
-    >
-      {getInitials(name)}
-    </div>
-  );
-}
-
-function RankBadge({ rank }: { rank: number }) {
-  if (rank <= 3) {
-    return (
-      <span className="text-xl md:text-2xl flex-shrink-0 w-8 text-center">
-        {MEDAL_EMOJIS[rank - 1]}
-      </span>
-    );
-  }
-  return (
-    <span className="text-sm md:text-base font-black text-zinc-400 w-8 text-center flex-shrink-0">
-      #{rank}
-    </span>
-  );
+  return <div className={cls}>{getInitials(name)}</div>;
 }
 
 function TierBadge({ tier }: { tier: string }) {
   const meta = TIER_META[tier] ?? TIER_META.bronze;
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex-shrink-0"
-        style={{
-          backgroundColor: `${meta.color}12`,
-          borderColor: `${meta.color}30`,
-          color: meta.color,
-        }}
-      >
-        <span className="text-xs">{meta.icon}</span>
-        <span className="hidden md:inline">{meta.label}</span>
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+      style={{
+        background: meta.bg,
+        color: meta.color,
+        border: `0.5px solid ${meta.border}`,
+      }}
+    >
+      {meta.label}
     </span>
   );
 }
 
-function StatPill({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color?: string;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-zinc-50 border border-black/5 text-[10px] md:text-xs font-bold uppercase tracking-wider"
-      style={
-        color
-          ? {
-              backgroundColor: `${color}15`,
-              borderColor: `${color}30`,
-              color,
-            }
-          : undefined
-      }
-    >
-      {label === "tasks" && (
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      )}
-      {label === "referrals" && (
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      )}
-      <span>{value}</span>
-      <span className="hidden md:inline text-zinc-400 font-medium normal-case">{label}</span>
-    </span>
-  );
-}
-
-// ─── Shine overlay for top 3 ──────────────────────────────────
-function ShineOverlay() {
-  return (
-    <motion.div
-      className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden"
-      aria-hidden
-    >
-      <motion.div
-        className="absolute inset-0 w-[200%]"
-        style={{
-          background:
-            "linear-gradient(105deg, transparent 30%, rgba(250,204,21,0.08) 45%, rgba(250,204,21,0.15) 50%, rgba(250,204,21,0.08) 55%, transparent 70%)",
-        }}
-        animate={{ x: ["-50%", "50%"] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-      />
-    </motion.div>
-  );
-}
-
-// ─── Row component ────────────────────────────────────────────
 function LeaderboardRow({
   user,
   rank,
@@ -188,184 +114,245 @@ function LeaderboardRow({
   index: number;
 }) {
   const isTop3 = rank <= 3;
+  const rowBg = isCurrentUser
+    ? "bg-[#FFFBEB] border-l-2 border-l-[#FACC15]"
+    : isTop3
+      ? TOP_BG[rank - 1]
+      : "";
+
+  // Top-3 rows slide in from the left with a longer travel; rest fade up normally
+  const initial = isTop3
+    ? { opacity: 0, x: -32, scale: 0.98 }
+    : { opacity: 0, y: 20 };
+
+  const animate = isCurrentUser
+    ? { opacity: 1, x: 0, y: 0, scale: [1, 1.012, 1] } // subtle pulse for "You" row
+    : { opacity: 1, x: 0, y: 0, scale: 1 };
+
+  const transition = isTop3
+    ? {
+        duration: 0.55,
+        delay: index * 0.08, // top-3 stagger is more deliberate
+        ease: EASE_OUT_QUART,
+        scale: { duration: 0.4, times: [0, 0.5, 1] },
+      }
+    : {
+        duration: 0.38,
+        delay: Math.min(0.24 + index * 0.04, 1.0), // rest starts after top-3 lands
+        ease: EASE_OUT_QUART,
+      };
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: Math.min(index * 0.035, 1.2), ease: "easeOut", layout: { duration: 0.3 } }}
-      className={[
-        "relative transition-all duration-300",
-        isCurrentUser ? "bg-[#FACC15]/10 border-b-2 border-[#FACC15]/30" : "",
-        "hover:bg-zinc-50 hover:shadow-lg hover:scale-[1.005] hover:z-10",
-        isTop3 ? "" : "border-b border-black/5",
-      ].join(" ")}
+      initial={initial}
+      animate={animate}
+      exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
+      transition={transition}
       whileHover={
         isTop3
-          ? { scale: 1.015, transition: { duration: 0.2 } }
-          : { x: 4, transition: { duration: 0.15 } }
+          ? { x: 5, transition: { ...EASE_SPRING } }
+          : { x: 3, transition: { ...EASE_SPRING } }
       }
+      className={[
+        "grid grid-cols-[44px_40px_1fr_auto] gap-3 px-4 py-3 items-center",
+        "border-b border-black/5 last:border-b-0",
+        "hover:bg-zinc-50 transition-colors cursor-default",
+        rowBg,
+      ].join(" ")}
     >
-      {/* Gold/Silver/Bronze glow for top 3 */}
-      {isTop3 && <ShineOverlay />}
-
-      {/* Main row: rank + avatar + name */}
-      <div className="grid grid-cols-[32px_32px_1fr] md:grid-cols-[48px_48px_1fr_auto] gap-2 md:gap-4 px-3 md:px-6 pt-3 md:pt-5 items-center">
-        {/* Rank */}
-        <RankBadge rank={rank} />
-
-        {/* Avatar */}
-        <Avatar src={user.image} name={user.name} rank={rank} />
-
-        {/* Name + points + tier */}
-        <div className="flex flex-col min-w-0 relative z-10">
-          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-            <span
-              className={`font-black uppercase tracking-tight truncate text-sm md:text-base ${
-                isCurrentUser ? "text-[#FACC15]" : isTop3 ? "text-black" : "text-zinc-700"
-              }`}
-            >
-              {user.name ?? "Anonymous"}
-              {isCurrentUser && (
-                <span className="ml-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-[#FACC15]">
-                  (You)
-                </span>
-              )}
-            </span>
-            <TierBadge tier={user.tier} />
-          </div>
-          <span className="text-xs font-bold text-zinc-400 flex items-center gap-1">
-            <span className="text-[#FACC15]">✦</span>
-            <span>{user.points.toLocaleString()} pts</span>
+      {/* Rank */}
+      <motion.div
+        className="flex items-center justify-center w-11"
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{
+          ...EASE_SPRING,
+          delay: isTop3
+            ? index * 0.08 + 0.15
+            : Math.min(0.24 + index * 0.04 + 0.1, 1.1),
+        }}
+      >
+        {rank <= 3 ? (
+          <span className="text-xl">{MEDALS[rank - 1]}</span>
+        ) : (
+          <span className="text-xs font-medium text-zinc-400 tabular-nums">
+            #{rank}
           </span>
-        </div>
+        )}
+      </motion.div>
 
-        {/* Desktop stats */}
-        <div className="hidden md:flex items-center gap-2 justify-end flex-wrap relative z-10">
-          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
-          <StatPill label="referrals" value={user.referrals} />
+      {/* Avatar */}
+      <Avatar
+        src={user.image}
+        name={user.name}
+        rank={rank}
+        isMe={isCurrentUser}
+      />
+
+      {/* Name + tier + pts */}
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span
+            className={`text-sm font-medium truncate ${isCurrentUser ? "text-[#A16207]" : "text-zinc-800"}`}
+          >
+            {user.name ?? "Anonymous"}
+          </span>
+          {isCurrentUser && (
+            <span className="text-[10px] font-medium text-[#A16207] bg-[#FEF9C3] border border-[#FDE047] rounded px-1 py-0.5">
+              You
+            </span>
+          )}
+          <TierBadge tier={user.tier} />
         </div>
+        <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1">
+          <span className="text-[#FACC15] text-[8px]">✦</span>
+          {user.points.toLocaleString()} pts
+        </p>
       </div>
 
-      {/* Mobile stats row */}
-      <div className="grid md:hidden grid-cols-[32px_32px_1fr] gap-2 px-3 pb-3">
-        <div />
-        <div />
-        <div className="flex items-center gap-2 flex-wrap relative z-10">
-          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
-          <StatPill label="referrals" value={user.referrals} />
-        </div>
-      </div>
+      {/* Stats — count-up feel via staggered entrance */}
+      <motion.div
+        className="flex items-center gap-3 justify-end"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{
+          duration: 0.3,
+          delay: isTop3
+            ? index * 0.08 + 0.3
+            : Math.min(0.24 + index * 0.04 + 0.2, 1.2),
+        }}
+      >
+        <span className="flex items-center gap-1 text-xs text-zinc-500">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-[#A16207]"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span className="font-medium text-[#A16207]">{user.tasks}</span>
+          <span className="hidden md:inline text-zinc-400">tasks</span>
+        </span>
+        <span className="flex items-center gap-1 text-xs text-zinc-500">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span className="font-medium">{user.referrals}</span>
+          <span className="hidden md:inline text-zinc-400">refs</span>
+        </span>
+      </motion.div>
     </motion.div>
   );
 }
 
-// ─── Sticky current-user row ──────────────────────────────────
-function CurrentUserStickyRow({
-  user,
-  rank,
-}: {
-  user: TopUser;
-  rank: number;
-}) {
+function CurrentUserStickyRow({ user, rank }: { user: TopUser; rank: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 1.5, ease: "easeOut" }}
-      className="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t-2 border-[#FACC15]/40 shadow-[0_-8px_30px_rgba(250,204,21,0.12)]"
+      exit={{ opacity: 0, y: 20 }}
+      transition={{ duration: 0.45, ease: EASE_OUT_QUART }}
+      className="sticky bottom-0 bg-[#FFFBEB] border-t border-[#FACC15]/50 shadow-[0_-4px_20px_rgba(250,204,21,0.1)]"
     >
-      <div className="grid grid-cols-[32px_32px_1fr] md:grid-cols-[48px_48px_1fr_auto] gap-2 md:gap-4 px-3 md:px-6 pt-3 md:pt-5 items-center">
-        {/* Rank */}
-        <RankBadge rank={rank} />
-
-        {/* Avatar */}
-        <Avatar src={user.image} name={user.name} rank={rank} />
-
-        {/* Name + points */}
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-            <span className="font-black uppercase tracking-tight truncate text-sm md:text-base text-[#FACC15]">
+      <div className="grid grid-cols-[44px_40px_1fr_auto] gap-3 px-4 py-3 items-center border-l-2 border-l-[#FACC15]">
+        <div className="flex items-center justify-center w-11">
+          {rank <= 3 ? (
+            <span className="text-xl">{MEDALS[rank - 1]}</span>
+          ) : (
+            <span className="text-xs font-medium text-zinc-400">#{rank}</span>
+          )}
+        </div>
+        <Avatar src={user.image} name={user.name} rank={rank} isMe />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-medium text-[#A16207] truncate">
               {user.name ?? "Anonymous"}
-              <span className="ml-1.5 text-[9px] font-black uppercase tracking-[0.15em]">
-                (You)
-              </span>
+            </span>
+            <span className="text-[10px] font-medium text-[#A16207] bg-[#FEF9C3] border border-[#FDE047] rounded px-1 py-0.5">
+              You
             </span>
             <TierBadge tier={user.tier} />
           </div>
-          <span className="text-xs font-bold text-zinc-400 flex items-center gap-1">
-            <span className="text-[#FACC15]">✦</span>
-            <span>{user.points.toLocaleString()} pts</span>
+          <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1">
+            <span className="text-[#FACC15] text-[8px]">✦</span>
+            {user.points.toLocaleString()} pts
+          </p>
+        </div>
+        <div className="flex items-center gap-3 justify-end">
+          <span className="flex items-center gap-1 text-xs">
+            <span className="font-medium text-[#A16207]">{user.tasks}</span>
+            <span className="text-zinc-400 hidden md:inline">tasks</span>
           </span>
-        </div>
-
-        {/* Desktop stats */}
-        <div className="hidden md:flex items-center gap-2 justify-end flex-wrap">
-          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
-          <StatPill label="referrals" value={user.referrals} />
-        </div>
-      </div>
-
-      {/* Mobile stats row */}
-      <div className="grid md:hidden grid-cols-[32px_32px_1fr] gap-2 px-3 pb-3">
-        <div />
-        <div />
-        <div className="flex items-center gap-2 flex-wrap">
-          <StatPill label="tasks" value={user.tasks} color="#FACC15" />
-          <StatPill label="referrals" value={user.referrals} />
+          <span className="flex items-center gap-1 text-xs">
+            <span className="font-medium">{user.referrals}</span>
+            <span className="text-zinc-400 hidden md:inline">refs</span>
+          </span>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────
 export default function LeaderboardList({
   users,
   currentUserId,
 }: LeaderboardListProps) {
   const [search, setSearch] = useState("");
 
-  // Compute ranks (1-indexed)
   const rankedUsers = useMemo(
     () => users.map((u, i) => ({ ...u, rank: i + 1 })),
     [users],
   );
 
-  // Filtered list based on search
   const filtered = useMemo(() => {
     if (!search.trim()) return rankedUsers;
     const q = search.toLowerCase();
     return rankedUsers.filter(
-      (u) =>
-        u.name?.toLowerCase().includes(q) ||
-        u.id.toString().includes(q),
+      (u) => u.name?.toLowerCase().includes(q) || u.id.toString().includes(q),
     );
   }, [rankedUsers, search]);
 
-  // Current user data
   const currentUserData = useMemo(() => {
     if (!currentUserId) return null;
-    // Find the user and their true rank in the full list
     const idx = rankedUsers.findIndex((u) => u.id === currentUserId);
-    if (idx === -1) return null;
-    return rankedUsers[idx];
+    return idx === -1 ? null : rankedUsers[idx];
   }, [rankedUsers, currentUserId]);
 
-  // Is current user visible in the filtered list?
   const currentUserVisible =
     currentUserData && filtered.some((u) => u.id === currentUserId);
 
   return (
     <div className="w-full flex flex-col">
-      {/* ── Search bar ─────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-xl border-b border-black/5 px-4 md:px-6 py-4">
+      {/* Search */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: EASE_OUT_QUART }}
+        className="sticky top-0 z-20 bg-white/95 backdrop-blur-lg border-b border-black/5 px-4 py-3"
+      >
         <div className="relative">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
-            width="16"
-            height="16"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -381,73 +368,101 @@ export default function LeaderboardList({
             placeholder="Search by name or ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-black/10 rounded-xl text-sm font-medium text-black placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#FACC15]/40 focus:border-[#FACC15]/50 transition-all"
+            className="w-full pl-9 pr-9 py-2 bg-zinc-50 border border-black/8 rounded-lg text-sm text-black placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#FACC15]/30 focus:border-[#FACC15]/40 transition-all"
           />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          <AnimatePresence>
+            {search && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                transition={{ duration: 0.15 }}
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
               >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
-          )}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
 
-      {/* ── Header row ─────────────────────────────────────── */}
-      <div className="hidden md:grid grid-cols-[48px_48px_1fr_auto] gap-4 px-6 py-4 border-b border-black/5 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">
+      {/* Column header */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+        className="hidden md:grid grid-cols-[44px_40px_1fr_auto] gap-3 px-4 py-2.5 border-b border-black/5"
+      >
         <span />
         <span />
-        <span>User</span>
-        <span className="pr-2">Stats</span>
-      </div>
+        <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">
+          User
+        </span>
+        <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">
+          Stats
+        </span>
+      </motion.div>
 
-      {/* ── Rows ───────────────────────────────────────────── */}
-      <div className="divide-y divide-black/5">
-        {filtered.map((user, index) => (
-          <LeaderboardRow
-            key={user.id}
-            user={user}
-            rank={user.rank}
-            index={index}
-            isCurrentUser={user.id === currentUserId}
+      {/* Rows */}
+      <AnimatePresence mode="popLayout">
+        <div key="rows">
+          {filtered.map((user, index) => (
+            <LeaderboardRow
+              key={user.id}
+              user={user}
+              rank={user.rank}
+              index={index}
+              isCurrentUser={user.id === currentUserId}
+            />
+          ))}
+        </div>
+      </AnimatePresence>
+
+      {/* Empty state */}
+      <AnimatePresence>
+        {filtered.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.25 }}
+            className="text-center py-16 text-zinc-400"
+          >
+            <motion.p
+              animate={{ rotate: [0, -10, 10, -6, 6, 0] }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-3xl mb-3"
+            >
+              🔍
+            </motion.p>
+            <p className="text-sm font-medium">
+              No users match &quot;{search}&quot;
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sticky current user */}
+      <AnimatePresence>
+        {currentUserData && !currentUserVisible && (
+          <CurrentUserStickyRow
+            user={currentUserData}
+            rank={currentUserData.rank}
           />
-        ))}
-      </div>
-
-      {/* ── Empty state ────────────────────────────────────── */}
-      {filtered.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-20 text-zinc-400"
-        >
-          <p className="text-4xl mb-4">🔍</p>
-          <p className="font-black uppercase tracking-widest text-sm">
-            No users match &quot;{search}&quot;
-          </p>
-        </motion.div>
-      )}
-
-      {/* ── Current user sticky row (if not visible in list) ─ */}
-      {currentUserData && !currentUserVisible && (
-        <CurrentUserStickyRow
-          user={currentUserData}
-          rank={currentUserData.rank}
-        />
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
