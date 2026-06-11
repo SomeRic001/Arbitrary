@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
 
       const pool = getListenerPool();
       const client = await pool.connect();
+      let released = false;
 
       try {
         await client.query("LISTEN admin_logs");
@@ -91,7 +92,7 @@ export async function GET(req: NextRequest) {
         await new Promise<void>((resolve) => {
           req.signal.addEventListener("abort", () => {
             clearInterval(keepAlive);
-            client.release();
+            if (!released) { released = true; client.release(); }
             resolve();
           });
         });
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
         try {
           await client.query("UNLISTEN admin_logs");
         } catch { }
-        client.release();
+        if (!released) { released = true; client.release(); }
       }
     } catch (err) {
       console.error("[SSE] stream error:", err);

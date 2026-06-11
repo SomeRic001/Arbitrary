@@ -313,6 +313,8 @@ export const adminActivityLogsTable = pgTable("admin_activity_logs", {
     description: text("description").notNull(),
     entityType: varchar("entity_type", { length: 50 }).notNull(),
     entityId: integer("entity_id"),
+    metadata: jsonb("metadata"),
+    ipAddress: varchar("ip_address", { length: 45 }),
     logLevel: varchar("log_level", { length: 20 }).notNull().default("INFO"),
     createdAt: timestamp("created_at").defaultNow(),
 });

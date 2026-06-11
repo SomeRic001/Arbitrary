@@ -43,8 +43,8 @@ async function migrateStuckFacebookTasks() {
                     // We don't have the facebookId here, so we rely on the code check
                     // (Most users who are stuck were missed by pagination, so this should find them)
                     const result = await TaskService.completeFacebookTask(
-                        row.userId,
-                        row.taskId
+                        row.userId!,
+                        row.taskId!
                     );
 
                     if (result.success) {
@@ -75,7 +75,7 @@ async function migrateStuckFacebookTasks() {
         console.error("❌ Migration failed:", error);
         process.exit(1);
     } finally {
-        await db.close(); // Assuming db is a pool or client that can be closed
+        await db.$client.end();
     }
 }
 

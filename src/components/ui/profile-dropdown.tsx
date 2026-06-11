@@ -59,7 +59,7 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
 
   const handleProfileClick = () => {
     setIsOpen(false);
-    if (session?.user?.role === "ADMIN") {
+    if (session?.user?.role === "ADMIN" || session?.user?.role === "admin") {
       router.push("/admin/profile");
     } else {
       router.push("/profile");

@@ -12,21 +12,6 @@ interface AdminSidebarProps {
   onClose?: () => void;
 }
 
-<<<<<<< Updated upstream
-const sidebarItems: { label: string; href: string | null }[] = [
-  { label: "Overview", href: "/admin/dashboard" },
-  { label: "Manage Events", href: "/admin/dashboard/events" },
-  { label: "Manage Records", href: "/admin/dashboard/records" },
-  { label: "Ticket Scanner", href: "/admin/tickets/scanner" },
-  { label: "Manage Tasks", href: "/admin/dashboard/tasks" },
-  { label: "User Submissions", href: "/admin/dashboard/submissions" },
-  { label: "Fraud Detection", href: "/admin/dashboard/fraud" },
-  { label: "Analytics", href: "/admin/dashboard/analytics" },
-  { label: "Our Work", href: "/admin/dashboard/partners" },
-  { label: "Team Members", href: "/admin/dashboard/team-members" },
-  { label: "About Content", href: "/admin/dashboard/about" },
-  { label: "Settings", href: null },
-=======
 const sidebarGroups = [
   {
     heading: "General",
@@ -195,7 +180,7 @@ const sidebarGroups = [
     items: [
       {
         label: "Our Work",
-        href: null,
+        href: "/admin/dashboard/partners",
         icon: (
           <svg
             className="w-4 h-4"
@@ -214,7 +199,7 @@ const sidebarGroups = [
       },
       {
         label: "Team Members",
-        href: null,
+        href: "/admin/dashboard/team-members",
         icon: (
           <svg
             className="w-4 h-4"
@@ -228,6 +213,15 @@ const sidebarGroups = [
               strokeWidth={2}
               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
             />
+          </svg>
+        ),
+      },
+      {
+        label: "About Content",
+        href: "/admin/dashboard/about",
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         ),
       },
@@ -258,7 +252,6 @@ const sidebarGroups = [
       },
     ],
   },
->>>>>>> Stashed changes
 ];
 
 const AdminSidebar = ({
