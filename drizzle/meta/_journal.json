@@ -37,5 +37,19 @@
       "tag": "0010_add_admin_activity_logs",
       "breakpoints": true
     },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1760000000000,
+      "tag": "0011_evolve_admin_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1760000000001,
+      "tag": "0012_retention_cleanup",
+      "breakpoints": true
+    }
   ]
 }

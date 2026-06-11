@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Pencil, Check } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Pencil, Check, ExternalLink } from "lucide-react";
 import DashboardShell from "@/src/app/admin/dashboard/_components/dashboard-shell";
 
 interface ProfileUser {
@@ -26,10 +26,34 @@ interface ActivityEntry {
   id: number;
   action: string;
   description: string;
+  logLevel: string;
   entityType: string;
   entityId: number | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
   createdAt: string | null;
 }
+
+const LOG_LEVEL_STYLES: Record<string, string> = {
+  INFO: "border-l-green-500",
+  WARNING: "border-l-yellow-500",
+  CRITICAL: "border-l-red-500",
+};
+
+const LOG_LEVEL_DOTS: Record<string, string> = {
+  INFO: "bg-green-500",
+  WARNING: "bg-yellow-500",
+  CRITICAL: "bg-red-500",
+};
+
+const ENTITY_ROUTES: Record<string, string> = {
+  event: "/admin/dashboard/events",
+  task: "/admin/dashboard/tasks",
+  user: "/admin/dashboard/users",
+  ticket: "/admin/dashboard/tickets",
+  submission: "/admin/dashboard/submissions",
+  record: "/admin/dashboard/records",
+};
 
 export default function AdminProfilePage() {
   const [user, setUser] = useState<ProfileUser | null>(null);
@@ -76,7 +100,23 @@ export default function AdminProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSave = async () => {
+  useEffect(() => {
+    const es = new EventSource("/api/admin/activity-stream");
+
+    es.addEventListener("log", (e: MessageEvent) => {
+      try {
+        const log = JSON.parse(e.data);
+        setActivity((prev) => {
+          if (prev.some((a) => a.id === log.id)) return prev;
+          return [log, ...prev].slice(0, 100);
+        });
+      } catch {}
+    });
+
+    return () => es.close();
+  }, []);
+
+  const handleSave = useCallback(async () => {
     setSaving(true);
     try {
       const res = await fetch("/api/admin/profile", {
@@ -92,12 +132,12 @@ export default function AdminProfilePage() {
       }
     } catch {}
     setSaving(false);
-  };
+  }, [form]);
 
-  const handleDiscard = () => {
+  const handleDiscard = useCallback(() => {
     setForm({ ...savedForm });
     setIsEditing(false);
-  };
+  }, [savedForm]);
 
   const initials = user?.name
     ? user.name.substring(0, 2).toUpperCase()
@@ -136,13 +176,6 @@ export default function AdminProfilePage() {
       </DashboardShell>
     );
   }
-
-  const entityColor: Record<string, string> = {
-    ticket: "bg-green-500",
-    event: "bg-yellow-500",
-    submission: "bg-blue-500",
-    fraud: "bg-red-500",
-  };
 
   return (
     <DashboardShell>
@@ -307,29 +340,22 @@ export default function AdminProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Activity — white card */}
           <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-sm p-6 md:p-8">
-            <h3 className="text-lg font-black uppercase tracking-tight mb-6">
-              Recent Activity
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black uppercase tracking-tight">
+                Recent Activity
+              </h3>
+              {activity.length > 0 && (
+                <span className="text-[10px] font-medium text-zinc-400">
+                  {activity.length} entries
+                </span>
+              )}
+            </div>
             {activity.length === 0 ? (
               <p className="text-sm text-zinc-400">No recent activity.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                 {activity.map((entry) => (
-                  <div key={entry.id} className="flex items-start gap-3">
-                    <div
-                      className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${entityColor[entry.entityType] ?? "bg-zinc-300"}`}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm text-zinc-700">
-                        {entry.description}
-                      </p>
-                      <p className="text-[10px] text-zinc-400 font-medium mt-0.5">
-                        {entry.createdAt
-                          ? new Date(entry.createdAt).toLocaleString()
-                          : ""}
-                      </p>
-                    </div>
-                  </div>
+                  <ActivityRow key={entry.id} entry={entry} />
                 ))}
               </div>
             )}
@@ -354,6 +380,59 @@ export default function AdminProfilePage() {
         </div>
       </div>
     </DashboardShell>
+  );
+}
+
+function ActivityRow({ entry }: { entry: ActivityEntry }) {
+  const borderColor = LOG_LEVEL_STYLES[entry.logLevel] ?? "border-l-zinc-300";
+  const dotColor = LOG_LEVEL_DOTS[entry.logLevel] ?? "bg-zinc-300";
+  const route = ENTITY_ROUTES[entry.entityType];
+  const href =
+    route && entry.entityId != null ? `${route}?id=${entry.entityId}` : null;
+
+  return (
+    <div
+      className={`flex items-start gap-3 pl-3 border-l-2 ${borderColor} py-2`}
+    >
+      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm text-zinc-700">{entry.description}</p>
+          {href && (
+            <a
+              href={href}
+              className="shrink-0 mt-0.5 text-zinc-300 hover:text-zinc-600 transition-colors"
+              title={`View ${entry.entityType}`}
+            >
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-[10px] text-zinc-400 font-medium">
+            {entry.createdAt
+              ? new Date(entry.createdAt).toLocaleString()
+              : ""}
+          </p>
+          {entry.logLevel && entry.logLevel !== "INFO" && (
+            <span
+              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                entry.logLevel === "CRITICAL"
+                  ? "bg-red-100 text-red-600"
+                  : "bg-yellow-100 text-yellow-600"
+              }`}
+            >
+              {entry.logLevel}
+            </span>
+          )}
+          {entry.ipAddress && (
+            <span className="text-[9px] text-zinc-300 font-mono">
+              {entry.ipAddress}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

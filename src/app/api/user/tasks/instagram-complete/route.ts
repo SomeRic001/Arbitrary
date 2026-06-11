@@ -45,6 +45,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "taskId query param is required" }, { status: 400 });
   }
 
-  const code = await TaskService.getVerificationCode(auth.data.id, Number(taskId));
+  const code = await TaskService.getVerificationCode(auth.data.id, Number(taskId), '#ig');
   return NextResponse.json({ verificationCode: code });
 }

@@ -12,9 +12,9 @@ import { eq, and, desc, sql, or, gte, lt, inArray, not, type SQL, isNotNull, ne 
 import { calculateStreak, getNextMilestone, toDateStr, getCycleStart } from "@/src/lib/streak-helper";
 import { getStreakMultiplier } from "@/src/lib/gamification";
 import {
+  getVerificationCode,
   findCodeInComments,
   checkUserCommentedOnPost,
-  getVerificationCode,
 } from "@/src/lib/facebook";
 import { InstagramService } from "@/src/lib/instagram";
 import { YouTubeService } from "./youtube.service";
@@ -624,9 +624,9 @@ export const TaskService = {
 
     const nextCursor: string | null = hasNextPage && pageRows.length > 0
       ? JSON.stringify({
-          completedAt: pageRows[pageRows.length - 1].userTask.completedAt?.toISOString(),
-          id: pageRows[pageRows.length - 1].task.id,
-        })
+        completedAt: pageRows[pageRows.length - 1].userTask.completedAt?.toISOString(),
+        id: pageRows[pageRows.length - 1].task.id,
+      })
       : null;
 
     return ok({ tasks: items, nextCursor });
@@ -919,7 +919,6 @@ export const TaskService = {
       });
     });
   },
-
   async completeFacebookTask(
     userId: number,
     taskId: number,
@@ -930,75 +929,42 @@ export const TaskService = {
       .select({ currentStreak: usersTable.currentStreak })
       .from(usersTable)
       .where(eq(usersTable.id, userId));
-
-    if (!user) return fail("User not found", 404);
-
-    const multiplier = getStreakMultiplier(user.currentStreak || 0);
+    const multiplier = getStreakMultiplier(user?.currentStreak || 0);
 
     const [userTaskWithTask] = await db
-      .select({
-        userTask: userTasksTable,
-        task: tasksTable,
-      })
+      .select({ userTask: userTasksTable, task: tasksTable })
       .from(userTasksTable)
       .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
       .where(
         and(
           eq(userTasksTable.userId, userId),
           eq(userTasksTable.taskId, taskId),
-          sql`LOWER(${userTasksTable.status}) NOT IN ('completed', 'verified', 'cancelled')`,
+          sql`${userTasksTable.status} NOT IN ('Completed', 'Verified', 'Cancelled')`,
         ),
       )
       .orderBy(desc(userTasksTable.assignedAt));
 
-    if (!userTaskWithTask) {
-      return fail("Task not found or not picked up by you", 404);
-    }
+    if (!userTaskWithTask) return fail("Task not found or not picked up by you", 404);
 
     const { userTask, task } = userTaskWithTask;
-    if (task.platform !== "facebook") {
-      return fail("This endpoint is only for Facebook tasks", 400);
-    }
+    if (task.platform !== "facebook") return fail("This endpoint is only for Facebook tasks", 400);
 
     const postId = task.socialPostId;
-    if (!postId) {
-      return fail("This task has no Facebook post linked", 400);
+    if (!postId) return fail("This task has no Facebook post linked", 400);
+
+    const code = getVerificationCode(Number(userId), Number(taskId), '#fb');
+    const codeResult = await findCodeInComments(postId, code);
+
+    if (codeResult.error) return fail(`Facebook API error: ${codeResult.error}`, 500);
+
+    if (codeResult.liked) return await awardFacebookPoints(userId, task, userTask, multiplier, fingerprint);
+
+    if (facebookId) {
+      const asidResult = await checkUserCommentedOnPost(postId, "", facebookId);
+      if (asidResult.liked) return await awardFacebookPoints(userId, task, userTask, multiplier, fingerprint);
     }
 
-    const code = getVerificationCode(Number(userId), Number(taskId));
-
-    try {
-      const verification = await findCodeInComments(postId, code);
-
-      if (verification.liked) {
-        return await db.transaction(async (tx) => {
-          const [userTaskLocked] = await tx
-            .select()
-            .from(userTasksTable)
-            .where(eq(userTasksTable.id, userTask.id))
-            .for("update");
-
-          if (!userTaskLocked || ['completed', 'verified', 'cancelled'].includes(userTaskLocked.status?.toLowerCase())) {
-            return fail("Task has already been completed or cancelled", 400);
-          }
-
-          return await awardFacebookPoints(tx, userId, task, userTask, multiplier, fingerprint);
-        });
-      }
-    } catch (error: any) {
-      return fail(`Facebook API error: ${error.message}`, 500);
-    }
-
-    await db
-      .update(userTasksTable)
-      .set({ status: "Pending Verification" })
-      .where(eq(userTasksTable.id, userTask.id));
-
-    return ok({
-      message:
-        "Could not verify your comment automatically. Please upload a screenshot as proof.",
-      pointsAwarded: 0,
-    });
+    return fail(`Couldn't find your comment with code "${code}" on the post.`, 429);
   },
 
   async completeInstagramTask(
@@ -1018,57 +984,36 @@ export const TaskService = {
     const multiplier = getStreakMultiplier(user.currentStreak || 0);
 
     const [userTaskWithTask] = await db
-      .select({
-        userTask: userTasksTable,
-        task: tasksTable,
-      })
+      .select({ userTask: userTasksTable, task: tasksTable })
       .from(userTasksTable)
       .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
       .where(
         and(
           eq(userTasksTable.userId, userId),
           eq(userTasksTable.taskId, taskId),
-          sql`LOWER(${userTasksTable.status}) NOT IN ('completed', 'verified', 'cancelled')`,
+          sql`${userTasksTable.status} NOT IN ('Completed', 'Verified', 'Cancelled')`,
         ),
       )
       .orderBy(desc(userTasksTable.assignedAt));
 
-    if (!userTaskWithTask) {
-      return fail("Task not found or not picked up by you", 404);
-    }
+    if (!userTaskWithTask) return fail("Task not found or not picked up by you", 404);
 
     const { userTask, task } = userTaskWithTask;
-    if (task.platform !== "instagram") {
-      return fail("This endpoint is only for Instagram tasks", 400);
-    }
+    if (task.platform !== "instagram") return fail("This endpoint is only for Instagram tasks", 400);
 
     const postId = task.socialPostId;
-    if (!postId) {
-      return fail("This task has no Instagram post linked", 400);
-    }
+    if (!postId) return fail("This task has no Instagram post linked", 400);
 
-    const code = getVerificationCode(Number(userId), Number(taskId));
+    const code = getVerificationCode(Number(userId), Number(taskId), '#ig');
 
     try {
       const verification = await InstagramService.findCodeInComments(postId, code, user.instagramUsername);
 
       if (verification.found) {
-        return await db.transaction(async (tx) => {
-          const [userTaskLocked] = await tx
-            .select()
-            .from(userTasksTable)
-            .where(eq(userTasksTable.id, userTask.id))
-            .for("update");
-
-          if (!userTaskLocked || ['completed', 'verified', 'cancelled'].includes(userTaskLocked.status?.toLowerCase())) {
-            return fail("Task has already been completed or cancelled", 400);
-          }
-
-          return await awardInstagramPoints(tx, userId, task, userTask, multiplier, fingerprint);
-        });
+        return await awardInstagramPoints(userId, task, userTask, multiplier, fingerprint);
       }
-    } catch (error: any) {
-      return fail(`Instagram API error: ${error.message}`, 500);
+    } catch (error: unknown) {
+      return fail(`Instagram API error: ${error instanceof Error ? error.message : error}`, 500);
     }
 
     // Fallback: auto-verification failed — set to Pending Verification for admin review
@@ -1078,8 +1023,7 @@ export const TaskService = {
       .where(eq(userTasksTable.id, userTask.id));
 
     return ok({
-      message:
-        "Could not verify your comment automatically. Please upload a screenshot as proof.",
+      message: "Could not verify your comment automatically. Please upload a screenshot as proof.",
       pointsAwarded: 0,
       requiresScreenshot: true,
     });
@@ -1511,8 +1455,9 @@ export const TaskService = {
   async getVerificationCode(
     userId: number,
     taskId: number,
+    prefix: string = '#fb',
   ): Promise<string> {
-    return getVerificationCode(userId, taskId);
+    return getVerificationCode(userId, taskId, prefix);
   },
 
   // ─── Admin task CRUD ──────────────────────────────────────────────────────
@@ -1998,7 +1943,6 @@ function mapTasksToItems(ctx: MapTasksContext): UserTaskItem[] {
 }
 
 async function awardFacebookPoints(
-  tx: any,
   userId: number,
   task: Task,
   userTask: UserTask,
@@ -2011,41 +1955,27 @@ async function awardFacebookPoints(
       ? Math.round((Date.now() - new Date(userTask.assignedAt).getTime()) / 1000)
       : null;
 
-  await tx
-    .update(userTasksTable)
-    .set({
-      status: "Completed",
-      completedAt: new Date(),
-      submissionFingerprint: fingerprint ?? null,
-      completionDurationSeconds: completionDurationSeconds ?? null,
-    })
-    .where(eq(userTasksTable.id, userTask.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(userTasksTable)
+      .set({
+        status: "Completed",
+        completedAt: new Date(),
+        submissionFingerprint: fingerprint ?? null,
+        completionDurationSeconds: completionDurationSeconds ?? null,
+      })
+      .where(eq(userTasksTable.id, userTask.id));
 
-  const [currentUser] = await tx
-    .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .for("update");
-
-  if (currentUser) {
     await tx
       .update(usersTable)
       .set({
         points: sql`${usersTable.points} + ${taskPoints}`,
-        lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
         completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
       .where(eq(usersTable.id, userId));
+  });
 
-    await tx.insert(pointsLogTable).values({
-      userId,
-      taskId: task.id,
-      points: taskPoints,
-      reason: `Facebook task: ${task.title}`,
-    });
-  }
-
-  await ReferralService.awardReferralBonusIfEligible(userId);
+  ReferralService.awardReferralBonusIfEligible(userId);
 
   return ok({
     message: "Facebook task completed and points awarded!",
@@ -2054,7 +1984,6 @@ async function awardFacebookPoints(
 }
 
 async function awardInstagramPoints(
-  tx: any,
   userId: number,
   task: Task,
   userTask: UserTask,
@@ -2067,41 +1996,27 @@ async function awardInstagramPoints(
       ? Math.round((Date.now() - new Date(userTask.assignedAt).getTime()) / 1000)
       : null;
 
-  await tx
-    .update(userTasksTable)
-    .set({
-      status: "Completed",
-      completedAt: new Date(),
-      submissionFingerprint: fingerprint ?? null,
-      completionDurationSeconds: completionDurationSeconds ?? null,
-    })
-    .where(eq(userTasksTable.id, userTask.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(userTasksTable)
+      .set({
+        status: "Completed",
+        completedAt: new Date(),
+        submissionFingerprint: fingerprint ?? null,
+        completionDurationSeconds: completionDurationSeconds ?? null,
+      })
+      .where(eq(userTasksTable.id, userTask.id));
 
-  const [currentUser] = await tx
-    .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .for("update");
-
-  if (currentUser) {
     await tx
       .update(usersTable)
       .set({
         points: sql`${usersTable.points} + ${taskPoints}`,
-        lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
         completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
       .where(eq(usersTable.id, userId));
+  });
 
-    await tx.insert(pointsLogTable).values({
-      userId,
-      taskId: task.id,
-      points: taskPoints,
-      reason: `Instagram task: ${task.title}`,
-    });
-  }
-
-  await ReferralService.awardReferralBonusIfEligible(userId);
+  ReferralService.awardReferralBonusIfEligible(userId);
 
   return ok({
     message: "Instagram task completed and points awarded!",

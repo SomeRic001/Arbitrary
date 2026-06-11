@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
 import { EventService } from "@/src/services/event.service";
-import { db } from "@/src/db";
-import { adminActivityLogsTable } from "@/src/db/schema";
+import { AdminLogService, extractIpFromRequest } from "@/src/services/admin-log.service";
 
 export const revalidate = 0;
 
@@ -34,12 +33,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (result.data) {
-    await db.insert(adminActivityLogsTable).values({
+    await AdminLogService.logAction({
       adminId: auth.data.id,
       action: body.id ? "update_event" : "create_event",
       description: body.id ? `Event "${body.title}" updated` : `Event "${body.title}" created`,
       entityType: "event",
       entityId: result.data.id,
+      ipAddress: extractIpFromRequest(req),
     });
   }
 
@@ -64,12 +64,13 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  await db.insert(adminActivityLogsTable).values({
+  await AdminLogService.logAction({
     adminId: auth.data.id,
     action: "delete_event",
     description: title ? `Event "${title}" deleted` : `Event #${id} deleted`,
     entityType: "event",
     entityId: Number(id),
+    ipAddress: extractIpFromRequest(req),
   });
 
   return NextResponse.json({ success: true, message: "Event deleted" }, { status: 200 });

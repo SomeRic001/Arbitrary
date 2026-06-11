@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
+import { AdminLogService, extractIpFromRequest } from "@/src/services/admin-log.service";
 import { db } from "@/src/db";
 import { usersTable, adminActivityLogsTable, eventsTable } from "@/src/db/schema";
 import { eq, sql, desc, and, gte, count } from "drizzle-orm";
@@ -68,8 +69,11 @@ export async function GET() {
         id: adminActivityLogsTable.id,
         action: adminActivityLogsTable.action,
         description: adminActivityLogsTable.description,
+        logLevel: adminActivityLogsTable.logLevel,
         entityType: adminActivityLogsTable.entityType,
         entityId: adminActivityLogsTable.entityId,
+        metadata: adminActivityLogsTable.metadata,
+        ipAddress: adminActivityLogsTable.ipAddress,
         createdAt: adminActivityLogsTable.createdAt,
       })
       .from(adminActivityLogsTable)
@@ -141,6 +145,17 @@ export async function PATCH(req: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const changedFields = Object.keys(updates).join(", ");
+    await AdminLogService.logAction({
+      adminId: auth.data.id,
+      action: "update_profile",
+      description: `Profile updated: ${changedFields}`,
+      entityType: "user",
+      entityId: auth.data.id,
+      metadata: { changedFields: Object.keys(updates) },
+      ipAddress: extractIpFromRequest(req),
+    });
 
     return NextResponse.json({ user: updated });
   } catch (error) {

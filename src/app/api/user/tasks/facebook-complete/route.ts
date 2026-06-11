@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!result.success) {
     const response: Record<string, unknown> = { error: result.error };
     if (result.status === 429) {
-      response.verificationCode = await TaskService.getVerificationCode(auth.data.id, Number(taskId));
+      response.verificationCode = await TaskService.getVerificationCode(auth.data.id, Number(taskId), '#fb');
     }
     return NextResponse.json(response, { status: result.status });
   }
@@ -49,6 +49,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "taskId query param is required" }, { status: 400 });
   }
 
-  const code = await TaskService.getVerificationCode(auth.data.id, Number(taskId));
+  const code = await TaskService.getVerificationCode(auth.data.id, Number(taskId), '#fb');
   return NextResponse.json({ verificationCode: code });
 }

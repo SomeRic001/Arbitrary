@@ -1,14 +1,50 @@
 "use client";
 
 import type { Event } from "@/src/types/db";
+import type { GlobalActivityItem } from "../page";
 
 interface OverviewTabProps {
   stats: { label: string; value: string; growth: string }[];
   events: Event[];
+  globalActivity: GlobalActivityItem[];
   onViewAllEvents: () => void;
 }
 
-const OverviewTab = ({ stats, events, onViewAllEvents }: OverviewTabProps) => (
+const ENTITY_LABELS: Record<string, string> = {
+  event: "Manage Events",
+  task: "Manage Tasks",
+  ticket: "Manage Tickets",
+  user: "Manage Users",
+  submission: "Manage Submissions",
+  record: "Manage Records",
+};
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffSec = Math.floor((now - then) / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function getInitials(name: string | null, email: string): string {
+  if (name) return name.substring(0, 2).toUpperCase();
+  return email.substring(0, 2).toUpperCase();
+}
+
+const OverviewTab = ({
+  stats,
+  events,
+  globalActivity,
+  onViewAllEvents,
+}: OverviewTabProps) => (
   <div className="animate-fade-in">
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
       {stats.map((stat, index) => (
@@ -29,7 +65,7 @@ const OverviewTab = ({ stats, events, onViewAllEvents }: OverviewTabProps) => (
       ))}
     </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mb-8">
       <div className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-black/5 shadow-sm">
         <div className="flex justify-between items-center mb-6 md:mb-8">
           <h3 className="text-lg md:text-xl font-black uppercase tracking-tight">
@@ -55,7 +91,9 @@ const OverviewTab = ({ stats, events, onViewAllEvents }: OverviewTabProps) => (
                     {event.title}
                   </p>
                   <p className="text-[9px] md:text-[10px] text-zinc-400 font-bold uppercase">
-                    {event.eventDate instanceof Date ? event.eventDate.toLocaleDateString() : String(event.eventDate)}
+                    {event.eventDate instanceof Date
+                      ? event.eventDate.toLocaleDateString()
+                      : String(event.eventDate)}
                   </p>
                 </div>
               </div>
@@ -91,6 +129,57 @@ const OverviewTab = ({ stats, events, onViewAllEvents }: OverviewTabProps) => (
           </div>
         </div>
       </div>
+    </div>
+
+    {/* Global Activity Feed */}
+    <div className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-black/5 shadow-sm">
+      <div className="mb-6 md:mb-8">
+        <h3 className="text-lg md:text-xl font-black uppercase tracking-tight">
+          Global Activity
+        </h3>
+        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1">
+          All admin actions across the system
+        </p>
+      </div>
+
+      {globalActivity.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-sm font-medium text-zinc-400">No activity yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {globalActivity.map((entry) => (
+            <div
+              key={entry.id}
+              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl hover:bg-zinc-50 transition-all"
+            >
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[#FACC15] flex items-center justify-center shrink-0">
+                <span className="text-black font-black text-xs md:text-sm">
+                  {getInitials(entry.admin.name, entry.admin.email)}
+                </span>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-bold text-zinc-800 leading-tight">
+                  <span className="text-zinc-500 font-semibold">
+                    {entry.admin.name || entry.admin.email.split("@")[0]}
+                  </span>{" "}
+                  {entry.description}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 bg-zinc-100 px-2.5 py-1 rounded-full">
+                  {ENTITY_LABELS[entry.entityType] ?? entry.entityType}
+                </span>
+                <span className="text-[10px] font-medium text-zinc-400 whitespace-nowrap">
+                  {timeAgo(entry.createdAt)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   </div>
 );

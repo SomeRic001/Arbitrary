@@ -1,9 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import OverviewTab from "./_components/overview-tab";
 import type { Event } from "@/src/types/db";
+
+export interface GlobalActivityItem {
+  id: number;
+  action: string;
+  description: string;
+  logLevel: string;
+  entityType: string;
+  entityId: number | null;
+  createdAt: string | null;
+  admin: {
+    id: number;
+    name: string | null;
+    email: string;
+  };
+}
+
+interface SseLogRaw {
+  id: number;
+  admin_id: number;
+  action: string;
+  description: string;
+  log_level: string;
+  entity_type: string;
+  entity_id: number | null;
+  created_at: string | null;
+  __replay?: boolean;
+}
 
 const AdminDashboardPage = () => {
   const router = useRouter();
@@ -13,6 +40,25 @@ const AdminDashboardPage = () => {
     pendingVerifications: number;
   } | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [globalActivity, setGlobalActivity] = useState<GlobalActivityItem[]>([]);
+  const adminCacheRef = useRef<Map<number, { name: string | null; email: string }>>(new Map());
+
+  function sseLogToGlobalItem(raw: SseLogRaw): GlobalActivityItem {
+    const admin = adminCacheRef.current.get(raw.admin_id) ?? {
+      name: null,
+      email: `admin#${raw.admin_id}`,
+    };
+    return {
+      id: raw.id,
+      action: raw.action,
+      description: raw.description,
+      logLevel: raw.log_level,
+      entityType: raw.entity_type,
+      entityId: raw.entity_id,
+      createdAt: raw.created_at,
+      admin: { id: raw.admin_id, ...admin },
+    };
+  }
 
   useEffect(() => {
     fetch("/api/admin/analytics")
@@ -22,6 +68,38 @@ const AdminDashboardPage = () => {
       })
       .catch(() => {});
     fetchEvents();
+
+    fetch("/api/admin/global-activity")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.logs) return;
+        for (const item of d.logs as GlobalActivityItem[]) {
+          adminCacheRef.current.set(item.admin.id, {
+            name: item.admin.name,
+            email: item.admin.email,
+          });
+        }
+        setGlobalActivity(d.logs);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const es = new EventSource("/api/admin/activity-stream");
+
+    es.addEventListener("log", (e: MessageEvent) => {
+      try {
+        const raw: SseLogRaw = JSON.parse(e.data);
+        if (raw.__replay) return;
+        const item = sseLogToGlobalItem(raw);
+        setGlobalActivity((prev) => {
+          if (prev.some((a) => a.id === item.id)) return prev;
+          return [item, ...prev].slice(0, 50);
+        });
+      } catch {}
+    });
+
+    return () => es.close();
   }, []);
 
   const fetchEvents = async () => {
@@ -64,6 +142,7 @@ const AdminDashboardPage = () => {
     <OverviewTab
       stats={stats}
       events={events}
+      globalActivity={globalActivity}
       onViewAllEvents={() => router.push("/admin/dashboard/events")}
     />
   );
