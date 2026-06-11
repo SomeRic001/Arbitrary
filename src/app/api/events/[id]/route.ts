@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
 import { EventService } from "@/src/services/event.service";
+import { db } from "@/src/db";
+import { adminActivityLogsTable } from "@/src/db/schema";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const param = await params;
@@ -63,6 +65,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       { status: result.status },
     );
   }
+
+  await db.insert(adminActivityLogsTable).values({
+    adminId: auth.data.id,
+    action: "delete_event",
+    description: `Event #${id} deleted`,
+    entityType: "event",
+    entityId: id,
+  });
 
   return NextResponse.json({ success: true, message: "Event deleted" });
 }

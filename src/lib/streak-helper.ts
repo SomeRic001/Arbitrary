@@ -1,3 +1,18 @@
+export function getCycleStart(): Date {
+  const now = new Date();
+  const cycle = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    1, 0, 0, 0
+  ));
+
+  if (now < cycle) {
+    cycle.setUTCDate(cycle.getUTCDate() - 1);
+  }
+  return cycle;
+}
+
 const MILESTONES: { days: number; bonus: number }[] = [
   { days: 5, bonus: 50 },
   { days: 7, bonus: 100 },

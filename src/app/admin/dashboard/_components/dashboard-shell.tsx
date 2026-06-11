@@ -22,6 +22,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     "/admin/dashboard/submissions": "User Submissions",
     "/admin/dashboard/fraud": "Fraud Detection",
     "/admin/dashboard/analytics": "Analytics",
+    "/admin/tickets/scanner": "Ticket Scanner",
+    "/admin/profile": "Profile",
   };
 
   const activeLabel = Object.entries(labels).find(([path]) =>

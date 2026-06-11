@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['dog-cal-notify-ion.trycloudflare.com'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.googleusercontent.com' },

@@ -30,5 +30,12 @@
       "tag": "0009_add_missing_columns",
       "breakpoints": true
     },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1750000000000,
+      "tag": "0010_add_admin_activity_logs",
+      "breakpoints": true
+    },
   ]
 }

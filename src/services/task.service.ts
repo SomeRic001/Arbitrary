@@ -9,7 +9,7 @@ import {
   watchSessionsTable,
 } from "@/src/db/schema";
 import { eq, and, desc, sql, or, gte, lt, inArray, not, type SQL, isNotNull, ne } from "drizzle-orm";
-import { calculateStreak, getNextMilestone, toDateStr } from "@/src/lib/streak-helper";
+import { calculateStreak, getNextMilestone, toDateStr, getCycleStart } from "@/src/lib/streak-helper";
 import { getStreakMultiplier } from "@/src/lib/gamification";
 import {
   findCodeInComments,
@@ -163,10 +163,7 @@ export const TaskService = {
 
     if (!user) return fail("User not found", 404);
 
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const todayStart = getCycleStart();
     const today = new Date().toISOString().split("T")[0];
     const dailyLoginStr = toDateStr(user?.dailyLoginDate);
 
@@ -346,10 +343,7 @@ export const TaskService = {
 
     if (!user) return fail("User not found", 404);
 
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const todayStart = getCycleStart();
     const today = new Date().toISOString().split("T")[0];
     const dailyLoginStr = toDateStr(user?.dailyLoginDate);
 
@@ -537,10 +531,7 @@ export const TaskService = {
     limit: number = 50,
     cursor?: { completedAt: string; id: number } | null,
   ): Promise<ServiceResult<UserTasksPage>> {
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const todayStart = getCycleStart();
 
     // Inline filter: mirrors getValidCompletedTaskIds() logic for inclusion (vs exclusion in dashboard)
     // Uses the same or() clause directly to avoid a second round-trip for completed data.
@@ -666,6 +657,9 @@ export const TaskService = {
     }
 
     const now = new Date();
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
 
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT id FROM ${usersTable} WHERE id = ${userId} FOR UPDATE`);
@@ -704,7 +698,21 @@ export const TaskService = {
         );
 
       if (existingNonRejected) {
-        return fail("You have already picked up this task", 400);
+        // Handle Daily Task Reset: Allow picking up again if previous attempt was before today
+        if (targetTask.taskType === "daily") {
+          const assignedAt = existingNonRejected.assignedAt;
+          if (assignedAt && assignedAt < todayStart) {
+            // It's a daily task from a previous day, so we can allow picking it up again.
+            // Clean up the old record first.
+            await tx
+              .delete(userTasksTable)
+              .where(eq(userTasksTable.id, existingNonRejected.id));
+          } else {
+            return fail("You have already picked up this task today", 400);
+          }
+        } else {
+          return fail("You have already picked up this task", 400);
+        }
       }
 
       const existingActiveTasks = await tx

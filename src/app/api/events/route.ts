@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
 import { EventService } from "@/src/services/event.service";
+import { db } from "@/src/db";
+import { adminActivityLogsTable } from "@/src/db/schema";
 
 export const revalidate = 0;
 
@@ -31,6 +33,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (result.data) {
+    await db.insert(adminActivityLogsTable).values({
+      adminId: auth.data.id,
+      action: body.id ? "update_event" : "create_event",
+      description: body.id ? `Event "${body.title}" updated` : `Event "${body.title}" created`,
+      entityType: "event",
+      entityId: result.data.id,
+    });
+  }
+
   return NextResponse.json({ success: true, event: result.data }, { status: 201 });
 }
 
@@ -43,7 +55,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: auth.status });
   }
 
-  const { id } = await req.json();
+  const { id, title } = await req.json();
   const result = await EventService.deleteEvent(Number(id));
   if (!result.success) {
     return NextResponse.json(
@@ -51,6 +63,14 @@ export async function DELETE(req: NextRequest) {
       { status: result.status },
     );
   }
+
+  await db.insert(adminActivityLogsTable).values({
+    adminId: auth.data.id,
+    action: "delete_event",
+    description: title ? `Event "${title}" deleted` : `Event #${id} deleted`,
+    entityType: "event",
+    entityId: Number(id),
+  });
 
   return NextResponse.json({ success: true, message: "Event deleted" }, { status: 200 });
 }

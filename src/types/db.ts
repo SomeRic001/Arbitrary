@@ -13,6 +13,7 @@ import {
   shareTasksTable,
   shareClicksTable,
   watchSessionsTable,
+  adminActivityLogsTable,
 } from "@/src/db/schema";
 
 export type Event = InferSelectModel<typeof eventsTable>;
@@ -40,3 +41,6 @@ export type ShareTask = InferSelectModel<typeof shareTasksTable>;
 export type ShareClick = InferSelectModel<typeof shareClicksTable>;
 export type WatchSession = InferSelectModel<typeof watchSessionsTable>;
 export type NewWatchSession = InferInsertModel<typeof watchSessionsTable>;
+
+export type AdminActivityLog = InferSelectModel<typeof adminActivityLogsTable>;
+export type NewAdminActivityLog = InferInsertModel<typeof adminActivityLogsTable>;

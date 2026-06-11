@@ -9,9 +9,13 @@ if (!connectionString) {
 
 const pool = new Pool({
     connectionString,
-    ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: true },
+    ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
     max: 20,
     idleTimeoutMillis: 30000,
 });
+
+pool.on('error', (err) => {
+    console.log("Unexcepted error on idle client", err);
+})
 
 export const db = drizzle(pool, { schema });

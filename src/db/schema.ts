@@ -1,6 +1,5 @@
 import { integer, pgTable, varchar, text, timestamp, serial, boolean, index, AnyPgColumn, jsonb } from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
-import { smallint } from "drizzle-orm/gel-core";
 
 // --- Events Tables ---
 
@@ -179,12 +178,12 @@ export const rateLimitsTable = pgTable("rate_limits", {
 
 // --- Password Reset Tokens ---
 export const passwordResetTokensTable = pgTable("password_reset_tokens", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull(),
-  tokenHash: text("token_hash").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  usedAt: timestamp("used_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+    id: serial("id").primaryKey(),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // --- Deals / Rewards ---
@@ -250,18 +249,29 @@ export const shareClicksTable = pgTable("share_clicks", {
 });
 
 
-export const recordsTable = pgTable("records",{
+export const recordsTable = pgTable("records", {
     id: serial("id").primaryKey(),
-    title: varchar("title",{length:255}).notNull(),
-    artist: varchar("artist",{length:255}).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    artist: varchar("artist", { length: 255 }).notNull(),
     releaseMonth: integer("release_month"),
     releaseYear: integer("release_year"),
-    genre: varchar("genre",{length:100}),
+    genre: varchar("genre", { length: 100 }),
     coverImageUrl: text("cover_image_url"),
-    labelColor: varchar("label_color",{length:7}),
+    labelColor: varchar("label_color", { length: 7 }),
     youtubeUrl: text("youtube_url"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// --- Admin Activity Log ---
+export const adminActivityLogsTable = pgTable("admin_activity_logs", {
+    id: serial("id").primaryKey(),
+    adminId: integer("admin_id").notNull().references(() => usersTable.id),
+    action: text("action").notNull(),
+    description: text("description").notNull(),
+    entityType: varchar("entity_type", { length: 50 }).notNull(),
+    entityId: integer("entity_id"),
+    createdAt: timestamp("created_at").defaultNow(),
 });
 
 // --- Relations ---

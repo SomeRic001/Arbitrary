@@ -425,6 +425,14 @@ function ScannerPageInner() {
       setCameraDenied(false);
       setCameraError(null);
 
+      // Check if mediaDevices is available (requires HTTPS or localhost)
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError(
+          "Camera access not supported. Ensure:\n1. Using HTTPS (or localhost)\n2. Browser supports getUserMedia\n3. Device has a camera"
+        );
+        return;
+      }
+
       // Step 1: Explicitly request permission first — this triggers the browser popup
       let stream: MediaStream;
       try {
@@ -543,10 +551,13 @@ function ScannerPageInner() {
 
   useEffect(() => {
     // Reset entire scanner state when the event changes
-    dispatch({ type: "STOP" });
-    stopCamera();
     setStats({ totalTickets: 0, redeemedCount: 0 });
     setHistoryEntry(null);
+  }, [eventId]);
+
+  useEffect(() => {
+    dispatch({ type: "STOP" });
+    stopCamera();
   }, [eventId, stopCamera]);
 
   useEffect(() => {
@@ -962,16 +973,20 @@ function ScannerPageInner() {
   );
 }
 
+import DashboardShell from "@/src/app/admin/dashboard/_components/dashboard-shell";
+
 export default function ScannerPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-screen bg-black flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-        </div>
-      }
-    >
-      <ScannerPageInner />
-    </Suspense>
+    <DashboardShell>
+      <Suspense
+        fallback={
+          <div className="h-screen bg-black flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          </div>
+        }
+      >
+        <ScannerPageInner />
+      </Suspense>
+    </DashboardShell>
   );
 }

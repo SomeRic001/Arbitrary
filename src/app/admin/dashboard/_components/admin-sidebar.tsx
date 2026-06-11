@@ -116,12 +116,6 @@ const AdminSidebar = ({ activeTab, onTabChange, isOpen, onClose }: AdminSidebarP
             );
           })}
         </nav>
-        <button
-          onClick={() => signOut({ callbackUrl: "/admin/login" })}
-          className="mt-auto flex items-center px-6 py-4 rounded-2xl text-red-500 hover:bg-red-500/10 transition-all font-bold text-sm uppercase tracking-wider"
-        >
-          Logout
-        </button>
       </aside>
     </>
   );

@@ -88,7 +88,7 @@ export async function findCodeInComments(
 
     const url = new URL(`${GRAPH_API_BASE}/${postId}/comments`);
     url.searchParams.set("access_token", pageToken);
-    url.searchParams.set("limit", "1000");
+    url.searchParams.set("limit", "200");
     url.searchParams.set("fields", "from,message,created_time");
 
     const res = await fetch(url.toString());
