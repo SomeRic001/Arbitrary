@@ -46,36 +46,39 @@ export function ShareTaskCard({ task, onCancel, cancelPending, cancelVariable }:
         captureFingerprint();
     }, [shareCode, completed]);
 
+    // Polling replaces EventSource — Vercel serverless doesn't support
+    // long-lived SSE connections; the server was already polling every 3s
+    // internally so client-side polling is identical behavior.
     useEffect(() => {
         if (completed || !shareCode) return;
 
-        const eventSource = new EventSource(`/api/share-progress/${shareCode}`);
-
-        eventSource.onmessage = (e) => {
+        const poll = async () => {
             try {
-                const data = JSON.parse(e.data);
+                const res = await fetch(`/api/share-progress/${shareCode}`);
+                if (!res.ok) return;
+
+                const data = await res.json();
                 if (data.error) return;
 
                 setClickCount(data.clickCount);
 
                 if (data.completed) {
                     setCompleted(true);
-                    eventSource.close();
+                    clearInterval(intervalId);
                     queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
                     queryClient.invalidateQueries({ queryKey: ["user-points"] });
                     toast.success("Share task completed! Points awarded 🎉");
                 }
             } catch {
-                // ignore parse errors
+                // ignore fetch errors — will retry on next interval
             }
         };
 
-        eventSource.onerror = () => {
-            eventSource.close();
-        };
+        const intervalId = setInterval(poll, 3000);
+        poll(); // run immediately on mount
 
-        return () => eventSource.close();
-    }, [shareCode, completed]);
+        return () => clearInterval(intervalId);
+    }, [shareCode, completed, queryClient]);
 
     const handleCopyLink = async () => {
         if (shareLink) {

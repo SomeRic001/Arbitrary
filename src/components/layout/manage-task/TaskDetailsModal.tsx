@@ -97,6 +97,20 @@ export function TaskDetailsModal({
           </div>
         </div>
 
+        {/* Comment Instruction */}
+        {task.commentInstruction && (
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              Comment Instruction
+            </label>
+            <div className="mt-1.5 p-4 bg-zinc-50 rounded-[2rem] border border-black/5">
+              <p className="text-sm text-zinc-700 leading-relaxed font-medium">
+                {task.commentInstruction}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Linked post */}
         {task.socialPostUrl && (
           <div>

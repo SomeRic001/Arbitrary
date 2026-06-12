@@ -102,6 +102,7 @@ export const adminTaskSchema = z.object({
     isShare: z.boolean().optional().default(false),
     shareThreshold: z.number().int().min(1).max(100).optional().default(3),
     expiresAt: z.string().datetime().nullable().optional(),
+    commentInstruction: z.string().max(2000).nullable().optional(),
 }).strict();
 
 

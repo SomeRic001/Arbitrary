@@ -25,6 +25,7 @@ export type Task = {
     isShare?: boolean;
     shareThreshold?: number;
     expiresAt?: string;
+    commentInstruction?: string;
 };
 
 export type ModalMode = "add" | "edit";
@@ -40,6 +41,5 @@ export const PLATFORMS: {
         { value: "facebook", label: "Facebook", icon: "f", color: "#1877F2" },
         { value: "instagram", label: "Instagram", icon: "📷", color: "#E1306C" },
         { value: "youtube", label: "YouTube", icon: "▶", color: "#FF0000" },
-        { value: "tiktok", label: "TikTok", icon: "♪", color: "#010101" },
         { value: "daily-login", label: "Daily Login", icon: "📅", color: "#10B981" },
     ];

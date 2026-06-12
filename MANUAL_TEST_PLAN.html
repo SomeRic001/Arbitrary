@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARBITARY Project - User Manual Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+            color: #334155;
+            line-height: 1.5;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #f8fafc;
+        }
+        h1 {
+            color: #0f172a;
+            border-bottom: 2px solid #cbd5e1;
+            padding-bottom: 12px;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        h2 {
+            color: #1e293b;
+            font-size: 1.5em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+        }
+        p, li {
+            font-size: 1em;
+            color: #475569;
+        }
+        .instruction-box {
+            background-color: #f1f5f9;
+            border-left: 4px solid #64748b;
+            padding: 15px;
+            margin-bottom: 35px;
+            border-radius: 4px;
+        }
+        .instruction-box ol {
+            margin: 5px 0 0 20px;
+            padding: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 14px;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.95em;
+        }
+        th {
+            background-color: #0f172a;
+            color: #ffffff;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.05em;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .tag-success {
+            display: inline-block;
+            background-color: #dcfce7;
+            color: #15803d;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85em;
+            border: 1px solid #bbf7d0;
+            margin-bottom: 4px;
+        }
+        .tag-failure {
+            display: inline-block;
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85em;
+            border: 1px solid #fecaca;
+        }
+        .tc-id {
+            font-weight: bold;
+            color: #0f172a;
+        }
+        .steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin-bottom: 6px;
+            font-size: 0.95em;
+        }
+        .expected ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .expected li {
+            margin-bottom: 6px;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Arbitary Project - User Manual Test Suite</h1>
+    <p><strong>Project:</strong> ARBITARY Gamified Task Management Platform | <strong>Date:</strong> June 12, 2026</p>
+
+    <div class="instruction-box">
+        <strong>📋 How to Import into Microsoft Word:</strong>
+        <ol>
+            <li>Open this file (<code>MANUAL_TEST_PLAN.html</code>) in your web browser.</li>
+            <li>Select everything on the page (press <strong>Ctrl + A</strong>).</li>
+            <li>Copy it (press <strong>Ctrl + C</strong>).</li>
+            <li>Open Microsoft Word and paste (press <strong>Ctrl + V</strong>).</li>
+            <li>The styled tables, borders, and background shading will render natively as editable tables in Word!</li>
+        </ol>
+    </div>
+
+    <h2>📋 General Test Case Layout (Template)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;">Test ID</th>
+                <th style="width: 12%;">Module</th>
+                <th style="width: 18%;">Test Title</th>
+                <th style="width: 25%;">Test Description & Steps</th>
+                <th style="width: 20%;">Expected Result</th>
+                <th style="width: 15%;">Actual Result / Status</th>
+                <th style="width: 10%;">Failure Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="tc-id">TC-XXX-00</td>
+                <td><em>[Module Name]</em></td>
+                <td><strong><em>[Test Title]</em></strong></td>
+                <td class="steps">
+                    <em>[Steps to execute manual test]</em>
+                </td>
+                <td class="expected">
+                    <em>[Expected software behavior]</em>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td><em>[Details of failure if unsuccessful]</em></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>1. Authentication & Registration Module</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;">Test ID</th>
+                <th style="width: 12%;">Module</th>
+                <th style="width: 18%;">Test Title</th>
+                <th style="width: 25%;">Test Description & Steps</th>
+                <th style="width: 20%;">Expected Result</th>
+                <th style="width: 15%;">Actual Result / Status</th>
+                <th style="width: 10%;">Failure Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="tc-id">TC-AUTH-01</td>
+                <td>Authentication</td>
+                <td><strong>User Signup with Credentials</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Open browser and navigate to <code>/signup</code>.</li>
+                        <li>Enter a unique username, valid email (e.g., <code>test@example.com</code>), and a strong password.</li>
+                        <li>Click the <strong>Register</strong> button.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Account is successfully created.</li>
+                        <li>User is redirected to <code>/login</code> or the dashboard page.</li>
+                        <li>Toast notification appears: <em>"Account created successfully!"</em>.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-AUTH-02</td>
+                <td>Authentication</td>
+                <td><strong>User Login with Credentials</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to <code>/login</code>.</li>
+                        <li>Enter the registered email and password.</li>
+                        <li>Click the <strong>Sign In</strong> button.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>User is successfully logged in.</li>
+                        <li>Session cookie/token is set.</li>
+                        <li>User is redirected to <code>/dashboard</code>.</li>
+                        <li>User stats (points, tier, streak) load correctly in header.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-AUTH-03</td>
+                <td>Authentication</td>
+                <td><strong>User Login with Incorrect Password</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to <code>/login</code>.</li>
+                        <li>Enter the registered email but an incorrect password.</li>
+                        <li>Click the <strong>Sign In</strong> button.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Login fails.</li>
+                        <li>Error toast displays <em>"Invalid credentials"</em>.</li>
+                        <li>User remains on the login page; the password field is cleared.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-AUTH-04</td>
+                <td>Authentication</td>
+                <td><strong>OAuth Login (Google/Facebook)</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>On the <code>/login</code> page, click the <strong>Login with Google</strong> or <strong>Login with Facebook</strong> button.</li>
+                        <li>Authenticate using a valid social account credentials in the popup/redirect window.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>User is authenticated and registered (if new).</li>
+                        <li>User is redirected to <code>/dashboard</code>.</li>
+                        <li>User profile displays social network profile details.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>2. User Dashboard & Task Interaction</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;">Test ID</th>
+                <th style="width: 12%;">Module</th>
+                <th style="width: 18%;">Test Title</th>
+                <th style="width: 25%;">Test Description & Steps</th>
+                <th style="width: 20%;">Expected Result</th>
+                <th style="width: 15%;">Actual Result / Status</th>
+                <th style="width: 10%;">Failure Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="tc-id">TC-DASH-01</td>
+                <td>Dashboard</td>
+                <td><strong>Claim Daily Login Streak</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to <code>/dashboard</code>.</li>
+                        <li>Click <strong>Claim Daily Login</strong> in the header or available tasks.</li>
+                        <li>Observe changes in point total and streak indicators.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Success toast appears showing point reward (e.g. <em>"Daily login claimed! +10 pts"</em>).</li>
+                        <li>Streak counter increments by 1 (e.g., <em>"🔥 1-day streak"</em>).</li>
+                        <li>Points immediately reflect in the top header.</li>
+                        <li>Button updates to <em>"Login claimed"</em>.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-DASH-02</td>
+                <td>Dashboard</td>
+                <td><strong>Pick up an Available Task</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Select any task under the <strong>Available Tasks</strong> list.</li>
+                        <li>Click <strong>Pickup Task</strong>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Toast message <em>"Task picked up!"</em> appears.</li>
+                        <li>Task disappears from <strong>Available Tasks</strong> list.</li>
+                        <li>Task is now listed under <strong>In Progress Tasks</strong> list and sidebar.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-DASH-03</td>
+                <td>Dashboard</td>
+                <td><strong>Cancel an In-Progress Task</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to the <strong>In Progress</strong> tab.</li>
+                        <li>Locate the task and click <strong>Cancel Task</strong>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Toast message <em>"Task cancelled!"</em> appears.</li>
+                        <li>Task is removed from <strong>In Progress</strong> and sidebar list.</li>
+                        <li>Task reappears under the <strong>Available Tasks</strong> tab.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-DASH-04</td>
+                <td>Dashboard</td>
+                <td><strong>Submit Task Proof (Text & Image)</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to the <strong>In Progress</strong> tab.</li>
+                        <li>Click <strong>Complete</strong> or expand the task card.</li>
+                        <li>Enter proof URL (e.g., tweet link) or upload a screenshot image.</li>
+                        <li>Click <strong>Submit Proof</strong>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Toast <em>"Proof submitted! Pending verification"</em> displays.</li>
+                        <li>Task status updates to <em>"Pending Verification"</em>.</li>
+                        <li>Task cannot be cancelled or edited anymore.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-DASH-05</td>
+                <td>Dashboard</td>
+                <td><strong>Claim Profile & Referral Rewards</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Find <strong>Profile Setup</strong> or <strong>Referral Code Link</strong> tasks.</li>
+                        <li>Enter required details (e.g. upload profile image, or enter referral code).</li>
+                        <li>Click <strong>Claim Reward</strong>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Toast shows <em>"Reward claimed! +X pts"</em>.</li>
+                        <li>Points are instantly added to user points query.</li>
+                        <li>Task updates directly to completed.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. Gamification, Leaderboard & Profiles</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;">Test ID</th>
+                <th style="width: 12%;">Module</th>
+                <th style="width: 18%;">Test Title</th>
+                <th style="width: 25%;">Test Description & Steps</th>
+                <th style="width: 20%;">Expected Result</th>
+                <th style="width: 15%;">Actual Result / Status</th>
+                <th style="width: 10%;">Failure Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="tc-id">TC-GAM-01</td>
+                <td>Gamification</td>
+                <td><strong>Dynamic Tier Promotion</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Observe your current points and tier (e.g., Bronze).</li>
+                        <li>Complete tasks to cross the next tier threshold.</li>
+                        <li>Check the dashboard header or user profile page.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>User's point count updates.</li>
+                        <li>Tier name changes (e.g. Bronze → Silver) dynamically.</li>
+                        <li>New tier badge renders.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-GAM-02</td>
+                <td>Leaderboard</td>
+                <td><strong>Real-time Rank Updates</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Go to <code>/leaderboard</code> and note your rank/points.</li>
+                        <li>Earn points by completing tasks or claiming rewards.</li>
+                        <li>Return to <code>/leaderboard</code>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Your user profile in the table displays updated points.</li>
+                        <li>Your ranking updates correctly relative to other users' points.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>4. Admin Dashboard & Operations</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;">Test ID</th>
+                <th style="width: 12%;">Module</th>
+                <th style="width: 18%;">Test Title</th>
+                <th style="width: 25%;">Test Description & Steps</th>
+                <th style="width: 20%;">Expected Result</th>
+                <th style="width: 15%;">Actual Result / Status</th>
+                <th style="width: 10%;">Failure Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="tc-id">TC-ADM-01</td>
+                <td>Admin Panel</td>
+                <td><strong>Create New Task</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Log in as an Admin.</li>
+                        <li>Navigate to <code>/admin/dashboard/tasks</code> and click <strong>Create Task</strong>.</li>
+                        <li>Fill out Title, Type, Points, Description, and Verification requirements.</li>
+                        <li>Click <strong>Save Task</strong>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Task is successfully saved and listed in Admin tasks list.</li>
+                        <li>Task immediately appears on User dashboard's <strong>Available Tasks</strong>.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-ADM-02</td>
+                <td>Admin Panel</td>
+                <td><strong>Approve User Submission</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to <code>/admin/dashboard/submissions</code>.</li>
+                        <li>Locate a pending user submission.</li>
+                        <li>Review the submitted proof URL/image.</li>
+                        <li>Click <strong>Approve</strong>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Submission is marked as <em>"Approved"</em>.</li>
+                        <li>Task points are awarded to the user account.</li>
+                        <li>User's dashboard shows task moved to the completed tab.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-ADM-03</td>
+                <td>Admin Panel</td>
+                <td><strong>Reject User Submission</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to <code>/admin/dashboard/submissions</code>.</li>
+                        <li>Locate a pending submission.</li>
+                        <li>Click <strong>Reject</strong>.</li>
+                        <li>Enter a rejection feedback message (e.g. <em>"Incorrect profile link"</em>).</li>
+                        <li>Click <strong>Confirm</strong>.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Submission is marked as <em>"Rejected"</em>.</li>
+                        <li>No points are credited to the user's account.</li>
+                        <li>User's dashboard displays the task as rejected with the feedback message.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>5. Integrity & Edge Case Verification</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;">Test ID</th>
+                <th style="width: 12%;">Module</th>
+                <th style="width: 18%;">Test Title</th>
+                <th style="width: 25%;">Test Description & Steps</th>
+                <th style="width: 20%;">Expected Result</th>
+                <th style="width: 15%;">Actual Result / Status</th>
+                <th style="width: 10%;">Failure Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="tc-id">TC-EDGE-01</td>
+                <td>Data Integrity</td>
+                <td><strong>Concurrency Task Pickup (Race Condition)</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Navigate to available tasks list.</li>
+                        <li>Locate a task and click the <strong>Pickup Task</strong> button multiple times rapidly (or simulate 2+ concurrent requests using automated script).</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Only 1 pickup transaction goes through.</li>
+                        <li>User active tasks database table contains only 1 entry.</li>
+                        <li>Backend prevents duplicate rows or double point allocations.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-EDGE-02</td>
+                <td>Data Integrity</td>
+                <td><strong>Atomic Point Award Audit</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Submit a proof and have the admin approve it.</li>
+                        <li>Induce a simulated backend database failure or crash during approval phase.</li>
+                        <li>Verify database state.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Either both updates succeed (Task = Completed AND points are added) or both roll back (Task remains Pending, points do not change).</li>
+                        <li>No mismatched records (i.e. task marked completed but points never credited, or vice versa).</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="tc-id">TC-EDGE-03</td>
+                <td>Dashboard</td>
+                <td><strong>Streak Reset Validation</strong></td>
+                <td class="steps">
+                    <ol>
+                        <li>Simulate missing a day of login (by altering user's last login date in database to 2+ days ago).</li>
+                        <li>Log in and claim daily login reward.</li>
+                    </ol>
+                </td>
+                <td class="expected">
+                    <ul>
+                        <li>Daily login claimed successfully.</li>
+                        <li>Streak resets back to <strong>1</strong>.</li>
+                        <li>No milestone streak bonuses are awarded.</li>
+                    </ul>
+                </td>
+                <td>
+                    <span class="tag-success">[ ] Success</span><br>
+                    <span class="tag-failure">[ ] Failure</span>
+                </td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+</body>
+</html>

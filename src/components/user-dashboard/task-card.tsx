@@ -3,18 +3,16 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { YoutubeModal } from "./youtube-modal";
 import { FacebookModal } from "./facebook-modal";
 import { InstagramModal } from "./instagram-modal";
 import { SubscribeModal } from "./subscribe-modal";
 import { YouTubeActionModal } from "./youtube-action-modal";
-import { isYtLike, isYtSubscribe, isYtComment } from "@/src/lib/task-detector";
 import { FlashCountdown } from "./flash-countdown";
-import { ShareTaskCard } from "./share-task-card";
 import { useReward } from "@/src/components/rewards/reward-context";
 import { UserTaskItem } from "@/src/services/task.service";
+import { TaskActionButtons } from "@/src/components/tasks/TaskActionButtons";
+import { useScreenshotUpload } from "@/src/hooks/useScreenshotUpload";
 
 type TaskCardProps = {
   task: UserTaskItem;
@@ -23,7 +21,11 @@ type TaskCardProps = {
   onToggleExpand: (e: React.MouseEvent, taskId: number) => void;
   onPickup: (taskId: number) => void;
   onCancel: (taskId: number) => void;
-  onComplete: (taskId: number, proofUrl: string, proofImageUrl?: string) => void;
+  onComplete: (
+    taskId: number,
+    proofUrl: string,
+    proofImageUrl?: string,
+  ) => void;
   onClaimDailyLogin: (taskId: number) => void;
   onClaimProfile: (taskId: number) => void;
   onClaimReferral: (taskId: number) => void;
@@ -31,6 +33,12 @@ type TaskCardProps = {
   pickupVariable: number | undefined;
   cancelPending: boolean;
   cancelVariable: number | undefined;
+  onYoutubeComplete: (vars: {
+    taskId: number;
+    sessionId?: number;
+    fingerprint?: string;
+  }) => void;
+  onModalComplete: (taskId: number, taskType?: string | null) => void;
 };
 
 const gradients = [
@@ -56,6 +64,8 @@ export function TaskCard({
   pickupVariable,
   cancelPending,
   cancelVariable,
+  onYoutubeComplete,
+  onModalComplete,
 }: TaskCardProps) {
   const gradient = gradients[index % gradients.length];
   const [isYoutubeModalOpen, setIsYoutubeModalOpen] = useState(false);
@@ -67,13 +77,18 @@ export function TaskCard({
   const prevStatusRef = useRef(task.userStatus);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
-  const [isYouTubeActionModalOpen, setIsYouTubeActionModalOpen] = useState(false);
-  const [youtubeActionType, setYoutubeActionType] = useState<"like" | "comment">("like");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const queryClient = useQueryClient();
+  const [isYouTubeActionModalOpen, setIsYouTubeActionModalOpen] =
+    useState(false);
+  const [youtubeActionType, setYoutubeActionType] = useState<
+    "like" | "comment"
+  >("like");
   const { triggerReward } = useReward();
+  const {
+    previewUrl,
+    isUploading,
+    handleFileSelect,
+    handleSubmit: handleScreenshotSubmit,
+  } = useScreenshotUpload((url) => onComplete(task.id, url, url));
 
   useEffect(() => {
     async function loadFp() {
@@ -82,7 +97,9 @@ export function TaskCard({
         const fp = await FingerprintJS.load();
         const { visitorId } = await fp.get();
         setFingerprint(visitorId);
-      } catch { /* fingerprint capture not available */ }
+      } catch {
+        /* fingerprint capture not available */
+      }
     }
     loadFp();
   }, []);
@@ -103,7 +120,11 @@ export function TaskCard({
       setShowSuccess(true);
       if (currentStatus === "verified" && cardRef.current) {
         const rect = cardRef.current.getBoundingClientRect();
-        triggerReward(rect.left + rect.width / 2, rect.top - 20, task.points || 0);
+        triggerReward(
+          rect.left + rect.width / 2,
+          rect.top - 20,
+          task.points || 0,
+        );
       }
       setTimeout(() => setShowSuccess(false), 2000);
     }
@@ -123,82 +144,15 @@ export function TaskCard({
 
   const requiredSeconds: number = task.watchDuration ?? 30;
 
-  const youtubeCompleteMutation = useMutation({
-    mutationFn: async ({
-      taskId,
-      sessionId,
-      fingerprint,
-    }: {
-      taskId: number;
-      sessionId?: number;
-      fingerprint?: string;
-    }) => {
-      const res = await fetch("/api/user/tasks/youtube-complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, sessionId, fingerprint }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || "Failed to complete YouTube task");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success("YouTube task completed and points awarded!");
-      setIsYoutubeModalOpen(false);
-      if (cardRef.current) {
-        const rect = cardRef.current.getBoundingClientRect();
-        triggerReward(rect.left + rect.width / 2, rect.top - 20, task.points || 0);
-      }
-      queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["user-points"] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const handleScreenshotSubmit = async () => {
-    if (!selectedFile) {
-      alert("Please select a screenshot to upload");
-      return;
-    }
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || "Upload failed");
-      }
-      const data = await res.json();
-      onComplete(task.id, data.url, data.url);
-      setSelectedFile(null);
-      setPreviewUrl("");
-    } catch (err: any) {
-      alert(err.message || "Failed to upload screenshot");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   // Gray out tasks that are in a final non-actionable state
-  const completedStatuses = new Set(["verified", "completed", "cancelled", "pending verification"]);
-  const isFinalStatus = task.userStatus && completedStatuses.has(task.userStatus.toLowerCase());
-
-  // Human-readable duration label shown on the Watch button
-  const durationLabel =
-    requiredSeconds >= 60
-      ? `${Math.round(requiredSeconds / 60)}m`
-      : `${requiredSeconds}s`;
+  const completedStatuses = new Set([
+    "verified",
+    "completed",
+    "cancelled",
+    "pending verification",
+  ]);
+  const isFinalStatus =
+    task.userStatus && completedStatuses.has(task.userStatus.toLowerCase());
 
   return (
     <motion.div
@@ -406,283 +360,26 @@ export function TaskCard({
                     : "Re-claim →"}
                 </button>
               ) : task.userStatus.toLowerCase() === "in progress" ? (
-                <div className="flex flex-col gap-1.5 mt-1 w-full min-w-[200px]">
-                  {task.isShare && task.shareLink ? (
-                    <ShareTaskCard
-                      task={task}
-                      onCancel={onCancel}
-                      cancelPending={cancelPending}
-                      cancelVariable={cancelVariable}
-                    />
-                  ) : task.platform === "facebook" ? (
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsFacebookModalOpen(true);
-                        }}
-                        className="text-xs font-bold text-white bg-blue-500/80 hover:bg-blue-500
-                                         px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                         hover:scale-105 flex-1"
-                      >
-                        f Verify with Facebook
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCancel(task.id);
-                        }}
-                        disabled={cancelPending}
-                        className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                   hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {cancelPending && cancelVariable === task.id
-                          ? "..."
-                          : "Cancel"}
-                      </button>
-                    </div>
-                  ) : task.platform === "instagram" ? (
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsInstagramModalOpen(true);
-                        }}
-                        className="text-xs font-bold text-white bg-pink-500/80 hover:bg-pink-500
-                                         px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                         hover:scale-105 flex-1"
-                      >
-                        📷 Verify with Instagram
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCancel(task.id);
-                        }}
-                        disabled={cancelPending}
-                        className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                   hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {cancelPending && cancelVariable === task.id
-                          ? "..."
-                          : "Cancel"}
-                      </button>
-                    </div>
-                  ) : isYtSubscribe(task) ? (
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsSubscribeModalOpen(true);
-                        }}
-                        className="text-xs font-bold text-white bg-red-600/80 hover:bg-red-600
-                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                   hover:scale-105 flex-1"
-                      >
-                        🔔 Subscribe
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCancel(task.id);
-                        }}
-                        disabled={cancelPending}
-                        className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                   hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {cancelPending && cancelVariable === task.id
-                          ? "..."
-                          : "Cancel"}
-                      </button>
-                    </div>
-                  ) : isYtLike(task) || isYtComment(task) ? (
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setYoutubeActionType(isYtLike(task) ? "like" : "comment");
-                          setIsYouTubeActionModalOpen(true);
-                        }}
-                        className="text-xs font-bold text-white bg-emerald-500/50 hover:bg-emerald-500/70
-                                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                        hover:scale-105 flex-1"
-                      >
-                        {isYtLike(task) ? "👍 Like" : "💬 Comment"}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCancel(task.id);
-                        }}
-                        disabled={cancelPending}
-                        className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                   hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {cancelPending && cancelVariable === task.id
-                          ? "..."
-                          : "Cancel"}
-                      </button>
-                    </div>
-                  ) : task.platform === "youtube" || task.taskType === "VIDEO_WATCH" || task.taskType === "video_watch" ? (
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsYoutubeModalOpen(true);
-                        }}
-                        className="text-xs font-bold text-white bg-red-600/80 hover:bg-red-600
-                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                   hover:scale-105 flex-1"
-                      >
-                        ▶ Watch ({durationLabel})
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCancel(task.id);
-                        }}
-                        disabled={cancelPending}
-                        className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                   px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                   hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {cancelPending && cancelVariable === task.id
-                          ? "..."
-                          : "Cancel"}
-                      </button>
-                    </div>
-                  ) : task.taskType === "SCREENSHOT_UPLOAD" ? (
-                    <div className="flex flex-col gap-1.5">
-                      <label
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex flex-col items-center justify-center gap-1.5 px-3 py-2.5
-                                   rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 border-dashed
-                                   cursor-pointer hover:bg-white/20 transition-all duration-200"
-                      >
-                        {previewUrl ? (
-                          <img
-                            src={previewUrl}
-                            alt="Preview"
-                            className="w-full max-h-32 object-contain rounded-lg"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <svg className="w-6 h-6 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-[10px] text-white/50 font-medium">
-                              Tap to upload screenshot
-                            </span>
-                          </div>
-                        )}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </label>
-                      {previewUrl && (
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleScreenshotSubmit();
-                            }}
-                            disabled={isUploading}
-                            className="text-xs font-bold text-white bg-emerald-500/50 hover:bg-emerald-500/70
-                                            px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                            hover:scale-105 flex-1 disabled:opacity-50"
-                          >
-                            {isUploading ? "Uploading..." : "Submit Screenshot"}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCancel(task.id);
-                            }}
-                            disabled={cancelPending}
-                            className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                       px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                       hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {cancelPending && cancelVariable === task.id
-                              ? "..."
-                              : "Cancel"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-1.5">
-                      <label
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex flex-col items-center justify-center gap-1.5 px-3 py-2.5
-                                   rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 border-dashed
-                                   cursor-pointer hover:bg-white/20 transition-all duration-200"
-                      >
-                        {previewUrl ? (
-                          <img
-                            src={previewUrl}
-                            alt="Preview"
-                            className="w-full max-h-32 object-contain rounded-lg"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <svg className="w-6 h-6 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-[10px] text-white/50 font-medium">
-                              Tap to upload screenshot
-                            </span>
-                          </div>
-                        )}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </label>
-                      {previewUrl && (
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleScreenshotSubmit();
-                            }}
-                            disabled={isUploading}
-                            className="text-xs font-bold text-white bg-emerald-500/50 hover:bg-emerald-500/70
-                                            px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                            hover:scale-105 flex-1 disabled:opacity-50"
-                          >
-                            {isUploading ? "Uploading..." : "Submit Screenshot"}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCancel(task.id);
-                            }}
-                            disabled={cancelPending}
-                            className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                                       px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
-                                       hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {cancelPending && cancelVariable === task.id
-                              ? "..."
-                              : "Cancel"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <TaskActionButtons
+                  task={task}
+                  cancelPending={cancelPending}
+                  cancelVariable={cancelVariable}
+                  fingerprint={fingerprint}
+                  previewUrl={previewUrl}
+                  isUploading={isUploading}
+                  onCancel={onCancel}
+                  onComplete={onComplete}
+                  onOpenFacebook={() => setIsFacebookModalOpen(true)}
+                  onOpenInstagram={() => setIsInstagramModalOpen(true)}
+                  onOpenSubscribe={() => setIsSubscribeModalOpen(true)}
+                  onOpenYouTubeAction={(type) => {
+                    setYoutubeActionType(type);
+                    setIsYouTubeActionModalOpen(true);
+                  }}
+                  onOpenYoutube={() => setIsYoutubeModalOpen(true)}
+                  onScreenshotFileSelect={handleFileSelect}
+                  onScreenshotSubmit={handleScreenshotSubmit}
+                />
               ) : null}
             </div>
           ) : (
@@ -708,7 +405,7 @@ export function TaskCard({
         isOpen={isYoutubeModalOpen}
         onClose={() => setIsYoutubeModalOpen(false)}
         onComplete={(_watchedSeconds, sessionId) =>
-          youtubeCompleteMutation.mutate({ taskId: task.id, sessionId, fingerprint })
+          onYoutubeComplete({ taskId: task.id, sessionId, fingerprint })
         }
         requiredSeconds={requiredSeconds}
       />
@@ -718,8 +415,7 @@ export function TaskCard({
         isOpen={isFacebookModalOpen}
         onClose={() => setIsFacebookModalOpen(false)}
         onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["user-points"] });
+          onModalComplete(task.id, task.taskType);
           return;
         }}
         fingerprint={fingerprint}
@@ -730,8 +426,7 @@ export function TaskCard({
         isOpen={isInstagramModalOpen}
         onClose={() => setIsInstagramModalOpen(false)}
         onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["user-points"] });
+          onModalComplete(task.id, task.taskType);
           return;
         }}
         fingerprint={fingerprint}
@@ -742,8 +437,7 @@ export function TaskCard({
         isOpen={isSubscribeModalOpen}
         onClose={() => setIsSubscribeModalOpen(false)}
         onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["user-points"] });
+          onModalComplete(task.id, task.taskType);
           return;
         }}
       />
@@ -754,8 +448,7 @@ export function TaskCard({
         isOpen={isYouTubeActionModalOpen}
         onClose={() => setIsYouTubeActionModalOpen(false)}
         onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["user-points"] });
+          onModalComplete(task.id, task.taskType);
           return;
         }}
       />

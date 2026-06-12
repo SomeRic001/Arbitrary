@@ -22,15 +22,6 @@ export function TaskTable({
   onDetails,
   searchQuery,
 }: Props) {
-  const filtered = tasks.filter((t) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      t.title.toLowerCase().includes(q) ||
-      t.description?.toLowerCase().includes(q)
-    );
-  });
-
   return (
     <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-sm overflow-hidden">
       {/* Column headers */}
@@ -63,7 +54,7 @@ export function TaskTable({
               <div className="w-7 h-7 border-2 border-zinc-200 border-t-slate-900 rounded-full animate-spin" />
               <p className="text-sm text-zinc-400 font-medium">Loading tasks...</p>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : tasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-zinc-400 fade-in-up">
               <div className="w-14 h-14 rounded-[2rem] bg-zinc-100 flex items-center justify-center">
                 <svg
@@ -91,7 +82,7 @@ export function TaskTable({
             </div>
           ) : (
             <div className="divide-y divide-black/5">
-              {filtered.map((task, index) => (
+              {tasks.map((task, index) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -108,9 +99,7 @@ export function TaskTable({
       {tasks.length > 0 && (
         <div className="px-8 py-4 border-t border-black/5 bg-zinc-50/50 flex items-center justify-between">
           <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-            {searchQuery
-              ? `${filtered.length} of ${tasks.length} ${activeTab === "all" ? "" : activeTab + " "}tasks`
-              : `${tasks.length} ${activeTab === "all" ? "" : activeTab + " "}${tasks.length === 1 ? "task" : "tasks"}`}
+            {tasks.length} {activeTab === "all" ? "" : activeTab + " "}{tasks.length === 1 ? "task" : "tasks"}
           </p>
         </div>
       )}

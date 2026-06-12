@@ -6,11 +6,11 @@ import { TaskCard } from "./task-card";
 import { UserTaskItem } from "@/src/services/task.service";
 
 type TaskListProps = {
-  availableTasks: any[];
-  inProgressTasks: any[];
-  rejectedTasks: any[];
-  completedTasks: any[];
-  systemTasks: any[];
+  availableTasks: UserTaskItem[];
+  inProgressTasks: UserTaskItem[];
+  rejectedTasks: UserTaskItem[];
+  completedTasks: UserTaskItem[];
+  systemTasks: UserTaskItem[];
   isLoading: boolean;
   activeTab: string;
   isAnimating: boolean;
@@ -27,6 +27,12 @@ type TaskListProps = {
   pickupVariable: number | undefined;
   cancelPending: boolean;
   cancelVariable: number | undefined;
+  onYoutubeComplete: (vars: {
+    taskId: number;
+    sessionId?: number;
+    fingerprint?: string;
+  }) => void;
+  onModalComplete: (taskId: number, taskType?: string | null) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -37,7 +43,7 @@ function TaskSection({
   tasks,
   accent,
   ...cardProps
-}: { title: string; tasks: any[]; accent?: string } & Omit<
+}: {   title: string; tasks: UserTaskItem[]; accent?: string } & Omit<
   TaskListProps,
   | "availableTasks"
   | "inProgressTasks"
@@ -97,7 +103,7 @@ export function TaskList({
 
   const filteredAvailable = useMemo(() => {
     if (difficultyFilter === "all") return availableTasks;
-    return availableTasks.filter((t: UserTaskItem) => t.difficulty === difficultyFilter);
+    return availableTasks.filter((t) => t.difficulty === difficultyFilter);
   }, [availableTasks, difficultyFilter]);
 
   const difficultyColors: Record<string, string> = {

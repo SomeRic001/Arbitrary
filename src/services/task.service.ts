@@ -8,7 +8,7 @@ import {
   shareClicksTable,
   watchSessionsTable,
 } from "@/src/db/schema";
-import { eq, and, desc, sql, or, gte, lt, inArray, not, type SQL, isNotNull, ne } from "drizzle-orm";
+import { eq, and, desc, sql, or, gte, lt, inArray, not, type SQL, isNotNull, ne, ilike } from "drizzle-orm";
 import { calculateStreak, getNextMilestone, toDateStr, getCycleStart } from "@/src/lib/streak-helper";
 import { getStreakMultiplier } from "@/src/lib/gamification";
 import {
@@ -48,6 +48,7 @@ export type UserTaskItem = {
   shareClickCount: number;
   shareClickThreshold: number;
   sharePointsAwarded: boolean;
+  commentInstruction?: string | null;
 };
 
 export type UserTasksPage = {
@@ -1520,6 +1521,94 @@ export const TaskService = {
     }));
 
     return ok({ tasks: mappedTasks, totalCount, totalPages, currentPage: page });
+  },
+
+  async getAdminTasks(params: {
+    page: number;
+    limit: number;
+    search?: string;
+    taskType?: string | null;
+  }) {
+    const { page, limit, search, taskType } = params;
+    const offset = (page - 1) * limit;
+
+    const conditions = [];
+
+    if (search?.trim()) {
+      conditions.push(
+        or(
+          ilike(tasksTable.title, `%${search.trim()}%`),
+          ilike(tasksTable.description, `%${search.trim()}%`),
+        ),
+      );
+    }
+
+    if (taskType) {
+      conditions.push(eq(tasksTable.taskType, taskType));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const rows = await db
+      .select()
+      .from(tasksTable)
+      .where(whereClause)
+      .orderBy(desc(tasksTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tasksTable)
+      .where(whereClause);
+
+    const totalCount = Number(count);
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+    const taskIds = rows.map((t) => t.id);
+    const completedCounts =
+      taskIds.length > 0
+        ? await db
+            .select({
+              taskId: userTasksTable.taskId,
+              count: sql<number>`count(${userTasksTable.id})::int`,
+            })
+            .from(userTasksTable)
+            .where(
+              and(
+                inArray(userTasksTable.taskId, taskIds),
+                sql`${userTasksTable.status} IN ('Completed', 'Verified')`,
+              ),
+            )
+            .groupBy(userTasksTable.taskId)
+        : [];
+
+    const countsMap = new Map(completedCounts.map((c) => [c.taskId, c.count]));
+
+    const tasks = rows.map((t) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      taskType: t.taskType,
+      rewardPoint: t.points,
+      postUrl: t.postUrl,
+      socialPostUrl: t.postUrl,
+      videoUrl: t.postUrl,
+      platform: t.platform,
+      socialPostId: t.socialPostId,
+      watchDuration: t.watchDuration ?? null,
+      difficulty: t.difficulty,
+      isFlash: t.isFlash,
+      isShare: t.isShare,
+      shareThreshold: t.shareThreshold ?? 3,
+      expiresAt: t.expiresAt ? t.expiresAt.toISOString() : null,
+      created: t.createdAt
+        ? new Date(t.createdAt).toLocaleDateString()
+        : "N/A",
+      completedUsers: countsMap.get(t.id) || 0,
+    }));
+
+    return { tasks, totalCount, totalPages, currentPage: page };
   },
 
   async createTask(input: {

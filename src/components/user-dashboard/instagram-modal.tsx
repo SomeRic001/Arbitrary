@@ -353,14 +353,26 @@ export function InstagramModal({
                 <div className="w-7 h-7 rounded-full bg-pink-600 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
                   2
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-bold text-gray-800 text-sm">
                     Comment with your unique code
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Copy the code below, go to the post, and paste it in a comment.
-                    Make sure you use @{instagramUsername}.
-                  </p>
+                  {task.commentInstruction ? (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-2xl">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-blue-400 mb-1">
+                        What to write
+                      </p>
+                      <p className="text-sm font-bold text-blue-800">
+                        {task.commentInstruction}{" "}
+                        <span className="font-mono text-blue-600">[your unique code]</span>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Copy the code below, go to the post, and paste it in a comment.
+                      Make sure you use @{instagramUsername}.
+                    </p>
+                  )}
                 </div>
               </div>
 

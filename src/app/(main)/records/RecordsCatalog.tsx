@@ -32,16 +32,16 @@ type Group = { key: string; label: string; items: Song[] };
 function buildGroups(songs: Song[]): Group[] {
   const map = new Map<string, Group>();
   for (const s of songs) {
-    const key = `${s.releaseYear ?? 0}-${String(s.releaseMonth ?? 0).padStart(2, "0")}`;
+    const key = String(s.releaseYear ?? 0);
     let g = map.get(key);
     if (!g) {
-      g = { key, label: monthYearLabel(s.releaseMonth, s.releaseYear), items: [] };
+      g = { key, label: key === "0" ? "Unknown" : key, items: [] };
       map.set(key, g);
     }
     g.items.push(s);
   }
-  // reverse-chronological: newest shelf first
-  return Array.from(map.values()).sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
+  // reverse-chronological: newest year first
+  return Array.from(map.values()).sort((a, b) => Number(b.key) - Number(a.key));
 }
 
 export default function RecordsCatalog({ songs }: { songs: Song[] }) {
@@ -280,8 +280,14 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
       scrX = bevel,
       scrY = 10;
     const wrap = byId("ytIframeWrap");
-    if (wrap)
-      wrap.style.cssText = `position:absolute;left:${scrX}px;top:${scrY}px;width:${scrW}px;height:${scrH}px;border-radius:3px;overflow:hidden;background:#000;`;
+    if (wrap) {
+      wrap.style.cssText = `position:absolute;left:${scrX}px;top:${scrY}px;width:${scrW}px;height:${scrH}px;border-radius:3px;overflow:hidden;background:#000;display:block;`;
+      const iframe = wrap.querySelector("iframe");
+      if (iframe) {
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+      }
+    }
     const track = byId("monitorTrack");
     if (track)
       track.innerHTML = `<div class="rc-tname">${escapeHtml(song.title)}</div><div class="rc-tartist">${escapeHtml(song.artist)}</div>`;
@@ -429,9 +435,9 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
         events: { onStateChange: (e: any) => onAudioStateChange(e) },
       });
       s.ytVideoPlayer = new YT.Player("ytPlayerVideo", {
-        width: "240",
-        height: "150",
-        playerVars: { autoplay: 0, controls: 1, modestbranding: 1, playsinline: 1, rel: 0 },
+        width: "100%",
+        height: "100%",
+        playerVars: { autoplay: 1, controls: 1, modestbranding: 1, playsinline: 1, rel: 0 },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         events: { onStateChange: (e: any) => onVideoStateChange(e) },
       });
@@ -450,6 +456,45 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
 
     if (w.YT && w.YT.Player) initPlayers();
     else w.onYouTubeIframeAPIReady = initPlayers;
+
+    // ── top-left resize handle ──────────────────────────────────────────
+    const resizeHandle = document.getElementById("monitorResizeHandle");
+    const monitorFull = document.getElementById("monitorFull");
+
+    if (resizeHandle && monitorFull) {
+      let startX = 0;
+      let startY = 0;
+      let startW = 0;
+      let startH = 0;
+
+      const onMouseMove = (e: MouseEvent) => {
+        const dx = startX - e.clientX;
+        const dy = startY - e.clientY;
+        const newW = Math.max(300, startW + dx);
+        const newH = Math.max(380, startH + dy);
+        monitorFull.style.width = `${newW}px`;
+        monitorFull.style.height = `${newH}px`;
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.userSelect = "";
+      };
+
+      resizeHandle.addEventListener("mousedown", (e: MouseEvent) => {
+        e.preventDefault();
+        startX = e.clientX;
+        startY = e.clientY;
+        // offsetWidth/offsetHeight are 0 when hidden — read actual rendered size
+        const rect = monitorFull.getBoundingClientRect();
+        startW = rect.width || parseInt(monitorFull.style.width) || 300;
+        startH = rect.height || parseInt(monitorFull.style.height) || 380;
+        document.body.style.userSelect = "none";
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+    }
 
     return () => {
       detachScrollGuard();
@@ -660,6 +705,15 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
       {/* Monitor widget */}
       <div className="rc-monitor-widget" id="monitorWidget">
         <div className="rc-monitor-full" id="monitorFull">
+          <div
+            className="rc-monitor-resize-handle"
+            id="monitorResizeHandle"
+            title="Drag to resize"
+          >
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M9 1L1 9M5 1L1 5M9 5L5 9" />
+            </svg>
+          </div>
           <div className="rc-monitor-full-header">
             <span>Now Watching</span>
             <div className="rc-monitor-header-btns">

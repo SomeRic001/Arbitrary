@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   Globe,
@@ -43,6 +44,7 @@ export type TaskFormPayload = {
   isShare: boolean;
   shareThreshold: number;
   expiresAt: string | null;
+  commentInstruction: string | null;
 };
 
 type Props = {
@@ -96,8 +98,7 @@ export function TaskFormModal({
     detectYoutubeAction,
   );
 
-  const isSocialPlatform = taskSource !== 
-  "manual" && taskSource !== "daily-login";
+  const isSocialPlatform = taskSource !== "manual" && taskSource !== "daily-login";
   const isYoutube = taskSource === "youtube";
   const isDailyLogin = taskSource === "daily-login";
   const isYtWatch = isYoutube && youtubeAction === "watch";
@@ -160,6 +161,7 @@ export function TaskFormModal({
       isShare: isShare,
       shareThreshold: Number(formData.get("shareThreshold")) || 3,
       expiresAt: (flashValue || task?.isFlash) ? (formData.get("expiresAt") as string) || null : null,
+      commentInstruction: (formData.get("commentInstruction") as string) || null,
     });
   };
 
@@ -175,373 +177,419 @@ export function TaskFormModal({
     >
       <form className="px-6 pb-6 space-y-8" onSubmit={handleSubmit}>
 
-        {/* SECTION 1: Platform & Action */}
+        {/* STEP 1: Source Selection — always visible, prominent */}
         <div className={sectionClass}>
           <div className={sectionHeaderClass}>
             <Globe className="w-4 h-4 text-[#FACC15]" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-black">1. Platform & Action</span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-black">1. Choose Source</span>
           </div>
 
           <div className="space-y-5">
             <PlatformSelector value={taskSource} onChange={handleSourceChange} />
 
-            {isSocialPlatform && !isYoutube && (
-              <div className="border border-black/5 rounded-2xl p-4 bg-zinc-50 space-y-3">
-                <p className={labelClass}>
-                  Select {PLATFORM_LABELS[taskSource as Platform]} Post
-                </p>
-                <SocialPostPicker
-                  platform={taskSource as Platform}
-                  selected={selectedPost}
-                  onSelect={setSelectedPost}
-                />
-                {selectedPost && (
-                  <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <p className="text-xs font-bold text-emerald-700 truncate">
-                      Post selected: {selectedPost.title}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* YouTube Action Sub-selector */}
-            {isYoutube && (
-              <div className="border border-red-200 rounded-2xl p-4 bg-red-50/40 space-y-3">
-                <p className={labelClass}>YouTube Action</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {([
-                    { value: "watch" as const, label: "Watch Video", icon: Eye, desc: "User must watch for a set duration" },
-                    { value: "subscribe" as const, label: "Subscribe", icon: Bell, desc: "User must subscribe to channel" },
-                    { value: "like" as const, label: "Like", icon: ThumbsUp, desc: "User must like the video" },
-                    { value: "comment" as const, label: "Comment", icon: MessageSquare, desc: "User must comment on the video" },
-                  ]).map((action) => (
-                    <button
-                      key={action.value}
-                      type="button"
-                      onClick={() => setYoutubeAction(action.value)}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 text-xs font-black tracking-wider transition-all ${
-                        youtubeAction === action.value
-                          ? "border-red-500 bg-red-500 text-white shadow-md"
-                          : "border-black/5 bg-white text-zinc-500 hover:border-red-300"
-                      }`}
-                    >
-                      <action.icon className="w-4 h-4" />
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-red-400/80 font-medium">
-                  {youtubeAction === "watch" && "Users must watch the video for the specified duration to earn points."}
-                  {youtubeAction === "subscribe" && "Users must subscribe to the YouTube channel. Include the channel URL or handle."}
-                  {youtubeAction === "like" && "Users must like the YouTube video. Verified via YouTube API."}
-                  {youtubeAction === "comment" && "Users must comment on the YouTube video. Verified via YouTube API."}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* SECTION 2: Task Content */}
-        <div className={sectionClass}>
-          <div className={sectionHeaderClass}>
-            <Type className="w-4 h-4 text-[#FACC15]" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-black">2. Task Content</span>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="title" className={labelClass}>Task Title</label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                required
-                defaultValue={
-                  mode === "edit"
-                    ? task?.title
-                    : selectedPost
-                      ? `Like our ${PLATFORM_LABELS[taskSource as Platform] || ""} post`
-                      : ""
-                }
-                placeholder="e.g. Watch our latest video"
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="description" className={labelClass}>Description</label>
-              <textarea
-                id="description"
-                name="description"
-                rows={2}
-                required
-                defaultValue={mode === "edit" ? task?.description : ""}
-                placeholder="Describe the task..."
-                className={`${inputClass} resize-none`}
-              />
-            </div>
-
-            {taskSource === "manual" && (
-              <div>
-                <label htmlFor="manualUrl" className={labelClass}>Target URL (Optional)</label>
-                <input
-                  type="url"
-                  id="manualUrl"
-                  name="manualUrl"
-                  defaultValue={mode === "edit" ? task?.socialPostUrl : ""}
-                  placeholder="https://..."
-                  className={inputClass}
-                />
-              </div>
-            )}
-
-            {!isDailyLogin && (
-              <div>
-                <label htmlFor="videoUrl" className={labelClass}>
-                  YouTube Video URL {isYoutube ? <span className="text-red-400">*</span> : "(Optional)"}
-                </label>
-                <input
-                  type="url"
-                  id="videoUrl"
-                  name="videoUrl"
-                  required={isYoutube}
-                  defaultValue={mode === "edit" ? (task?.videoUrl ?? "") : ""}
-                  placeholder="https://youtube.com/watch?v=..."
-                  className={inputClass}
-                />
-              </div>
-            )}
-
-            {isYtWatch && (
-              <div className="rounded-2xl border border-red-200 bg-red-50/60 p-5 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Video className="w-4 h-4 text-red-600" />
-                  <label htmlFor="watchDuration" className="block text-[10px] font-black uppercase tracking-widest text-red-600">
-                    Required Watch Duration
-                  </label>
-                </div>
-                <p className="text-[11px] text-red-400/80 mt-0.5 font-medium">
-                  Users must watch the video for this many seconds to earn points.
-                </p>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      id="watchDuration"
-                      name="watchDuration"
-                      min={10}
-                      max={3600}
-                      required
-                      defaultValue={defaultDuration}
-                      className="w-24 px-4 py-2.5 bg-white border border-red-200 rounded-2xl text-sm font-black text-red-700 focus:outline-none focus:border-red-400 transition-all"
-                    />
-                    <span className="text-sm font-bold text-red-500">seconds</span>
-                  </div>
-                  <div className="flex gap-1.5">
-                    {[30, 60, 120, 300].map((s) => (
+            <AnimatePresence mode="wait">
+              {isYoutube && (
+                <motion.div
+                  key="youtube-action"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.25 }}
+                  className="border border-red-200 rounded-2xl p-4 bg-red-50/40 space-y-3"
+                >
+                  <p className={labelClass}>YouTube Action</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {([
+                      { value: "watch" as const, label: "Watch Video", icon: Eye, desc: "User must watch for a set duration" },
+                      { value: "subscribe" as const, label: "Subscribe", icon: Bell, desc: "User must subscribe to channel" },
+                      { value: "like" as const, label: "Like", icon: ThumbsUp, desc: "User must like the video" },
+                      { value: "comment" as const, label: "Comment", icon: MessageSquare, desc: "User must comment on the video" },
+                    ]).map((action) => (
                       <button
-                        key={s}
+                        key={action.value}
                         type="button"
-                        onClick={() => {
-                          const input = document.getElementById("watchDuration") as HTMLInputElement;
-                          if (input) input.value = String(s);
-                        }}
-                        className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+                        onClick={() => setYoutubeAction(action.value)}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 text-xs font-black tracking-wider transition-all ${
+                          youtubeAction === action.value
+                            ? "border-red-500 bg-red-500 text-white shadow-md"
+                            : "border-black/5 bg-white text-zinc-500 hover:border-red-300"
+                        }`}
                       >
-                        {s >= 60 ? `${s / 60}m` : `${s}s`}
+                        <action.icon className="w-4 h-4" />
+                        {action.label}
                       </button>
                     ))}
                   </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* SECTION 3: Rewards & Difficulty */}
-        <div className={sectionClass}>
-          <div className={sectionHeaderClass}>
-            <Trophy className="w-4 h-4 text-[#FACC15]" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-black">3. Rewards & Difficulty</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="taskType" className={labelClass}>Type</label>
-              <select
-                id="taskType"
-                name="taskType"
-                required
-                disabled={isYoutube}
-                defaultValue={mode === "edit" ? task?.taskType : "social"}
-                className={`${inputClass} ${isYoutube ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <option value="daily">Daily Task</option>
-                <option value="social">Social Action</option>
-                <option value="share">Share Task</option>
-                <option value="special">Special Task</option>
-                <option value="video_watch">Video Watch</option>
-                <option value="social_media">Social Media</option>
-                <option value="SCREENSHOT_UPLOAD">Screenshot Upload</option>
-              </select>
-              {isYoutube && (
-                <p className="text-[9px] text-red-400 font-medium mt-1">
-                  Auto-set to {youtubeAction === "watch" ? "Video Watch" : "Social Media"} based on YouTube action
-                </p>
+                  <p className="text-[10px] text-red-400/80 font-medium">
+                    {youtubeAction === "watch" && "Users must watch the video for the specified duration to earn points."}
+                    {youtubeAction === "subscribe" && "Users must subscribe to the YouTube channel. Include the channel URL or handle."}
+                    {youtubeAction === "like" && "Users must like the YouTube video. Verified via YouTube API."}
+                    {youtubeAction === "comment" && "Users must comment on the YouTube video. Verified via YouTube API."}
+                  </p>
+                </motion.div>
               )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* STEP 2: Task Details — revealed with smooth transition */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={taskSource}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="space-y-8"
+          >
+
+            {/* SECTION: Task Details */}
+            <div className={sectionClass}>
+              <div className={sectionHeaderClass}>
+                <Type className="w-4 h-4 text-[#FACC15]" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-black">Task Details</span>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="title" className={labelClass}>Task Title</label>
+                  <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    required
+                    defaultValue={
+                      mode === "edit"
+                        ? task?.title
+                        : selectedPost
+                          ? `Like our ${PLATFORM_LABELS[taskSource as Platform] || ""} post`
+                          : ""
+                    }
+                    placeholder="e.g. Watch our latest video"
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="description" className={labelClass}>Description</label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows={2}
+                    required
+                    defaultValue={mode === "edit" ? task?.description : ""}
+                    placeholder="Describe the task..."
+                    className={`${inputClass} resize-none`}
+                  />
+                </div>
+
+                {taskSource === "manual" && (
+                  <div>
+                    <label htmlFor="manualUrl" className={labelClass}>Target URL (Optional)</label>
+                    <input
+                      type="url"
+                      id="manualUrl"
+                      name="manualUrl"
+                      defaultValue={mode === "edit" ? task?.socialPostUrl : ""}
+                      placeholder="https://..."
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+
+                {isYoutube && (
+                  <div>
+                    <label htmlFor="videoUrl" className={labelClass}>
+                      YouTube Video URL <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      id="videoUrl"
+                      name="videoUrl"
+                      required
+                      defaultValue={mode === "edit" ? (task?.videoUrl ?? "") : ""}
+                      placeholder="https://youtube.com/watch?v=..."
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+
+                {/* Social Post Picker for Facebook / Instagram */}
+                {isSocialPlatform && !isYoutube && (
+                  <div className="border border-black/5 rounded-2xl p-4 bg-zinc-50 space-y-3">
+                    <p className={labelClass}>
+                      Select {PLATFORM_LABELS[taskSource as Platform]} Post
+                    </p>
+                    <SocialPostPicker
+                      platform={taskSource as Platform}
+                      selected={selectedPost}
+                      onSelect={setSelectedPost}
+                    />
+                    {selectedPost && (
+                      <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <p className="text-xs font-bold text-emerald-700 truncate">
+                          Post selected: {selectedPost.title}
+                        </p>
+                      </div>
+                    )}
+                    {mode === "edit" && task?.socialPostId && !selectedPost && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-bold text-amber-700">
+                        Previously linked post will be kept unless you select a new one.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Comment Instruction — only for Facebook / Instagram */}
+                {isSocialPlatform && !isYoutube && (
+                  <div>
+                    <label htmlFor="commentInstruction" className={labelClass}>Comment Instruction</label>
+                    <textarea
+                      id="commentInstruction"
+                      name="commentInstruction"
+                      rows={2}
+                      defaultValue={mode === "edit" ? task?.commentInstruction ?? "" : ""}
+                      placeholder='Tell users what to write — e.g. "Comment LOVE2025 below this post"'
+                      className={`${inputClass} resize-none`}
+                    />
+                    <p className="text-[10px] text-zinc-400 font-medium mt-1.5">
+                      Users will see this instruction when they pick up the task. They must paste their unique comment code after the phrase you specify.
+                    </p>
+                  </div>
+                )}
+
+                {isYtWatch && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50/60 p-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Video className="w-4 h-4 text-red-600" />
+                      <label htmlFor="watchDuration" className="block text-[10px] font-black uppercase tracking-widest text-red-600">
+                        Required Watch Duration
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-red-400/80 mt-0.5 font-medium">
+                      Users must watch the video for this many seconds to earn points.
+                    </p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          id="watchDuration"
+                          name="watchDuration"
+                          min={10}
+                          max={3600}
+                          required
+                          defaultValue={defaultDuration}
+                          className="w-24 px-4 py-2.5 bg-white border border-red-200 rounded-2xl text-sm font-black text-red-700 focus:outline-none focus:border-red-400 transition-all"
+                        />
+                        <span className="text-sm font-bold text-red-500">seconds</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {[30, 60, 120, 300].map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              const input = document.getElementById("watchDuration") as HTMLInputElement;
+                              if (input) input.value = String(s);
+                            }}
+                            className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+                          >
+                            {s >= 60 ? `${s / 60}m` : `${s}s`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <label htmlFor="points" className={labelClass}>Points</label>
-              <input
-                type="number"
-                id="points"
-                name="points"
-                min="0"
-                required
-                defaultValue={mode === "edit" ? task?.rewardPoint : 10}
-                className={inputClass}
-              />
+
+            {/* SECTION: Rewards & Difficulty */}
+            <div className={sectionClass}>
+              <div className={sectionHeaderClass}>
+                <Trophy className="w-4 h-4 text-[#FACC15]" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-black">Rewards & Difficulty</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="taskType" className={labelClass}>Type</label>
+                  <select
+                    id="taskType"
+                    name="taskType"
+                    required
+                    disabled={isYoutube}
+                    defaultValue={mode === "edit" ? task?.taskType : "social"}
+                    className={`${inputClass} ${isYoutube ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <option value="daily">Daily Task</option>
+                    <option value="social">Social Action</option>
+                    <option value="share">Share Task</option>
+                    <option value="special">Special Task</option>
+                    <option value="video_watch">Video Watch</option>
+                    <option value="social_media">Social Media</option>
+                    <option value="SCREENSHOT_UPLOAD">Screenshot Upload</option>
+                  </select>
+                  {isYoutube && (
+                    <p className="text-[9px] text-red-400 font-medium mt-1">
+                      Auto-set to {youtubeAction === "watch" ? "Video Watch" : "Social Media"} based on YouTube action
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="points" className={labelClass}>Points</label>
+                  <input
+                    type="number"
+                    id="points"
+                    name="points"
+                    min="0"
+                    required
+                    defaultValue={mode === "edit" ? task?.rewardPoint : 10}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="difficulty" className={labelClass}>Difficulty</label>
+                  <select
+                    id="difficulty"
+                    name="difficulty"
+                    defaultValue={mode === "edit" ? task?.difficulty || "easy" : "easy"}
+                    className={inputClass}
+                  >
+                    <option value="easy">Easy (10 pts)</option>
+                    <option value="medium">Medium (25 pts)</option>
+                    <option value="hard">Hard (50 pts)</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <div>
-              <label htmlFor="difficulty" className={labelClass}>Difficulty</label>
-              <select
-                id="difficulty"
-                name="difficulty"
-                defaultValue={mode === "edit" ? task?.difficulty || "easy" : "easy"}
-                className={inputClass}
+
+            {/* SECTION: Rules & Expirations */}
+            <div className={sectionClass}>
+              <div className={sectionHeaderClass}>
+                <Clock className="w-4 h-4 text-[#FACC15]" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-black">Rules & Expirations</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Flash Task Toggle */}
+                <div
+                  onClick={() => setIsFlash(!isFlash)}
+                  className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
+                    isFlash
+                    ? "border-[#FACC15] bg-[#FACC15]/5 shadow-inner"
+                    : "border-black/5 bg-zinc-50 hover:border-black/10"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isFlash ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}>
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider text-black">Flash Task</span>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      isFlash ? "border-[#FACC15] bg-[#FACC15]" : "border-zinc-300 bg-white"
+                    }`}>
+                      {isFlash && <CheckCircle2 className="w-3 h-3 text-black" />}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 font-medium">
+                    Time-limited task with countdown
+                  </p>
+                  <input type="checkbox" name="isFlash" checked={isFlash} readOnly className="hidden" />
+                </div>
+
+                {/* Share Task Toggle */}
+                <div
+                  onClick={() => setIsShare(!isShare)}
+                  className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
+                    isShare
+                    ? "border-[#FACC15] bg-[#FACC15]/5 shadow-inner"
+                    : "border-black/5 bg-zinc-50 hover:border-black/10"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isShare ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}>
+                        <Share2 className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider text-black">Share Task</span>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      isShare ? "border-[#FACC15] bg-[#FACC15]" : "border-zinc-300 bg-white"
+                    }`}>
+                      {isShare && <CheckCircle2 className="w-3 h-3 text-black" />}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 font-medium">
+                    Generates a unique share link; rewards when N people click
+                  </p>
+                  <input type="checkbox" name="isShare" checked={isShare} readOnly className="hidden" />
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                {isFlash && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label htmlFor="expiresAt" className={labelClass}>Expires At</label>
+                    <input
+                      type="datetime-local"
+                      id="expiresAt"
+                      name="expiresAt"
+                      defaultValue={
+                        mode === "edit" && task?.expiresAt
+                          ? new Date(task.expiresAt).toISOString().slice(0, 16)
+                          : ""
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+                {isShare && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label htmlFor="shareThreshold" className={labelClass}>Required Clicks</label>
+                    <input
+                      type="number"
+                      id="shareThreshold"
+                      name="shareThreshold"
+                      min={1}
+                      max={100}
+                      defaultValue={mode === "edit" ? task?.shareThreshold ?? 3 : 3}
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 rounded-2xl transition-colors"
               >
-                <option value="easy">Easy (10 pts)</option>
-                <option value="medium">Medium (25 pts)</option>
-                <option value="hard">Hard (50 pts)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Duplicate taskType dropdown removed — merged into Section 3 above */}
-
-        {/* SECTION 4: Rules & Expirations */}
-        <div className={sectionClass}>
-          <div className={sectionHeaderClass}>
-            <Clock className="w-4 h-4 text-[#FACC15]" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-black">4. Rules & Expirations</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Flash Task Toggle */}
-            <div
-              onClick={() => setIsFlash(!isFlash)}
-              className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
-                isFlash
-                ? "border-[#FACC15] bg-[#FACC15]/5 shadow-inner"
-                : "border-black/5 bg-zinc-50 hover:border-black/10"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isFlash ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}>
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-wider text-black">Flash Task</span>
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  isFlash ? "border-[#FACC15] bg-[#FACC15]" : "border-zinc-300 bg-white"
-                }`}>
-                  {isFlash && <CheckCircle2 className="w-3 h-3 text-black" />}
-                </div>
-              </div>
-              <p className="text-[10px] text-zinc-400 font-medium">
-                Time-limited task with countdown
-              </p>
-              <input type="checkbox" name="isFlash" checked={isFlash} readOnly className="hidden" />
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-2.5 text-xs font-black uppercase tracking-wider text-black bg-[#FACC15] hover:bg-black hover:text-[#FACC15] rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {isSaving
+                  ? "Saving..."
+                  : mode === "edit"
+                    ? "Save Changes"
+                    : "Create Task"}
+              </button>
             </div>
 
-            {/* Share Task Toggle */}
-            <div
-              onClick={() => setIsShare(!isShare)}
-              className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
-                isShare
-                ? "border-[#FACC15] bg-[#FACC15]/5 shadow-inner"
-                : "border-black/5 bg-zinc-50 hover:border-black/10"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isShare ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}>
-                    <Share2 className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-wider text-black">Share Task</span>
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  isShare ? "border-[#FACC15] bg-[#FACC15]" : "border-zinc-300 bg-white"
-                }`}>
-                  {isShare && <CheckCircle2 className="w-3 h-3 text-black" />}
-                </div>
-              </div>
-              <p className="text-[10px] text-zinc-400 font-medium">
-                Generates a unique share link; rewards when N people click
-              </p>
-              <input type="checkbox" name="isShare" checked={isShare} readOnly className="hidden" />
-            </div>
-          </div>
+          </motion.div>
+        </AnimatePresence>
 
-          <div className="mt-6 space-y-4">
-            {isFlash && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <label htmlFor="expiresAt" className={labelClass}>Expires At</label>
-                <input
-                  type="datetime-local"
-                  id="expiresAt"
-                  name="expiresAt"
-                  defaultValue={
-                    mode === "edit" && task?.expiresAt
-                      ? new Date(task.expiresAt).toISOString().slice(0, 16)
-                      : ""
-                  }
-                  className={inputClass}
-                />
-              </div>
-            )}
-            {isShare && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <label htmlFor="shareThreshold" className={labelClass}>Required Clicks</label>
-                <input
-                  type="number"
-                  id="shareThreshold"
-                  name="shareThreshold"
-                  min={1}
-                  max={100}
-                  defaultValue={mode === "edit" ? task?.shareThreshold ?? 3 : 3}
-                  className={inputClass}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 rounded-2xl transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="px-6 py-2.5 text-xs font-black uppercase tracking-wider text-black bg-[#FACC15] hover:bg-black hover:text-[#FACC15] rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            {isSaving
-              ? "Saving..."
-              : mode === "edit"
-                ? "Save Changes"
-                : "Create Task"}
-          </button>
-        </div>
       </form>
     </ModalShell>
   );

@@ -1,3 +1,4 @@
+//src\app\api\user\tasks\instagram-complete\route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/src/services/auth.service";
 import { TaskService } from "@/src/services/task.service";
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const result = await TaskService.completeInstagramTask(auth.data.id, Number(taskId), fingerprint);
   if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ error: result.error }, { status: result.status ?? 500 });
   }
 
   return NextResponse.json(result.data, { status: 200 });

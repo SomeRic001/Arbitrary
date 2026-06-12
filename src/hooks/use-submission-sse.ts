@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 export function useSubmissionSSE() {
   const queryClient = useQueryClient();
   const esRef = useRef<EventSource | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let es = esRef.current;
@@ -18,8 +19,18 @@ export function useSubmissionSSE() {
       try {
         const data = JSON.parse(event.data);
         if (data.type === "status_change") {
-          queryClient.invalidateQueries({ queryKey: ["user-tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["user-points"] });
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            const taskTypes = new Set<string>();
+            for (const change of data.changes ?? []) {
+              if (change.taskType) taskTypes.add(change.taskType.toLowerCase());
+            }
+            if (taskTypes.size === 0) taskTypes.add("daily");
+            for (const tt of taskTypes) {
+              queryClient.invalidateQueries({ queryKey: ["user-tasks", tt], exact: true });
+            }
+            queryClient.invalidateQueries({ queryKey: ["user-points"], exact: true });
+          }, 300);
         }
       } catch {
         // ignore parse errors (heartbeat comments, etc.)
@@ -33,6 +44,7 @@ export function useSubmissionSSE() {
     return () => {
       es.close();
       esRef.current = null;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [queryClient]);
 

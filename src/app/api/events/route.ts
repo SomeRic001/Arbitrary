@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
 import { EventService } from "@/src/services/event.service";
 import { AdminLogService, extractIpFromRequest } from "@/src/services/admin-log.service";
+import { toNextResponse } from "@/src/lib/api-response";
 
 export const revalidate = 0;
 
 export async function GET() {
   const result = await EventService.getEvents();
-  if (!result.success) {
-    return NextResponse.json({ success: false, message: result.error }, { status: 500 });
-  }
+  if (!result.success) return toNextResponse(result);
 
   return NextResponse.json({ success: true, events: result.data }, { status: 200 });
 }
@@ -25,12 +24,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const result = await EventService.createOrUpdateEvent(body);
-  if (!result.success) {
-    return NextResponse.json(
-      { success: false, message: result.error, details: result.details },
-      { status: result.status },
-    );
-  }
+  if (!result.success) return toNextResponse(result);
 
   if (result.data) {
     await AdminLogService.logAction({
@@ -57,12 +51,7 @@ export async function DELETE(req: NextRequest) {
 
   const { id, title } = await req.json();
   const result = await EventService.deleteEvent(Number(id));
-  if (!result.success) {
-    return NextResponse.json(
-      { success: false, message: result.error },
-      { status: result.status },
-    );
-  }
+  if (!result.success) return toNextResponse(result);
 
   await AdminLogService.logAction({
     adminId: auth.data.id,
@@ -75,4 +64,3 @@ export async function DELETE(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: "Event deleted" }, { status: 200 });
 }
-

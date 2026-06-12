@@ -28,7 +28,7 @@ export function PlatformSelector({ value, onChange }: Props) {
         </button>
 
         {/* Social platforms */}
-        {PLATFORMS.map((p) => (
+        {PLATFORMS.filter((p) => p.value !== "tiktok").map((p) => (
           <button
             key={p.value}
             type="button"

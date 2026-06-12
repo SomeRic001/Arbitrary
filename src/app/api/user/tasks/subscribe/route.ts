@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
               taskId: userTasksTable.taskId,
               status: userTasksTable.status,
               taskTitle: tasksTable.title,
+              taskType: tasksTable.taskType,
             })
             .from(userTasksTable)
             .innerJoin(tasksTable, eq(userTasksTable.taskId, tasksTable.id))
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
             taskId: number;
             status: string;
             taskTitle: string;
+            taskType: string | null;
           }> = [];
 
           const currentSnapshot = new Map<number, { status: string; taskTitle: string }>();
@@ -55,6 +57,7 @@ export async function GET(req: NextRequest) {
                 taskId: row.taskId!,
                 status: row.status,
                 taskTitle: row.taskTitle ?? "",
+                taskType: row.taskType,
               });
             }
 

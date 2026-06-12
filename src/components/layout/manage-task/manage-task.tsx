@@ -77,13 +77,24 @@ export default function ManageTasks() {
     totalPages: number;
     currentPage: number;
   }>({
-    queryKey: ["tasks", currentPage],
+    queryKey: ["tasks", currentPage, searchQuery],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/tasks?page=${currentPage}&limit=${LIMIT}`);
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(LIMIT),
+      });
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+      }
+      const res = await fetch(`/api/admin/tasks?${params}`);
       if (!res.ok) throw new Error("Failed to load tasks from server.");
       return res.json();
     },
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const tasks = data?.tasks ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -107,7 +118,17 @@ export default function ManageTasks() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Failed to create task");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const details = body.details as Record<string, string[]> | undefined;
+        if (details && Object.keys(details).length > 0) {
+          const messages = Object.entries(details)
+            .map(([field, errs]) => `• ${field}: ${(errs as string[])[0]}`)
+            .join("\n");
+          throw new Error(messages);
+        }
+        throw new Error(body.error || "Failed to create task");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -115,7 +136,13 @@ export default function ManageTasks() {
       setIsFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
-    onError: () => toast.error("Something went wrong"),
+    onError: (error: Error) => {
+      const msg = error?.message ?? "";
+      toast.error(msg || "Something went wrong. Please try again.", {
+        description: msg.includes("•") ? "Please fix the following fields:" : undefined,
+        duration: 6000,
+      });
+    },
   });
 
   const editMutation = useMutation({
@@ -125,7 +152,17 @@ export default function ManageTasks() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Failed to update task");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const details = body.details as Record<string, string[]> | undefined;
+        if (details && Object.keys(details).length > 0) {
+          const messages = Object.entries(details)
+            .map(([field, errs]) => `• ${field}: ${(errs as string[])[0]}`)
+            .join("\n");
+          throw new Error(messages);
+        }
+        throw new Error(body.error || "Failed to update task");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -135,7 +172,13 @@ export default function ManageTasks() {
       setSelectedTask(null);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
-    onError: () => toast.error("Something went wrong updating task"),
+    onError: (error: Error) => {
+      const msg = error?.message ?? "";
+      toast.error(msg || "Something went wrong updating the task.", {
+        description: msg.includes("•") ? "Please fix the following fields:" : undefined,
+        duration: 6000,
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -316,7 +359,8 @@ export default function ManageTasks() {
       />
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-1 py-3">
+      {!searchQuery && (
+        <div className="flex items-center justify-between px-1 py-3">
         <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
           Page {currentPage} of {totalPages}
         </p>
@@ -361,6 +405,7 @@ export default function ManageTasks() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Details modal */}
       <AnimatePresence>

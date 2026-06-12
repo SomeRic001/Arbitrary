@@ -4,6 +4,7 @@ import { TaskService } from "@/src/services/task.service";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { pickUpTaskSchema, updateTaskSchema, cancelTaskSchema } from "@/src/lib/validations/task";
 import { toNextResponse } from "@/src/lib/api-response";
+import { failWithDetails } from "@/src/services/result";
 
 export async function GET(req: NextRequest) {
   const auth = await requireUser();
@@ -36,10 +37,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = pickUpTaskSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten().fieldErrors },
-      { status: 400 },
-    );
+    return toNextResponse(failWithDetails("Validation failed", parsed.error.flatten().fieldErrors));
   }
 
   const result = await TaskService.pickUpTask(auth.data.id, parsed.data.taskId);
@@ -58,10 +56,7 @@ export async function DELETE(req: NextRequest) {
     Object.fromEntries(new URL(req.url).searchParams),
   );
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten().fieldErrors },
-      { status: 400 },
-    );
+    return toNextResponse(failWithDetails("Validation failed", parsed.error.flatten().fieldErrors));
   }
 
   const result = await TaskService.cancelTask(auth.data.id, parsed.data.taskId);
@@ -82,10 +77,7 @@ export async function PATCH(req: NextRequest) {
 
   const parsed = updateTaskSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten().fieldErrors },
-      { status: 400 },
-    );
+    return toNextResponse(failWithDetails("Validation failed", parsed.error.flatten().fieldErrors));
   }
 
   const { taskId, status, proofUrl, proofImageUrl } = parsed.data;

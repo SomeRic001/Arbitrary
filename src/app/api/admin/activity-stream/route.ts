@@ -92,7 +92,6 @@ export async function GET(req: NextRequest) {
         await new Promise<void>((resolve) => {
           req.signal.addEventListener("abort", () => {
             clearInterval(keepAlive);
-            if (!released) { released = true; client.release(); }
             resolve();
           });
         });

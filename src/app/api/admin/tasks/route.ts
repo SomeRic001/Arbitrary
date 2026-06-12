@@ -11,15 +11,23 @@ export async function POST(req: NextRequest) {
 
   const parsed = adminTaskSchema.safeParse(await req.json());
   if (!parsed.success) {
+    const flattened = parsed.error.flatten();
+    const fieldErrors = flattened.fieldErrors;
+    const formErrors = flattened.formErrors;
+    const firstField = Object.keys(fieldErrors)[0];
+    const firstMessage = firstField
+      ? `${firstField}: ${(fieldErrors[firstField as keyof typeof fieldErrors] as string[])?.[0]}`
+      : formErrors[0] || "Validation failed";
+
     return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+      { error: firstMessage, details: fieldErrors },
       { status: 400 },
     );
   }
 
   const result = await TaskService.createTask(parsed.data);
   if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+    return NextResponse.json({ error: result.error }, { status: result.status ?? 500 });
   }
 
   return NextResponse.json(
@@ -41,23 +49,9 @@ export async function GET(req: NextRequest) {
     100,
   );
   const taskType = searchParams.get("taskType");
+  const search = searchParams.get("search")?.trim() ?? "";
 
-  const result = await TaskService.getAllTasks(page, limit);
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
-  }
+  const result = await TaskService.getAdminTasks({ page, limit, search, taskType });
 
-  const tasks = taskType
-    ? result.data.tasks.filter((t) => t.taskType === taskType)
-    : result.data.tasks;
-
-  return NextResponse.json(
-    {
-      tasks,
-      totalCount: result.data.totalCount,
-      totalPages: result.data.totalPages,
-      currentPage: result.data.currentPage,
-    },
-    { status: 200 },
-  );
+  return NextResponse.json(result, { status: 200 });
 }

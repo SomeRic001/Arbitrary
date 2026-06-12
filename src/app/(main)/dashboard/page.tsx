@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useRef, useMemo } from "react";
 import {
   useQuery,
@@ -277,6 +276,54 @@ function DashboardInner() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const youtubeCompleteMutation = useMutation({
+    mutationFn: async ({
+      taskId,
+      sessionId,
+      fingerprint,
+    }: {
+      taskId: number;
+      sessionId?: number;
+      fingerprint?: string;
+    }) => {
+      const res = await fetch("/api/user/tasks/youtube-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, sessionId, fingerprint }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Failed to complete YouTube task");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success("YouTube task completed and points awarded!");
+      queryClient.invalidateQueries({
+        queryKey: ["user-tasks", "dashboard", activeTab],
+        exact: true,
+      });
+      queryClient.invalidateQueries({ queryKey: ["user-points"], exact: true });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const handleModalComplete = (taskId: number, taskType?: string | null) => {
+    // Invalidate the dashboard query for ALL tabs so the task moves
+    // out of In Progress regardless of which tab the user is on
+    queryClient.invalidateQueries({
+      queryKey: ["user-tasks", "dashboard"],
+    });
+    // Invalidate the completed sidecar query for the sidebar
+    queryClient.invalidateQueries({
+      queryKey: ["user-tasks", "completed"],
+    });
+    // Invalidate points so the counter updates
+    queryClient.invalidateQueries({
+      queryKey: ["user-points"],
+    });
+  };
+
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data: pointsData } = useQuery<{
     points: number;
@@ -317,7 +364,10 @@ function DashboardInner() {
   });
 
   // ── Completed tasks (sidecar query for sidebar) ──
-  const { data: completedData } = useQuery<{ tasks: UserTaskItem[]; nextCursor: string | null }>({
+  const { data: completedData } = useQuery<{
+    tasks: UserTaskItem[];
+    nextCursor: string | null;
+  }>({
     queryKey: ["user-tasks", "completed"],
     queryFn: async () => {
       const res = await fetch("/api/user/tasks/completed?limit=50");
@@ -355,7 +405,7 @@ function DashboardInner() {
     const tasks = completedData?.tasks ?? [];
     if (!tasks) return [];
     return tasks.filter((t: UserTaskItem) =>
-      isDailyTaskValid(t.taskType, t.userAssignedAt ?? t.completedAt)
+      isDailyTaskValid(t.taskType, t.userAssignedAt ?? t.completedAt),
     );
   }, [completedData]);
 
@@ -413,7 +463,9 @@ function DashboardInner() {
       .then((r) =>
         r.ok
           ? toast.success("Referral code linked!")
-          : r.json().then((d) => toast.error(d.error || "Failed to link referral")),
+          : r
+              .json()
+              .then((d) => toast.error(d.error || "Failed to link referral")),
       )
       .catch(() => toast.error("Failed to link referral code"));
   }, []);
@@ -564,6 +616,10 @@ function DashboardInner() {
                   pickupVariable={pickupMutation.variables?.taskId ?? undefined}
                   cancelPending={cancelMutation.isPending}
                   cancelVariable={cancelMutation.variables?.taskId ?? undefined}
+                  onYoutubeComplete={(vars) =>
+                    youtubeCompleteMutation.mutate(vars)
+                  }
+                  onModalComplete={handleModalComplete}
                   onLoadMore={() => fetchNextPage()}
                   hasMore={hasNextPage}
                   loadingMore={isFetchingNextPage}
