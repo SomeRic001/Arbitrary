@@ -72,7 +72,7 @@ export const usersTable = pgTable("users", {
     longestStreak: integer("longest_streak").notNull().default(0),
     createdAt: timestamp("created_at").defaultNow(),
     lastLoginAt: timestamp("last_login_at"),
-    lifetimePoints: integer("lifetime_points").notNull().default(0),
+    monthlyPoints: integer("monthly_points").notNull().default(0),
     referredBy: integer("referred_by").references((): AnyPgColumn => usersTable.id),
     referralRewarded: boolean("referral_rewarded").default(false),
     isVerified: boolean("Is_Verified").default(false).notNull(),

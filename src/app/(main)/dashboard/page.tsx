@@ -54,6 +54,33 @@ function DashboardInner() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [pillStyle, setPillStyle] = useState({ width: 0, left: 0 });
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Ref placed on the spacer div between heading and the task card.
+  // We measure the task card's offsetTop relative to the grid container
+  // so the sidebar spacer is always pixel-perfect regardless of gap/padding changes.
+  const taskCardRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [taskCardTop, setTaskCardTop] = useState(0);
+
+  useEffect(() => {
+    const measure = () => {
+      if (!taskCardRef.current || !gridRef.current) return;
+      const gridTop = gridRef.current.getBoundingClientRect().top;
+      const cardTop = taskCardRef.current.getBoundingClientRect().top;
+      setTaskCardTop(cardTop - gridTop);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    if (taskCardRef.current) observer.observe(taskCardRef.current);
+    if (gridRef.current) observer.observe(gridRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
   const queryClient = useQueryClient();
 
   useSubmissionSSE();
@@ -64,9 +91,8 @@ function DashboardInner() {
     const currentOrder = tabs.indexOf(activeTab);
     setSlideDirection(tabOrder > currentOrder ? "left" : "right");
     setIsAnimating(true);
-    const formatTab = formatTabLabel(tab);
     setTimeout(() => {
-      setActiveTab(formatTab);
+      setActiveTab(tab);
       setIsAnimating(false);
     }, 220);
   };
@@ -312,16 +338,12 @@ function DashboardInner() {
   });
 
   const handleModalComplete = (taskId: number, taskType?: string | null) => {
-    // Invalidate the dashboard query for ALL tabs so the task moves
-    // out of In Progress regardless of which tab the user is on
     queryClient.invalidateQueries({
       queryKey: ["user-tasks", "dashboard"],
     });
-    // Invalidate the completed sidecar query for the sidebar
     queryClient.invalidateQueries({
       queryKey: ["user-tasks", "completed"],
     });
-    // Invalidate points so the counter updates
     queryClient.invalidateQueries({
       queryKey: ["user-points"],
     });
@@ -388,12 +410,10 @@ function DashboardInner() {
         return;
       }
     }
-    // Don't reset to [] when pages is empty — preserves tabs during tab switch
   }, [dashboardData?.pages]);
 
   const tabs = ["all", ...allTaskTypes];
 
-  // Only available is paginated — other buckets come from first page
   const firstPage = dashboardData?.pages[0];
   const allAvailable = useMemo(
     () => dashboardData?.pages.flatMap((p) => p.available) ?? [],
@@ -404,7 +424,7 @@ function DashboardInner() {
   const availableTasks = allAvailable;
   const rejectedTasks = firstPage?.rejected ?? [];
   const systemTasks = firstPage?.systemTasks ?? [];
-  // Client-side safety filter: exclude daily tasks completed before today (belt-and-suspenders)
+
   const filteredCompletedTasks = useMemo(() => {
     const tasks = completedData?.tasks ?? [];
     if (!tasks) return [];
@@ -413,7 +433,7 @@ function DashboardInner() {
     );
   }, [completedData]);
 
-  // ── Pill position (ref-based, fixes the slider) ───────────────────────────
+  // ── Pill position ─────────────────────────────────────────────────────────
   useEffect(() => {
     const activeEl = tabRefs.current[activeTab];
     if (activeEl) {
@@ -421,7 +441,6 @@ function DashboardInner() {
     }
   }, [activeTab, allTaskTypes.length]);
 
-  // Deduplicate filteredCompletedTasks for TaskList (safety: backend should already dedup)
   const uniqueCompletedTasks = useMemo(
     () =>
       Array.from(
@@ -437,12 +456,9 @@ function DashboardInner() {
     0,
   );
 
-  // Combined non-system task count for StatsHeader heading
   const taskCount =
     inProgressTasks.length + availableTasks.length + rejectedTasks.length;
 
-  // Sidebar gets non-completed tasks for activity/active display
-  // Completed tasks are passed separately via completedTasks prop
   const sidebarTasks = [
     ...inProgressTasks,
     ...availableTasks,
@@ -454,7 +470,6 @@ function DashboardInner() {
     document.title = "Dashboard | Arbitrary";
   }, []);
 
-  // Bind referral code from OAuth signup if one was stashed in sessionStorage
   useEffect(() => {
     const code = sessionStorage.getItem("pendingRefCode");
     if (!code) return;
@@ -494,7 +509,8 @@ function DashboardInner() {
 
       <Header />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 mb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* grid ref — used to measure task card's offsetTop inside the grid */}
+        <div ref={gridRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ── Left column ─────────────────────────────────────────────── */}
           <div className="lg:col-span-2 flex flex-col gap-5">
             {/* Page heading */}
@@ -507,7 +523,7 @@ function DashboardInner() {
                 <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
                   {activeTab === "all"
                     ? "All tasks overview"
-                    : `${activeTab} tasks`}
+                    : `${formatTabLabel(activeTab)} tasks`}
                 </span>
                 <div className="h-px w-8 bg-gradient-to-l from-transparent to-slate-300" />
               </div>
@@ -547,7 +563,6 @@ function DashboardInner() {
 
             {/* ── Tab pill strip ──────────────────────────────────────── */}
             <div className="flex p-1 bg-white border border-black/8 rounded-2xl w-fit relative shadow-sm overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {/* Sliding pill — positioned by real DOM measurements */}
               <div
                 className="absolute top-1 bottom-1 rounded-xl bg-slate-900 shadow-sm transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
                 style={{
@@ -559,22 +574,25 @@ function DashboardInner() {
                 <button
                   key={tab}
                   ref={(el) => {
-                    tabRefs.current[formatTabLabel(tab)] = el;
+                    tabRefs.current[tab] = el;
                   }}
                   onClick={() => handleTabChange(tab)}
                   className={`relative z-10 px-5 py-2 text-sm font-semibold rounded-xl
                               transition-colors duration-200 capitalize whitespace-nowrap
-                              ${activeTab === formatTabLabel(tab) ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
+                              ${activeTab === tab ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
                 >
                   {formatTabLabel(tab)}
                 </button>
               ))}
             </div>
 
-            {/* ── Main task card ───────────────────────────────────────── */}
-            <div className="relative overflow-hidden bg-white border border-black/8 rounded-3xl shadow-sm">
+            {/* ── Main task card — ref sits here so we measure its top edge ── */}
+            <div
+              ref={taskCardRef}
+              className="relative overflow-hidden bg-white border border-black/8 rounded-3xl shadow-sm"
+            >
               <StatsHeader
-                activeTab={activeTab}
+                activeTab={formatTabLabel(activeTab)}
                 taskCount={taskCount}
                 totalPoints={totalPoints}
                 inProgressCount={inProgressCount}
@@ -636,9 +654,13 @@ function DashboardInner() {
 
           {/* ── Right column ────────────────────────────────────────────── */}
           <div className="hidden lg:block lg:col-span-1">
-            {/* Matches left column heading height: title + subtitle + badges + gaps ≈ 168px */}
-            <div className="h-[168px]" aria-hidden="true" />
-            <div className="sticky top-6 max-h-[calc(100vh-5rem)] overflow-y-auto overflow-x-hidden pb-6 pr-1">
+            {/*
+              Spacer = exact pixel distance from the grid top to the task card's top edge.
+              Measured live via ResizeObserver so it stays correct at every viewport width
+              and regardless of how many badge rows the heading renders.
+            */}
+            <div style={{ height: taskCardTop }} aria-hidden="true" />
+            <div className="sticky top-6 max-h-[calc(100vh-5rem)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] overflow-x-hidden pb-6 pr-1">
               <ActivitySidebar
                 tasks={sidebarTasks}
                 completedTasks={uniqueCompletedTasks}

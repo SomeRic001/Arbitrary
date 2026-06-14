@@ -4,11 +4,11 @@
 export type Platform = "facebook" | "instagram" | "youtube";
 
 export interface SocialPost {
-    id: string;            // platform-specific post ID
+    id: string;
     platform: Platform;
-    title: string;         // normalized title / caption
-    thumbnailUrl?: string; // preview image
-    url: string;           // link to the post
+    title: string;
+    thumbnailUrl?: string;
+    url: string;
     likeCount?: number;
     publishedAt: string;
 }

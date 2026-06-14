@@ -23,7 +23,7 @@ export async function getTopUsers(limit: number = 100): Promise<TopUser[]> {
       id: usersTable.id,
       name: usersTable.name,
       image: usersTable.image,
-      points: usersTable.lifetimePoints,
+      points: usersTable.monthlyPoints,
       monthlyPoints: sql<number>`
         coalesce((
           select sum(${pointsLogTable.points})::int

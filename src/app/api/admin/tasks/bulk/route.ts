@@ -10,7 +10,7 @@ const bulkTaskItemSchema = z.object({
   rewardPoint: z.number().int().positive("rewardPoint must be positive"),
   socialPostUrl: z.string().url().max(2048).optional().nullable().default(null),
   videoUrl: z.string().url().max(2048).optional().nullable().default(null),
-  platform: z.enum(["facebook", "instagram", "youtube", "tiktok", "daily-login"]).nullable().optional().default(null),
+  platform: z.enum(["facebook", "instagram", "youtube", "tiktok", "daily-login", "share", "screenshot"]).nullable().optional().default(null),
   socialPostId: z.string().max(255).optional().nullable().default(null),
   watchDuration: z.number().int().min(5).max(86400).nullable().optional().default(null),
   difficulty: z.enum(["easy", "medium", "hard"]).optional().default("easy"),

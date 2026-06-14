@@ -186,13 +186,14 @@ export function TaskActionButtons({
             {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
           </button>
         </div>
-      ) : task.taskType === "SCREENSHOT_UPLOAD" ? (
+      ) : task.taskType === "SCREENSHOT_UPLOAD" ||
+        task.platform === "screenshot" ? (
         <div className="flex flex-col gap-1.5">
           <label
             onClick={(e) => e.stopPropagation()}
             className="flex flex-col items-center justify-center gap-1.5 px-3 py-2.5
-                       rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 border-dashed
-                       cursor-pointer hover:bg-white/20 transition-all duration-200"
+                       rounded-lg bg-indigo-50 border border-indigo-200 border-dashed
+                       cursor-pointer hover:bg-indigo-100 transition-all duration-200"
           >
             {previewUrl ? (
               <img
@@ -203,7 +204,7 @@ export function TaskActionButtons({
             ) : (
               <div className="flex flex-col items-center gap-1">
                 <svg
-                  className="w-6 h-6 text-white/50"
+                  className="w-6 h-6 text-indigo-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -215,7 +216,7 @@ export function TaskActionButtons({
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                <span className="text-[10px] text-white/50 font-medium">
+                <span className="text-[10px] text-indigo-500 font-bold">
                   Tap to upload screenshot
                 </span>
               </div>
@@ -236,8 +237,8 @@ export function TaskActionButtons({
                   onScreenshotSubmit();
                 }}
                 disabled={isUploading}
-                className="text-xs font-bold text-white bg-emerald-500/50 hover:bg-emerald-500/70
-                                px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                className="text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600
+                                px-2.5 py-1 rounded-full transition-all duration-200
                                 hover:scale-105 flex-1 disabled:opacity-50"
               >
                 {isUploading ? "Uploading..." : "Submit Screenshot"}
@@ -248,8 +249,8 @@ export function TaskActionButtons({
                   onCancel(task.id);
                 }}
                 disabled={cancelPending}
-                className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                           px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                className="text-xs font-bold text-white bg-red-400 hover:bg-red-500
+                           px-2.5 py-1 rounded-full transition-all duration-200
                            hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
@@ -287,8 +288,8 @@ export function TaskActionButtons({
           <label
             onClick={(e) => e.stopPropagation()}
             className="flex flex-col items-center justify-center gap-1.5 px-3 py-2.5
-                       rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 border-dashed
-                       cursor-pointer hover:bg-white/20 transition-all duration-200"
+                       rounded-lg bg-indigo-50 border border-indigo-200 border-dashed
+                       cursor-pointer hover:bg-indigo-100 transition-all duration-200"
           >
             {previewUrl ? (
               <img
@@ -299,7 +300,7 @@ export function TaskActionButtons({
             ) : (
               <div className="flex flex-col items-center gap-1">
                 <svg
-                  className="w-6 h-6 text-white/50"
+                  className="w-6 h-6 text-indigo-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -311,7 +312,7 @@ export function TaskActionButtons({
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                <span className="text-[10px] text-white/50 font-medium">
+                <span className="text-[10px] text-indigo-500 font-bold">
                   Tap to upload screenshot
                 </span>
               </div>
@@ -332,8 +333,8 @@ export function TaskActionButtons({
                   onScreenshotSubmit();
                 }}
                 disabled={isUploading}
-                className="text-xs font-bold text-white bg-emerald-500/50 hover:bg-emerald-500/70
-                                px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                className="text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600
+                                px-2.5 py-1 rounded-full transition-all duration-200
                                 hover:scale-105 flex-1 disabled:opacity-50"
               >
                 {isUploading ? "Uploading..." : "Submit Screenshot"}
@@ -344,8 +345,8 @@ export function TaskActionButtons({
                   onCancel(task.id);
                 }}
                 disabled={cancelPending}
-                className="text-xs font-bold text-white bg-red-500/40 hover:bg-red-500/60
-                           px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
+                className="text-xs font-bold text-white bg-red-400 hover:bg-red-500
+                           px-2.5 py-1 rounded-full transition-all duration-200
                            hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}

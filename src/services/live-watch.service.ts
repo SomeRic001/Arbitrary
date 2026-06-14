@@ -62,7 +62,7 @@ export const LiveWatchService = {
             await tx.update(usersTable)
               .set({
                 points: sql`${usersTable.points} + ${capped}`,
-                lifetimePoints: sql`${usersTable.lifetimePoints} + ${capped}`,
+                monthlyPoints: sql`${usersTable.monthlyPoints} + ${capped}`,
               })
               .where(eq(usersTable.id, userId));
           });
@@ -107,7 +107,7 @@ export const LiveWatchService = {
           await tx.update(usersTable)
             .set({
               points: sql`${usersTable.points} + ${capped}`,
-              lifetimePoints: sql`${usersTable.lifetimePoints} + ${capped}`,
+              monthlyPoints: sql`${usersTable.monthlyPoints} + ${capped}`,
             })
             .where(eq(usersTable.id, userId));
         });

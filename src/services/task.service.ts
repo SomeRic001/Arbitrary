@@ -913,7 +913,7 @@ export const TaskService = {
           currentStreak: newStreak,
           longestStreak: newLongest,
           points: sql`${usersTable.points} + ${totalPoints}`,
-          lifetimePoints: sql`${usersTable.lifetimePoints} + ${totalPoints}`,
+          monthlyPoints: sql`${usersTable.monthlyPoints} + ${totalPoints}`,
           completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
         })
         .where(eq(usersTable.id, userId));
@@ -1244,7 +1244,7 @@ export const TaskService = {
         .where(eq(userTasksTable.id, userTask.id));
 
       const [currentUser] = await tx
-        .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
+        .select({ points: usersTable.points, monthlyPoints: usersTable.monthlyPoints })
         .from(usersTable)
         .where(eq(usersTable.id, userId))
         .for("update");
@@ -1254,7 +1254,7 @@ export const TaskService = {
           .update(usersTable)
           .set({
             points: sql`${usersTable.points} + ${taskPoints}`,
-            lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
+            monthlyPoints: sql`${usersTable.monthlyPoints} + ${taskPoints}`,
             completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
           })
           .where(eq(usersTable.id, userId));
@@ -1872,8 +1872,8 @@ export const TaskService = {
           : countChange < 0
             ? sql`${usersTable.points} - ${taskPoints}`
             : undefined,
-        lifetimePoints: countChange > 0
-          ? sql`${usersTable.lifetimePoints} + ${taskPoints}`
+        monthlyPoints: countChange > 0
+          ? sql`${usersTable.monthlyPoints} + ${taskPoints}`
           : undefined,
         completedTasksCount: sql`${usersTable.completedTasksCount} + ${countChange}`,
       };
@@ -2111,6 +2111,7 @@ async function awardFacebookPoints(
       .update(usersTable)
       .set({
         points: sql`${usersTable.points} + ${taskPoints}`,
+        monthlyPoints: sql`${usersTable.monthlyPoints} + ${taskPoints}`,
         completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
       .where(eq(usersTable.id, userId));
@@ -2152,6 +2153,7 @@ async function awardInstagramPoints(
       .update(usersTable)
       .set({
         points: sql`${usersTable.points} + ${taskPoints}`,
+        monthlyPoints: sql`${usersTable.monthlyPoints} + ${taskPoints}`,
         completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
       .where(eq(usersTable.id, userId));

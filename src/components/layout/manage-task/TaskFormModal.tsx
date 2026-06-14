@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -72,6 +72,17 @@ export function TaskFormModal({
   );
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [isFlash, setIsFlash] = useState<boolean>(task?.isFlash === true);
+  const [rewardPoints, setRewardPoints] = useState<number | "">(
+    mode === "edit" ? (task?.rewardPoint ?? "") : "",
+  );
+
+  // Auto-difficulty from points: <=10 easy, <=25 medium, >25 hard
+  const autoDifficulty =
+    (rewardPoints === "" ? 0 : rewardPoints) <= 10
+      ? "easy"
+      : (rewardPoints as number) <= 25
+        ? "medium"
+        : "hard";
 
   const detectYoutubeAction = ():
     | "watch"
@@ -128,13 +139,16 @@ export function TaskFormModal({
       isYtWatch && rawDuration ? Math.max(1, Number(rawDuration)) : null;
     const flashValue = formData.get("isFlash") === "on" || isFlash;
 
-    let resolvedTaskType = formData.get("taskType") as string;
+    let resolvedTaskType: string;
     if (isShare) {
       resolvedTaskType = "share";
-    } else if (isYoutube) {
-      resolvedTaskType = youtubeAction === "watch" ? "video_watch" : "social";
     } else if (isManualScreenshot) {
       resolvedTaskType = "SCREENSHOT_UPLOAD";
+    } else if (isYoutube) {
+      resolvedTaskType = youtubeAction === "watch" ? "video_watch" : "social";
+    } else {
+      // facebook, instagram → social
+      resolvedTaskType = "social";
     }
 
     onSubmit({
@@ -143,7 +157,13 @@ export function TaskFormModal({
       taskType: resolvedTaskType,
       rewardPoint: Number(formData.get("points")),
       videoUrl: (formData.get("videoUrl") as string) || null,
-      platform: isSocialPlatform ? (taskSource as Platform) : null,
+      platform: isManualScreenshot
+        ? "screenshot"
+        : isShare
+          ? "share"
+          : isSocialPlatform
+            ? (taskSource as Platform)
+            : null,
       socialPostId:
         selectedPost?.id ??
         (mode === "edit" ? (task?.socialPostId ?? null) : null),
@@ -158,7 +178,8 @@ export function TaskFormModal({
       isActive: true,
       watchDuration,
       difficulty:
-        (formData.get("difficulty") as "easy" | "medium" | "hard") || "easy",
+        (formData.get("difficulty") as "easy" | "medium" | "hard") ||
+        autoDifficulty,
       isFlash: flashValue,
       isShare: isShare,
       shareThreshold: isShare ? Number(formData.get("shareThreshold")) || 3 : 3,
@@ -380,17 +401,71 @@ export function TaskFormModal({
 
                   <div>
                     <label htmlFor="points" className={labelClass}>
-                      Reward Points
+                      Reward Points <span className="text-red-400">*</span>
                     </label>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <input
+                        type="number"
+                        id="points"
+                        name="points"
+                        min={1}
+                        required
+                        value={rewardPoints}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/^0+(?=\d)/, "");
+                          setRewardPoints(raw === "" ? "" : Number(raw));
+                        }}
+                        className="w-32 px-4 py-2.5 bg-zinc-50 border border-black/5 rounded-2xl text-sm font-black text-black focus:outline-none focus:border-[#FACC15] transition-all"
+                      />
+                      <div className="flex gap-1.5">
+                        {[5, 10, 20, 50].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setRewardPoints(n)}
+                            className={`text-[10px] font-black px-3 py-1.5 rounded-xl border transition-all ${
+                              rewardPoints === n
+                                ? "bg-[#FACC15] border-[#FACC15] text-black"
+                                : "bg-white border-black/10 text-zinc-500 hover:border-[#FACC15]"
+                            }`}
+                          >
+                            {n} pts
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Auto Difficulty ── */}
+                  <div>
+                    <label className={labelClass}>Difficulty</label>
                     <input
-                      type="number"
-                      id="points"
-                      name="points"
-                      min={1}
-                      required
-                      defaultValue={mode === "edit" ? task?.rewardPoint : 10}
-                      className={inputClass}
+                      type="hidden"
+                      name="difficulty"
+                      value={autoDifficulty}
                     />
+                    <div className="flex gap-2">
+                      {(["easy", "medium", "hard"] as const).map((d) => (
+                        <div
+                          key={d}
+                          className={`flex-1 text-center py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${
+                            autoDifficulty === d
+                              ? d === "easy"
+                                ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                                : d === "medium"
+                                  ? "border-orange-400 bg-orange-50 text-orange-700"
+                                  : "border-red-400 bg-red-50 text-red-700"
+                              : "border-black/5 bg-zinc-50 text-zinc-300"
+                          }`}
+                        >
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-zinc-400 font-medium mt-1.5">
+                      Auto-set from reward points — ≤10 pts: Easy · ≤25 pts:
+                      Medium · &gt;25 pts: Hard
+                    </p>
                   </div>
                 </div>
               </div>
@@ -587,6 +662,76 @@ export function TaskFormModal({
                       </div>
                     </div>
                   )}
+
+                  {/* ── Reward Points ── */}
+                  <div>
+                    <label htmlFor="points" className={labelClass}>
+                      Reward Points <span className="text-red-400">*</span>
+                    </label>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <input
+                        type="number"
+                        id="points"
+                        name="points"
+                        min={1}
+                        required
+                        value={rewardPoints}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/^0+(?=\d)/, "");
+                          setRewardPoints(raw === "" ? "" : Number(raw));
+                        }}
+                        className="w-32 px-4 py-2.5 bg-zinc-50 border border-black/5 rounded-2xl text-sm font-black text-black focus:outline-none focus:border-[#FACC15] transition-all"
+                      />
+                      <div className="flex gap-1.5">
+                        {[5, 10, 20, 50].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setRewardPoints(n)}
+                            className={`text-[10px] font-black px-3 py-1.5 rounded-xl border transition-all ${
+                              rewardPoints === n
+                                ? "bg-[#FACC15] border-[#FACC15] text-black"
+                                : "bg-white border-black/10 text-zinc-500 hover:border-[#FACC15]"
+                            }`}
+                          >
+                            {n} pts
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Auto Difficulty ── */}
+                  <div>
+                    <label className={labelClass}>Difficulty</label>
+                    <input
+                      type="hidden"
+                      name="difficulty"
+                      value={autoDifficulty}
+                    />
+                    <div className="flex gap-2">
+                      {(["easy", "medium", "hard"] as const).map((d) => (
+                        <div
+                          key={d}
+                          className={`flex-1 text-center py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${
+                            autoDifficulty === d
+                              ? d === "easy"
+                                ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                                : d === "medium"
+                                  ? "border-orange-400 bg-orange-50 text-orange-700"
+                                  : "border-red-400 bg-red-50 text-red-700"
+                              : "border-black/5 bg-zinc-50 text-zinc-300"
+                          }`}
+                        >
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-zinc-400 font-medium mt-1.5">
+                      Auto-set from reward points — ≤10 pts: Easy · ≤25 pts:
+                      Medium · &gt;25 pts: Hard
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

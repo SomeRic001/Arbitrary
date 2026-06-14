@@ -15,7 +15,6 @@ export type UserPointsResult = {
   currentStreak: number;
   longestStreak: number;
   claimedToday: boolean;
-  lifetimePoints: number | null;
   monthlyPoints: number;
   tier: string;
 };
@@ -23,7 +22,7 @@ export type UserPointsResult = {
 export type UserProfile = Pick<
   User,
   "id" | "name" | "email" | "image" | "bio" | "location" | "phoneNumber" | "referralCode" | "points"
-> & { lifetimePoints: number; referredBy: number | null; referredByName: string | null; instagramUsername?: string | null };
+> & { monthlyPoints: number; referredBy: number | null; referredByName: string | null; instagramUsername?: string | null };
 
 export const UserService = {
   async getUserPoints(userId: number): Promise<ServiceResult<UserPointsResult>> {
@@ -34,7 +33,7 @@ export const UserService = {
         currentStreak: usersTable.currentStreak,
         longestStreak: usersTable.longestStreak,
         dailyLoginDate: usersTable.dailyLoginDate,
-        lifetimePoints: usersTable.lifetimePoints,
+        monthlyPoints: usersTable.monthlyPoints,
       })
       .from(usersTable)
       .where(eq(usersTable.id, userId));
@@ -50,8 +49,7 @@ export const UserService = {
       currentStreak: user.currentStreak || 0,
       longestStreak: user.longestStreak || 0,
       claimedToday: dailyLoginStr === today,
-      lifetimePoints: user.lifetimePoints,
-      monthlyPoints: user.lifetimePoints ?? 0,
+      monthlyPoints: user.monthlyPoints ?? 0,
       tier: getUserTier(user.completedTasksCount || 0),
     });
   },
@@ -86,7 +84,7 @@ export const UserService = {
         phoneNumber: usersTable.phoneNumber,
         referralCode: usersTable.referralCode,
         points: usersTable.points,
-        lifetimePoints: usersTable.lifetimePoints,
+        lifetimePoints: usersTable.monthlyPoints,
         referredBy: usersTable.referredBy,
         referredByName: referrerAlias.name,
         instagramUsername: usersTable.instagramUsername,
@@ -195,7 +193,7 @@ export const UserService = {
           .update(usersTable)
           .set({
             points: sql`${usersTable.points} + ${taskPoints}`,
-            lifetimePoints: sql`${usersTable.lifetimePoints} + ${taskPoints}`,
+            monthlyPoints: sql`${usersTable.monthlyPoints} + ${taskPoints}`,
             completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
           })
           .where(eq(usersTable.id, userId));
@@ -264,7 +262,7 @@ export const UserService = {
             .update(usersTable)
             .set({
               points: sql`${usersTable.points} + ${points}`,
-              lifetimePoints: sql`${usersTable.lifetimePoints} + ${points}`,
+              monthlyPoints: sql`${usersTable.monthlyPoints} + ${points}`,
               completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
             })
             .where(eq(usersTable.id, userId));

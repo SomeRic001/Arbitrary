@@ -69,27 +69,27 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
   if (status === "loading") {
     return <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />;
   }
-if (status === "unauthenticated") {
-  return (
-    <div className="flex items-center gap-1.5 sm:gap-2">
-      <Link
-        href="/login"
-        className="px-2.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 hover:text-gray-900
+  if (status === "unauthenticated") {
+    return (
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <Link
+          href="/login"
+          className="px-2.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 hover:text-gray-900
                    border border-gray-200 hover:border-gray-300 rounded-xl
                    transition-all duration-200 hover:bg-gray-50 whitespace-nowrap"
-      >
-        Sign in
-      </Link>
-      <Link
-        href="/signup"
-        className="px-2.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-bold text-black bg-[#FACC15] hover:bg-[#eab308]
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/signup"
+          className="px-2.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-bold text-black bg-[#FACC15] hover:bg-[#eab308]
                    rounded-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] shadow-sm whitespace-nowrap"
-      >
-        Sign up
-      </Link>
-    </div>
-  );
-}
+        >
+          Sign up
+        </Link>
+      </div>
+    );
+  }
 
   const initials = session?.user?.name?.substring(0, 2).toUpperCase() || "AD";
 
@@ -207,19 +207,6 @@ if (status === "unauthenticated") {
                 </div>
                 <span className="text-sm font-semibold">View Profile</span>
               </button>
-
-              <Link
-                href="/settings"
-                onClick={() => setIsOpen(false)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                           text-gray-700 hover:bg-gray-50 hover:text-gray-900
-                           transition-all duration-150 group"
-              >
-                <div className="w-7 h-7 rounded-lg bg-gray-100 group-hover:bg-slate-900 flex items-center justify-center transition-colors duration-150 shrink-0">
-                  <Settings className="w-3.5 h-3.5 text-gray-500 group-hover:text-white transition-colors" />
-                </div>
-                <span className="text-sm font-semibold">Settings</span>
-              </Link>
 
               <div className="my-1.5 mx-3 border-t border-gray-100" />
 

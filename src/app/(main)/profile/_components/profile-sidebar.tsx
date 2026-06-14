@@ -2,15 +2,17 @@
 
 import React from "react";
 
-export type Tab = "profile" | "settings" | "tasks" | "tickets" | "referrals";
+export type Tab = "profile" | "settings" | "tasks" | "referrals";
 
 export interface ProfileSidebarProps {
-  user: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-    role?: string;
-  } | undefined;
+  user:
+    | {
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+        role?: string;
+      }
+    | undefined;
   initials: string;
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
@@ -86,25 +88,7 @@ const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
       </svg>
     ),
   },
-  {
-    key: "tickets",
-    label: "Tickets",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
-        />
-      </svg>
-    ),
-  },
+
   {
     key: "referrals",
     label: "Referrals",
@@ -142,14 +126,18 @@ export default function ProfileSidebar({
   currentStreak,
 }: ProfileSidebarProps) {
   const DAILY_LIMIT = 5;
-  const completionPct = Math.min(Math.round((completedToday / DAILY_LIMIT) * 100), 100);
+  const completionPct = Math.min(
+    Math.round((completedToday / DAILY_LIMIT) * 100),
+    100,
+  );
 
   const streakMultiplier =
-    currentStreak >= 30 ? 1.5
-    : currentStreak >= 7 ? 1.2
-    : 1.0;
+    currentStreak >= 30 ? 1.5 : currentStreak >= 7 ? 1.2 : 1.0;
 
-  const TIER_META: Record<string, { label: string; icon: string; color: string }> = {
+  const TIER_META: Record<
+    string,
+    { label: string; icon: string; color: string }
+  > = {
     bronze: { label: "Bronze", icon: "🥉", color: "#CD7F32" },
     silver: { label: "Silver", icon: "🥈", color: "#A8A8A8" },
     gold: { label: "Gold", icon: "🥇", color: "#FACC15" },
@@ -226,7 +214,11 @@ export default function ProfileSidebar({
 
       {/* Transition spacer */}
       <div className="relative h-3 -mx-2 -mt-4">
-        <svg className="w-full h-full" viewBox="0 0 280 12" preserveAspectRatio="none">
+        <svg
+          className="w-full h-full"
+          viewBox="0 0 280 12"
+          preserveAspectRatio="none"
+        >
           <path d="M0,12 Q140,-8 280,12" fill="white" />
         </svg>
       </div>
@@ -271,9 +263,7 @@ export default function ProfileSidebar({
             <p className="text-white/50 text-[10px] uppercase tracking-wider">
               Points
             </p>
-            <p className="text-[#FACC15] text-lg font-black">
-              {totalPoints}
-            </p>
+            <p className="text-[#FACC15] text-lg font-black">{totalPoints}</p>
           </div>
           <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5">
             <p className="text-emerald-600 text-[10px] uppercase tracking-wider">
@@ -296,7 +286,9 @@ export default function ProfileSidebar({
         <div>
           <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1.5">
             <span>Completion</span>
-            <span className="font-semibold text-gray-500">{completionPct}%</span>
+            <span className="font-semibold text-gray-500">
+              {completionPct}%
+            </span>
           </div>
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
@@ -309,7 +301,10 @@ export default function ProfileSidebar({
         {/* Multiplier */}
         <div className="flex items-center justify-between text-[10px] text-gray-400 mt-3 pt-3 border-t border-gray-100">
           <span>Streak Multiplier</span>
-          <span className="font-black text-sm" style={{ color: streakMultiplier > 1 ? '#22c55e' : '#a1a1aa' }}>
+          <span
+            className="font-black text-sm"
+            style={{ color: streakMultiplier > 1 ? "#22c55e" : "#a1a1aa" }}
+          >
             {streakMultiplier}×
           </span>
         </div>

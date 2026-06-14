@@ -9,18 +9,16 @@ import ProfileSidebar from "./_components/profile-sidebar";
 import ProfileTab from "./_components/profile-tab";
 import SettingsTab from "./_components/settings-tab";
 import TasksTab from "./_components/tasks-tab";
-import TicketsTab from "./_components/tickets-tab";
 import ReferralTab from "./_components/referral-tab";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-type Tab = "profile" | "settings" | "tasks" | "tickets" | "referrals";
+type Tab = "profile" | "settings" | "tasks" | "referrals";
 
 const TAB_TITLES: Record<Tab, string> = {
   profile: "Profile",
   settings: "Settings",
   tasks: "Tasks",
-  tickets: "Tickets",
   referrals: "Referrals",
 };
 
@@ -32,6 +30,9 @@ interface ApiTask {
   points: number;
   userStatus: string | null;
   completedAt: string | null;
+  taskType: string | null;
+  platform: string | null;
+  difficulty: string | null;
 }
 
 interface ProfileTask {
@@ -40,6 +41,9 @@ interface ProfileTask {
   points: number;
   status: string;
   completedAt: string | null;
+  taskType: string | null;
+  platform: string | null;
+  difficulty: string;
 }
 
 export default function ProfilePage() {
@@ -62,14 +66,19 @@ export default function ProfilePage() {
   const searchParams = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab") as Tab | null;
-    const validTabs: Tab[] = ["profile", "settings", "tasks", "tickets", "referrals"];
+    const validTabs: Tab[] = ["profile", "settings", "tasks", "referrals"];
     if (tab && validTabs.includes(tab)) {
       setActiveTab(tab);
     }
   }, []);
 
   // ── Fetch the logged-in user's points and total completed tasks from DB ──
-  const { data: pointsData } = useQuery<{ points: number; completedTasksCount: number; currentStreak: number; tier: string }>({
+  const { data: pointsData } = useQuery<{
+    points: number;
+    completedTasksCount: number;
+    currentStreak: number;
+    tier: string;
+  }>({
     queryKey: ["user-points"],
     queryFn: async () => {
       const res = await fetch("/api/user/points");
@@ -84,7 +93,9 @@ export default function ProfilePage() {
   const tier = pointsData?.tier ?? "bronze";
 
   // ── Fetch the logged-in user's tasks ──
-  const { data: apiTasksData, isLoading: tasksLoading } = useQuery<{ tasks: ApiTask[] }>({
+  const { data: apiTasksData, isLoading: tasksLoading } = useQuery<{
+    tasks: ApiTask[];
+  }>({
     queryKey: ["profile-user-tasks"],
     queryFn: async () => {
       const res = await fetch("/api/user/tasks?limit=100");
@@ -106,6 +117,9 @@ export default function ProfilePage() {
           points: t.points,
           status: (t.userStatus ?? "").toLowerCase(),
           completedAt: t.completedAt,
+          taskType: t.taskType,
+          platform: t.platform,
+          difficulty: t.difficulty ?? "easy",
         })),
     [apiTasks],
   );
@@ -247,13 +261,7 @@ export default function ProfilePage() {
               />
             )}
 
-            {activeTab === "tickets" && (
-              <TicketsTab />
-            )}
-
-            {activeTab === "referrals" && (
-              <ReferralTab />
-            )}
+            {activeTab === "referrals" && <ReferralTab />}
           </div>
         </div>
       </div>

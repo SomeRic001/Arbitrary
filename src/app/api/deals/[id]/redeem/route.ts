@@ -40,7 +40,7 @@ export async function POST(
 
   const result = await db.transaction(async (tx) => {
     const [user] = await tx
-      .select({ points: usersTable.points, lifetimePoints: usersTable.lifetimePoints })
+      .select({ points: usersTable.points, monthlyPoints: usersTable.monthlyPoints })
       .from(usersTable)
       .where(eq(usersTable.id, auth.data.id));
 

@@ -42,71 +42,64 @@ type TaskCardProps = {
 };
 
 // Left accent stripe color by difficulty
-const difficultyAccent: Record<string, string> = {
+export const difficultyAccent: Record<string, string> = {
   easy: "bg-emerald-400",
   medium: "bg-orange-400",
   hard: "bg-red-500",
 };
 
 // Difficulty badge styles
-const difficultyBadge: Record<string, string> = {
+export const difficultyBadge: Record<string, string> = {
   easy: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   medium: "bg-orange-50 text-orange-700 border border-orange-200",
   hard: "bg-red-50 text-red-700 border border-red-200",
 };
 
 // Platform icon background + color
-function PlatformIcon({
+export function PlatformIcon({
   taskType,
   platform,
 }: {
   taskType?: string | null;
   platform?: string | null;
 }) {
-  const type = (taskType ?? platform ?? "").toLowerCase();
+  const type = (platform ?? taskType ?? "").toLowerCase();
 
   if (type.includes("facebook") || type.includes("fb"))
     return (
-      <div className="w-9 h-9 rounded-[10px] bg-blue-50 flex items-center justify-center shrink-0">
-        <svg
-          className="w-5 h-5 text-blue-600"
-          fill="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+      <div
+        className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+        style={{ background: "#1877F2" }}
+      >
+        <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
+          <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
         </svg>
       </div>
     );
 
   if (type.includes("instagram") || type.includes("ig"))
     return (
-      <div className="w-9 h-9 rounded-[10px] bg-pink-50 flex items-center justify-center shrink-0">
-        <svg
-          className="w-5 h-5 text-pink-600"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.8}
-          viewBox="0 0 24 24"
-        >
-          <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+      <div
+        className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+        style={{
+          background:
+            "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+        }}
+      >
+        <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
         </svg>
       </div>
     );
 
   if (type.includes("youtube") || type.includes("yt") || type.includes("video"))
     return (
-      <div className="w-9 h-9 rounded-[10px] bg-red-50 flex items-center justify-center shrink-0">
-        <svg
-          className="w-5 h-5 text-red-600"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.8}
-          viewBox="0 0 24 24"
-        >
-          <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 2-2 58.38 58.38 0 0 1 15 0 2 2 0 0 1 2 2 24.12 24.12 0 0 1 0 10 2 2 0 0 1-2 2 58.38 58.38 0 0 1-15 0 2 2 0 0 1-2-2z" />
-          <path d="m10 15 5-3-5-3z" />
+      <div
+        className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+        style={{ background: "#FF0000" }}
+      >
+        <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
         </svg>
       </div>
     );
@@ -124,6 +117,23 @@ function PlatformIcon({
           <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
           <polyline points="16 6 12 2 8 6" />
           <line x1="12" x2="12" y1="2" y2="15" />
+        </svg>
+      </div>
+    );
+
+  if (
+    type.includes("screenshot") ||
+    type === "screenshot_upload" ||
+    type === "manual"
+  )
+    return (
+      <div
+        className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+        style={{ background: "#6366f1" }}
+      >
+        <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
+          <path d="M4 5h13v7h2V5c0-1.103-.897-2-2-2H4c-1.103 0-2 .897-2 2v9c0 1.103.897 2 2 2h8v-2H4V5z" />
+          <path d="M22 18h-3v-3h-2v3h-3v2h3v3h2v-3h3z" />
         </svg>
       </div>
     );
@@ -160,37 +170,6 @@ function PlatformIcon({
   );
 }
 
-// Streak multiplier tooltip on Pick Up hover
-function PickupTooltip({ points, streak }: { points: number; streak: number }) {
-  const multiplier = streak >= 30 ? 1.5 : streak >= 7 ? 1.2 : 1.0;
-  const bonus = Math.round(points * multiplier) - points;
-  const total = points + bonus;
-
-  return (
-    <div className="absolute bottom-[calc(100%+6px)] right-0 z-20 bg-[#0f172a] rounded-xl p-2.5 w-[148px] shadow-lg pointer-events-none">
-      <div className="flex justify-between text-[10px] text-white/40 mb-1">
-        <span>Base</span>
-        <span className="text-white/70">{points} pts</span>
-      </div>
-      {multiplier > 1 && (
-        <div className="flex justify-between text-[10px] text-white/40 mb-1">
-          <span>Streak {multiplier}×</span>
-          <span className="text-orange-400">+{bonus} pts</span>
-        </div>
-      )}
-      <div className="border-t border-white/10 pt-1 flex justify-between text-[10px]">
-        <span className="text-white/50">You earn</span>
-        <span className="text-[#FACC15] font-bold">{total} pts</span>
-      </div>
-      {multiplier === 1 && (
-        <p className="text-[9px] text-white/30 mt-1 leading-tight">
-          Daily streak unlocks a bonus multiplier
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function TaskCard({
   task,
   index,
@@ -216,7 +195,6 @@ export function TaskCard({
   const [fingerprint, setFingerprint] = useState<string | undefined>(undefined);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
-  const [showTooltip, setShowTooltip] = useState(false);
   const prevStatusRef = useRef(task.userStatus);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
@@ -355,25 +333,12 @@ export function TaskCard({
             <h3 className="text-[13px] font-semibold text-slate-900 leading-snug truncate">
               {task.title}
             </h3>
-            {/* Difficulty badge top-right on mobile */}
-            {/* Difficulty badge top-right on mobile */}
-            <div className="shrink-0 flex items-center gap-1.5">
-              {task.isFlash && task.expiresAt && (
+            {/* Flash countdown stays top-right as it's time-critical */}
+            {task.isFlash && task.expiresAt && (
+              <div className="shrink-0">
                 <FlashCountdown expiresAt={task.expiresAt} />
-              )}
-              {task.isShare && (
-                <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
-                  Share
-                </span>
-              )}
-              {task.difficulty && (
-                <span
-                  className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
-                >
-                  {task.difficulty}
-                </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <p
@@ -448,20 +413,34 @@ export function TaskCard({
             )
           ) : task.userStatus ? (
             <div className="flex flex-col items-end gap-1.5">
-              <span
-                className={`text-[10px] font-bold px-2.5 py-1 rounded-full
-                ${
-                  task.userStatus.toLowerCase() === "verified"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : task.userStatus.toLowerCase() === "pending verification"
-                      ? "bg-amber-100 text-amber-700"
-                      : task.userStatus.toLowerCase() === "rejected"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-orange-100 text-orange-700 animate-pulse"
-                }`}
-              >
-                {task.userStatus}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {task.isShare && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+                    Share
+                  </span>
+                )}
+                {task.difficulty && (
+                  <span
+                    className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
+                  >
+                    {task.difficulty}
+                  </span>
+                )}
+                <span
+                  className={`text-[10px] font-bold px-2.5 py-1 rounded-full
+                  ${
+                    task.userStatus.toLowerCase() === "verified"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : task.userStatus.toLowerCase() === "pending verification"
+                        ? "bg-amber-100 text-amber-700"
+                        : task.userStatus.toLowerCase() === "rejected"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-orange-100 text-orange-700 animate-pulse"
+                  }`}
+                >
+                  {task.userStatus}
+                </span>
+              </div>
 
               {task.userStatus.toLowerCase() === "rejected" ? (
                 <button
@@ -499,36 +478,48 @@ export function TaskCard({
               ) : null}
             </div>
           ) : (
-            /* Pick Up button with tooltip */
-            <div
-              className="relative"
-              onMouseEnter={() => setShowTooltip(true)}
-              onMouseLeave={() => setShowTooltip(false)}
-            >
-              <AnimatePresence>
-                {showTooltip && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                    transition={{ duration: 0.14 }}
-                  >
-                    <PickupTooltip points={task.points || 0} streak={streak} />
-                  </motion.div>
+            /* Pick Up button — magnetic lift */
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {task.isShare && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+                    Share
+                  </span>
                 )}
-              </AnimatePresence>
-              <button
+                {task.difficulty && (
+                  <span
+                    className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
+                  >
+                    {task.difficulty}
+                  </span>
+                )}
+              </div>
+              <motion.button
                 onClick={() => onPickup(task.id)}
                 disabled={pickupPending}
-                className="text-[11px] font-bold text-[#0f172a] bg-[#FACC15] hover:bg-[#eab308]
-                           px-3 py-1.5 rounded-full transition-all duration-200
-                           hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+                whileHover={
+                  pickupPending
+                    ? {}
+                    : {
+                        y: -3,
+                        boxShadow: "0 8px 20px rgba(250, 204, 21, 0.45)",
+                      }
+                }
+                whileTap={
+                  pickupPending
+                    ? {}
+                    : { y: 0, boxShadow: "0 2px 6px rgba(250, 204, 21, 0.3)" }
+                }
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className="text-[11px] font-bold text-[#0f172a] bg-[#FACC15]
+                           px-3 py-1.5 rounded-full
+                           disabled:opacity-50 disabled:cursor-not-allowed
                            whitespace-nowrap"
               >
                 {pickupPending && pickupVariable === task.id
                   ? "..."
                   : "Pick Up →"}
-              </button>
+              </motion.button>
             </div>
           )}
         </div>

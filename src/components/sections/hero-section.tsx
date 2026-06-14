@@ -8,7 +8,7 @@ const HeroSection = () => {
   const [hovered, setHovered] = useState<"left" | "right" | null>(null);
 
   return (
-    <section className="relative h-screen w-full flex overflow-hidden bg-black pt-24">
+    <section className="relative h-screen w-full flex overflow-hidden bg-black pt-20">
       {/* Records Side */}
       <div
         onMouseEnter={() => setHovered("left")}

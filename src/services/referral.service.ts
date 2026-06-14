@@ -92,14 +92,14 @@ export const ReferralService = {
 
         if (hasCompletedRequiredTasks) {
           const [refUser] = await tx
-            .select({ lifetimePoints: usersTable.lifetimePoints })
+            .select({ lifetimePoints: usersTable.monthlyPoints })
             .from(usersTable)
             .where(eq(usersTable.id, referrer.id));
           await tx
             .update(usersTable)
             .set({
               points: sql`${usersTable.points} + ${REFERRAL_BONUS}`,
-              lifetimePoints: sql`${usersTable.lifetimePoints} + ${REFERRAL_BONUS}`,
+              monthlyPoints: sql`${usersTable.monthlyPoints} + ${REFERRAL_BONUS}`,
             })
             .where(eq(usersTable.id, referrer.id));
         }
@@ -193,7 +193,7 @@ export const ReferralService = {
         .update(usersTable)
         .set({
           points: sql`${usersTable.points} + ${REFERRAL_BONUS}`,
-          lifetimePoints: sql`${usersTable.lifetimePoints} + ${REFERRAL_BONUS}`,
+          monthlyPoints: sql`${usersTable.monthlyPoints} + ${REFERRAL_BONUS}`,
         })
         .where(eq(usersTable.id, referredBy));
 

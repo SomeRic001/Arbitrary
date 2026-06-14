@@ -42,7 +42,7 @@ export function ActivitySidebar({
   return (
     <div className="flex flex-col gap-4">
       {/* ── Overview card ─────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-[#0f172a] rounded-2xl p-4">
+      <div className="relative overflow-hidden bg-[#0f172a] rounded-2xl p-4 ">
         {/* Decorative blobs */}
         <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/[0.04] pointer-events-none" />
         <div className="absolute left-6 -bottom-6 w-24 h-24 rounded-full bg-[#FACC15]/[0.04] pointer-events-none" />

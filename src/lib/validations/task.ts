@@ -11,7 +11,7 @@ export const socialProfileUrlSchema = z
 
 export const TaskStatusEnum = z.enum(["In Progress", "Pending Verification", "Completed", "Cancelled"]);
 export const VerifyStatusEnum = z.enum(["Verified", "Rejected", "In Progress"]);
-export const PlatformEnum = z.enum(["facebook", "instagram", "youtube", "daily-login"]).nullable().optional();
+export const PlatformEnum = z.enum(["facebook", "instagram", "youtube", "daily-login", "share", "screenshot"]).nullable().optional();
 
 
 export const pickUpTaskSchema = z.object({
