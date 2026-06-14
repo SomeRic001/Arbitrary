@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { db } from "@/src/db";
+import { usersTable } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
 import { UserService } from "@/src/services/user.service";
 import { rateLimit, getClientIp } from "@/src/lib/rate-limit";
 import { sendEmail } from "@/src/lib/email";
 import { verifyEmailHtml } from "@/src/lib/emails/verify-email";
 import { z } from "zod";
+import { isDisposableDomain } from "fakeout";
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -13,6 +17,8 @@ const signupSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters").max(100, "Password too long"),
   referralCode: z.string().max(20).optional(),
+  fingerprint: z.string().max(255).optional(),
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -36,6 +42,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const emailDomain = parsed.data.email.split("@")[1]?.toLowerCase();
+    if (emailDomain && isDisposableDomain(emailDomain)) {
+      return NextResponse.json(
+        { error: "Disposable email addresses are not allowed" },
+        { status: 400 },
+      );
+    }
+
+    // Turnstile verification
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    if (turnstileSecret && parsed.data.turnstileToken) {
+      const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          secret: turnstileSecret,
+          response: parsed.data.turnstileToken,
+          remoteip: ip,
+        }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyData.success) {
+        return NextResponse.json({ error: "Bot verification failed. Please refresh and try again." }, { status: 400 });
+      }
+    }
+
     const rawToken = crypto.randomUUID();
     const bcryptHash = await bcrypt.hash(rawToken, 10);
     const lookupKey = crypto.createHash("sha256").update(rawToken).digest("hex").slice(0, 16);
@@ -48,6 +80,21 @@ export async function POST(req: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    const { userId } = result.data;
+
+    // Soft-flag for duplicate fingerprint abuse
+    if (parsed.data.fingerprint && userId) {
+      const duplicates = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.signupFingerprint, parsed.data.fingerprint))
+        .limit(2);
+      if (duplicates.length > 1) {
+        console.warn(`[Fingerprint] Duplicate signup fingerprint ${parsed.data.fingerprint} — flagging user ${userId}`);
+        await db.update(usersTable).set({ isFlagged: true }).where(eq(usersTable.id, userId));
+      }
     }
 
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";

@@ -194,6 +194,11 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
     doWatch(song);
   };
   const doWatch = (song: Song) => {
+    if (window.innerWidth < 768) {
+      closeModal();
+      window.open(`https://www.youtube.com/watch?v=${song.ytId}`, "_blank");
+      return;
+    }
     const s = S.current;
     s.ytAudioPlayer?.stopVideo?.();
     if (s.mode === "audio") hideTurntable();
@@ -428,8 +433,8 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
       const s = S.current;
       s.ytApiReady = true;
       s.ytAudioPlayer = new YT.Player("ytPlayerAudio", {
-        width: "1",
-        height: "1",
+        width: "300",
+        height: "200",
         playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, modestbranding: 1, playsinline: 1 },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         events: { onStateChange: (e: any) => onAudioStateChange(e) },
@@ -771,7 +776,7 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
       {/* Hidden persistent audio player */}
       <div
         id="ytPlayerAudio"
-        style={{ position: "fixed", width: 1, height: 1, opacity: 0, pointerEvents: "none", bottom: 0, right: 0 }}
+        style={{ position: "fixed", width: "300px", height: "200px", left: "-9999px", top: "-9999px", opacity: 0.01, pointerEvents: "none" }}
       />
     </div>
   );

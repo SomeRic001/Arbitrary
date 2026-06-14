@@ -61,7 +61,7 @@ export const YouTubeService = {
     let refreshToken: string | undefined = s?.googleRefreshToken;
 
     // Fall back to DB-stored encrypted refresh token if missing from session
-    if (!token && !refreshToken && userId) {
+    if (!refreshToken && userId) {
       try {
         const dbUser = await db.select({
           googleRefreshToken: usersTable.googleRefreshToken,
@@ -111,6 +111,7 @@ export const YouTubeService = {
               .set({ googleRefreshToken: encrypted })
               .where(eq(usersTable.id, userId))
               .catch(err => console.error("Failed to persist rotated refresh token:", err));
+            await updateJwtToken({ googleRefreshToken: data.refresh_token });
           }
         } else {
           console.error(`[youtube] getAuthorizedClient: refresh returned no access_token:`, data);

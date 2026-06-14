@@ -1064,7 +1064,7 @@ export const TaskService = {
 
     const { userTask, task } = userTaskWithTask;
 
-    if (task.platform !== "youtube") {
+    if (task.platform !== "youtube" && task.taskType !== "video_watch" && task.taskType !== "VIDEO_WATCH") {
       return fail("This endpoint is only for YouTube tasks", 400);
     }
 

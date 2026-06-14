@@ -11,12 +11,14 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "700", "800", "900"],
   variable: "--font-dm-sans",
+  preload: false,
 });
 
 export default function RootLayout({

@@ -106,10 +106,11 @@ export const UserService = {
     email: string;
     password: string;
     referralCode?: string;
+    fingerprint?: string;
   }, verification?: {
     verificationToken: string;
     verificationTokenExpiresAt: Date;
-  }): Promise<ServiceResult<{ success: true }>> {
+  }): Promise<ServiceResult<{ success: true; userId: number }>> {
     const existing = await db.select().from(usersTable).where(eq(usersTable.email, data.email)).limit(1);
     if (existing.length > 0) {
       return fail("An account with this email already exists", 400);
@@ -124,6 +125,7 @@ export const UserService = {
       provider: "credentials",
       verificationToken: verification?.verificationToken,
       verificationTokenExpiresAt: verification?.verificationTokenExpiresAt,
+      signupFingerprint: data.fingerprint,
     }).returning();
 
     // Assign a unique referral code
@@ -134,7 +136,7 @@ export const UserService = {
       await ReferralService.bindReferralCode(newUser.id, data.referralCode);
     }
 
-    return ok({ success: true });
+    return ok({ success: true, userId: newUser.id });
   },
 
   async claimProfileReward(

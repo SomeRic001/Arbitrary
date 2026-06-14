@@ -279,7 +279,7 @@ export function YoutubeModal({
 
   // Detect when the required watch time is reached and trigger completion
   useEffect(() => {
-    if (completedRef.current || !isSessionReady) return;
+    if (completedRef.current) return;
     if (watchedSeconds < localRequiredSeconds) return;
 
     // Time threshold crossed — send a final heartbeat to let the server
@@ -330,26 +330,10 @@ export function YoutubeModal({
             }
           }, 6000);
         } else {
-          // Server returned an error (e.g. gap too short). Retry after delay.
-          setTimeout(async () => {
-            if (completedRef.current) return;
-            try {
-              const pos = Math.floor(playerRef.current?.getCurrentTime?.() ?? 0);
-              const r2 = await fetch(`/api/tasks/${taskId}/watch-session`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sessionId, positionSeconds: pos }),
-              });
-              const d2 = await r2.json();
-              if (d2.completed) {
-                handleComplete();
-              } else {
-                handleComplete();
-              }
-            } catch {
-              handleComplete();
-            }
-          }, 6000);
+          // Server returned an error (e.g. session already completed by a
+          // periodic heartbeat). No need to retry — complete on the client
+          // side; the youtube-complete endpoint does the real validation.
+          handleComplete();
         }
       } catch {
         // Network error — still complete on client side

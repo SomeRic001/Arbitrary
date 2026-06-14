@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import ProfileDropdown from "./profile-dropdown";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 
 const Header = () => {
   const fullText = "ARBITRARY";
@@ -15,6 +16,25 @@ const Header = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const indexRef = useRef(0);
+
+  const { data: liveStatus } = useQuery({
+    queryKey: ["live-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/live/status");
+      if (!res.ok) return { live: false, youtubeId: null };
+      return res.json() as Promise<{ live: boolean; youtubeId: string | null }>;
+    },
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  const navItems = useMemo(() => {
+    const items = ["Home", "Work", "Events", "Records", "Leaderboard", "Dashboard", "About", "Contact"];
+    if (liveStatus?.live) {
+      items.splice(4, 0, "Live");
+    }
+    return items;
+  }, [liveStatus]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -87,16 +107,7 @@ const Header = () => {
         <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Desktop Nav */}
           <nav className="hidden xl:flex bg-black/5 backdrop-blur-md px-1.5 py-1.5 rounded-full border border-black/10 items-center gap-0.5">
-            {[
-              "Home",
-              "Work",
-              "Events",
-              "Records",
-              "Leaderboard",
-              "Dashboard",
-              "About",
-              "Contact",
-            ].map((item) => {
+            {navItems.map((item) => {
               const href = item === "Home" ? "/" : `/${item.toLowerCase()}`;
 
               const isActive = pathName === href;
@@ -107,7 +118,10 @@ const Header = () => {
                   className={`px-3 md:px-4 py-2 rounded-full font-bold transition-all duration-200 text-[10px] md:text-xs uppercase tracking-wider
                       ${isActive ? "bg-black text-white shadow-md" : "text-black/60 hover:text-black hover:bg-black/5"}`}
                 >
-                  {item}
+                  <span>{item}</span>
+                  {item === "Live" && (
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse ml-1.5 inline-block" />
+                  )}
                 </Link>
               );
             })}
@@ -142,16 +156,7 @@ const Header = () => {
               }`}
           >
             <div className={`flex flex-col gap-1 py-4 px-6 ${scrolled ? "" : "border-t border-black/5"}`}>
-              {[
-                "Home",
-                "Work",
-                "Events",
-                "Records",
-                "Leaderboard",
-                "Dashboard",
-                "About",
-                "Contact",
-              ].map((item, idx) => {
+              {navItems.map((item, idx) => {
                 const href = item === "Home" ? "/" : `/${item.toLowerCase()}`;
                 const isActive = pathName === href;
                 return (
@@ -171,7 +176,12 @@ const Header = () => {
                             : "text-black/70 hover:text-black hover:bg-black/5"
                         }`}
                     >
-                      <span>{item}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{item}</span>
+                        {item === "Live" && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
+                        )}
+                      </div>
                       {isActive && (
                         <span className="w-2 h-2 rounded-full bg-[#FACC15]" />
                       )}

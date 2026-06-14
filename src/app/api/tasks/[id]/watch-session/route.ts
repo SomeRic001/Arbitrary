@@ -25,7 +25,7 @@ export async function POST(
   const [task] = await db
     .select()
     .from(tasksTable)
-    .where(and(eq(tasksTable.id, taskId), eq(tasksTable.platform, "youtube")));
+    .where(and(eq(tasksTable.id, taskId), eq(tasksTable.taskType, "video_watch")));
 
   if (!task) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });

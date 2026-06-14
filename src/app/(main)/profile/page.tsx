@@ -2,6 +2,7 @@
 
 import Header from "@/src/components/ui/header";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 
 import ProfileSidebar from "./_components/profile-sidebar";
@@ -56,6 +57,16 @@ export default function ProfilePage() {
 
   const user = session?.user;
   const initials = user?.name?.[0]?.toUpperCase() || "U";
+
+  // ── Read ?tab= query param to auto-select a tab on mount ──
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const tab = searchParams.get("tab") as Tab | null;
+    const validTabs: Tab[] = ["profile", "settings", "tasks", "tickets", "referrals"];
+    if (tab && validTabs.includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, []);
 
   // ── Fetch the logged-in user's points and total completed tasks from DB ──
   const { data: pointsData } = useQuery<{ points: number; completedTasksCount: number; currentStreak: number; tier: string }>({

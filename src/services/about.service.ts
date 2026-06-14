@@ -15,6 +15,7 @@ export type AboutContent = {
   awardsLabel: string | null;
   motto: string | null;
   mottoAuthor: string | null;
+  liveStreamId: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -67,5 +68,26 @@ export const AboutService = {
       .values(data)
       .returning();
     return ok(created);
+  },
+
+  async getLiveStreamId(): Promise<ServiceResult<string | null>> {
+    const rows = await db
+      .select({ liveStreamId: aboutContentTable.liveStreamId })
+      .from(aboutContentTable)
+      .limit(1);
+    return ok(rows[0]?.liveStreamId ?? null);
+  },
+
+  async setLiveStreamId(liveStreamId: string | null): Promise<ServiceResult<boolean>> {
+    const existing = await db.select().from(aboutContentTable).limit(1);
+    if (existing.length > 0) {
+      await db
+        .update(aboutContentTable)
+        .set({ liveStreamId, updatedAt: new Date() })
+        .where(eq(aboutContentTable.id, existing[0].id));
+    } else {
+      await db.insert(aboutContentTable).values({ liveStreamId, updatedAt: new Date() });
+    }
+    return ok(true);
   },
 };

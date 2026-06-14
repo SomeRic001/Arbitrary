@@ -1,10 +1,20 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import Script from "next/script";
 import FormInput from "@/src/components/layout/form-input";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string, opts: { sitekey: string }) => void;
+      getResponse: () => string;
+    };
+  }
+}
 
 const errorMessages: Record<string, string> = {
   OAuthSignin: "Google sign-up failed. Please try again.",
@@ -24,6 +34,7 @@ const UserSignupPage = () => {
   const authError = searchParams.get("error");
   const refCode = searchParams.get("ref");
   const [agreed, setAgreed] = useState(false);
+  const turnstileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -98,6 +109,21 @@ const UserSignupPage = () => {
         password,
       };
       if (refCode) body.referralCode = refCode;
+
+      // Fingerprint
+      try {
+        const FingerprintJS = await import("@fingerprintjs/fingerprintjs");
+        const fp = await FingerprintJS.load();
+        const { visitorId } = await fp.get();
+        body.fingerprint = visitorId;
+      } catch {
+        /* fingerprint unavailable */
+      }
+
+      // Turnstile token
+      if (typeof window !== "undefined" && window.turnstile) {
+        body.turnstileToken = window.turnstile.getResponse();
+      }
 
       const res = await fetch("/api/auth/signup", {
         method: "POST",
@@ -405,6 +431,9 @@ const UserSignupPage = () => {
               </span>
             </label>
 
+            {/* Turnstile widget */}
+            <div ref={turnstileRef} id="cf-turnstile-container" />
+
             {/* Submit — yellow CTA */}
             <button
               type="submit"
@@ -496,6 +525,18 @@ const UserSignupPage = () => {
               </svg>
               {isLoading ? "Signing in…" : "Continue with Facebook"}
             </button>
+
+            <Script
+              src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+              strategy="afterInteractive"
+              onLoad={() => {
+                if (window.turnstile) {
+                  window.turnstile.render("#cf-turnstile-container", {
+                    sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
+                  });
+                }
+              }}
+            />
 
             {/* Sign in link */}
             <p className="text-center text-xs text-gray-400 pt-1">

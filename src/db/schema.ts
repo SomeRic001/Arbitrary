@@ -80,6 +80,7 @@ export const usersTable = pgTable("users", {
     verificationTokenExpiresAt: timestamp("verification_token_expires_at"),
     fraudRiskScore: integer("fraud_risk_score").notNull().default(0),
     isFlagged: boolean("is_flagged").notNull().default(false),
+    signupFingerprint: varchar("signup_fingerprint", { length: 255 }),
 })
 
 // --- Task Table -----
@@ -301,8 +302,20 @@ export const aboutContentTable = pgTable("about_content", {
     awardsLabel: varchar("awards_label", { length: 255 }),
     motto: text("motto"),
     mottoAuthor: varchar("motto_author", { length: 255 }),
+    liveStreamId: varchar("live_stream_id", { length: 255 }),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// --- Live Watch Sessions ---
+export const liveWatchSessionsTable = pgTable("live_watch_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  youtubeId: varchar("youtube_id", { length: 255 }).notNull(),
+  accumulatedSeconds: integer("accumulated_seconds").notNull().default(0),
+  pointsAwarded: integer("points_awarded").notNull().default(0),
+  lastHeartbeatAt: timestamp("last_heartbeat_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // --- Admin Activity Log ---
@@ -362,6 +375,7 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
     userTickets: many(userTicketsTable),
     pointsLog: many(pointsLogTable),
     watchSessions: many(watchSessionsTable),
+    liveWatchSessions: many(liveWatchSessionsTable),
 }));
 
 export const tasksRelations = relations(tasksTable, ({ many, one }) => ({
@@ -433,6 +447,13 @@ export const watchSessionsRelations = relations(watchSessionsTable, ({ one }) =>
         fields: [watchSessionsTable.taskId],
         references: [tasksTable.id],
     }),
+}));
+
+export const liveWatchSessionsRelations = relations(liveWatchSessionsTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [liveWatchSessionsTable.userId],
+    references: [usersTable.id],
+  }),
 }));
 
 export const dealsRelations = relations(dealsTable, ({ many }) => ({

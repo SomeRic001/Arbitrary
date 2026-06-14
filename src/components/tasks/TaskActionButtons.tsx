@@ -36,6 +36,7 @@ export function TaskActionButtons({
   onOpenYoutube,
   onScreenshotFileSelect,
   onScreenshotSubmit,
+  onComplete,
 }: Props) {
   return (
     <div className="flex flex-col gap-1.5 mt-1 w-full min-w-[200px]">

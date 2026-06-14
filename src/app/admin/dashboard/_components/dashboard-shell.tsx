@@ -25,6 +25,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     "/admin/dashboard/partners": "Our Work",
     "/admin/dashboard/team-members": "Team Members",
     "/admin/dashboard/about": "About Content",
+    "/admin/dashboard/live-stream": "Live Stream",
     "/admin/tickets/scanner": "Ticket Scanner",
     "/admin/profile": "Profile",
   };
