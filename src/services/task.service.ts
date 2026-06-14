@@ -671,7 +671,7 @@ export const TaskService = {
     if (!targetTask) return fail("Task not found", 404);
 
     if (targetTask.platform === "daily-login") {
-      const dlResult = await this.claimDailyLogin(userId, taskId);
+      const dlResult = await this.claimDailyLogin(userId);
       if (!dlResult.success) return dlResult;
       return ok({ message: dlResult.data.message });
     }

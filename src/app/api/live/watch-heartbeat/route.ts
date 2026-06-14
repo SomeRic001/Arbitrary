@@ -11,16 +11,19 @@ const heartbeatSchema = z.object({
 
 export async function PATCH(req: NextRequest) {
   const auth = await requireUser();
+  console.log("[watch-heartbeat] auth:", auth.success, (auth as any).data?.id);
   if (!auth.success) {
     return NextResponse.json({ error: "Sign in to earn points" }, { status: 401 });
   }
 
-  const rl = await rateLimit(`livewatch:${auth.data.id}`, 1, 30_000);
+  const rl = await rateLimit(`livewatch:${auth.data.id}`, 1, 45_000);
+  console.log("[watch-heartbeat] rl:", rl.allowed);
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too fast" }, { status: 429 });
   }
 
   const streamResult = await AboutService.getLiveStreamId();
+  console.log("[watch-heartbeat] streamResult:", streamResult.success, (streamResult as any).data);
   if (!streamResult.success || !streamResult.data) {
     return NextResponse.json({ error: "No live stream active" }, { status: 400 });
   }
@@ -38,6 +41,7 @@ export async function PATCH(req: NextRequest) {
     streamResult.data,
     parsed.data.deltaSeconds,
   );
+  console.log("[watch-heartbeat] heartbeat result:", result.success, (result as any).error ?? "");
 
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: result.status });

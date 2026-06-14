@@ -148,7 +148,7 @@ export default function LivePage() {
     }
 
     try {
-      const body = JSON.stringify({ deltaSeconds: delta });
+      const body = JSON.stringify({ deltaSeconds: delta, youtubeId });
       console.log("[live] heartbeat sending:", body);
       const res = await fetch("/api/live/watch-heartbeat", {
         method: "PATCH",
