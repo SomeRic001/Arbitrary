@@ -67,31 +67,30 @@ export const ReferralService = {
           throw new Error("Cannot link to an account younger than yours");
         }
 
-        const [firstTask] = await tx
-          .select()
+        const [completedResult] = await tx
+          .select({ count: sql<number>`COUNT(*)` })
           .from(userTasksTable)
           .where(
             and(
               eq(userTasksTable.userId, userId),
               sql`LOWER(${userTasksTable.status}) IN ('completed', 'verified')`,
             ),
-          )
-          .limit(1);
+          );
 
-        const hasCompletedFirstTask = !!firstTask;
+        const hasCompletedRequiredTasks = (completedResult?.count ?? 0) >= 3;
 
         await tx
           .update(usersTable)
-          .set({ referredBy: referrer.id, referralRewarded: hasCompletedFirstTask })
+          .set({ referredBy: referrer.id, referralRewarded: hasCompletedRequiredTasks })
           .where(eq(usersTable.id, userId));
 
         await tx.insert(referralsTable).values({
           referrerId: referrer.id,
           referredId: userId,
-          pointsAwarded: hasCompletedFirstTask ? REFERRAL_BONUS : 0,
+          pointsAwarded: hasCompletedRequiredTasks ? REFERRAL_BONUS : 0,
         });
 
-        if (hasCompletedFirstTask) {
+        if (hasCompletedRequiredTasks) {
           const [refUser] = await tx
             .select({ lifetimePoints: usersTable.lifetimePoints })
             .from(usersTable)
@@ -105,7 +104,7 @@ export const ReferralService = {
             .where(eq(usersTable.id, referrer.id));
         }
 
-        return { bonusAwarded: hasCompletedFirstTask };
+        return { bonusAwarded: hasCompletedRequiredTasks };
       });
 
       return ok(result);
@@ -155,6 +154,18 @@ export const ReferralService = {
 
       const referredBy = user?.referredBy;
       if (!referredBy || user?.referralRewarded) return;
+
+      const [completedResult] = await tx
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(userTasksTable)
+        .where(
+          and(
+            eq(userTasksTable.userId, userId),
+            sql`LOWER(${userTasksTable.status}) IN ('completed', 'verified')`,
+          ),
+        );
+
+      if ((completedResult?.count ?? 0) < 3) return;
 
       const [referrer] = await tx
         .select()
