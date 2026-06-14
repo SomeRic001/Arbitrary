@@ -1,3 +1,5 @@
+import { checkCommentQuality, type CommentQualityOptions } from "./comment-quality";
+
 interface InstagramMedia {
     id: string;
     caption: string | null;
@@ -48,7 +50,12 @@ export class InstagramService {
     /**
      * Check if a verification code appears in any comment on the media post.
      */
-    static async findCodeInComments(mediaId: string, code: string, expectedUsername: string) {
+    static async findCodeInComments(
+        mediaId: string,
+        code: string,
+        expectedUsername: string,
+        qualityOptions?: CommentQualityOptions,
+    ) {
         if (!this.accessToken) {
             throw new Error('Instagram API access token missing');
         }
@@ -72,6 +79,17 @@ export class InstagramService {
             return containsCode && usernameMatches;
         });
 
-        return match ? { found: true, commentId: match.id } : { found: false };
+        if (!match) {
+            return { found: false as const };
+        }
+
+        const quality = checkCommentQuality(match.text, code, qualityOptions);
+
+        return {
+            found: true as const,
+            commentId: match.id,
+            commentText: match.text,
+            hasQualityComment: quality.isQualityComment,
+        };
     }
 }

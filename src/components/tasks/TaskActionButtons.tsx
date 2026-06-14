@@ -19,7 +19,11 @@ type Props = {
   onOpenYoutube: () => void;
   onScreenshotFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onScreenshotSubmit: () => void;
-  onComplete: (taskId: number, proofUrl: string, proofImageUrl?: string) => void;
+  onComplete: (
+    taskId: number,
+    proofUrl: string,
+    proofImageUrl?: string,
+  ) => void;
 };
 
 export function TaskActionButtons({
@@ -70,9 +74,7 @@ export function TaskActionButtons({
                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                        hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {cancelPending && cancelVariable === task.id
-              ? "..."
-              : "Cancel"}
+            {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
           </button>
         </div>
       ) : task.platform === "instagram" ? (
@@ -98,9 +100,7 @@ export function TaskActionButtons({
                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                        hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {cancelPending && cancelVariable === task.id
-              ? "..."
-              : "Cancel"}
+            {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
           </button>
         </div>
       ) : isYtSubscribe(task) ? (
@@ -126,9 +126,7 @@ export function TaskActionButtons({
                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                        hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {cancelPending && cancelVariable === task.id
-              ? "..."
-              : "Cancel"}
+            {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
           </button>
         </div>
       ) : isYtLike(task) || isYtComment(task) ? (
@@ -154,9 +152,7 @@ export function TaskActionButtons({
                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                        hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {cancelPending && cancelVariable === task.id
-              ? "..."
-              : "Cancel"}
+            {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
           </button>
         </div>
       ) : task.platform === "youtube" ||
@@ -172,7 +168,10 @@ export function TaskActionButtons({
                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                        hover:scale-105 flex-1"
           >
-            ▶ Watch{task.watchDuration ? ` (${task.watchDuration >= 60 ? `${Math.round(task.watchDuration / 60)}m` : `${task.watchDuration}s`})` : ""}
+            ▶ Watch
+            {task.watchDuration
+              ? ` (${task.watchDuration >= 60 ? `${Math.round(task.watchDuration / 60)}m` : `${task.watchDuration}s`})`
+              : ""}
           </button>
           <button
             onClick={(e) => {
@@ -184,9 +183,7 @@ export function TaskActionButtons({
                        px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                        hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {cancelPending && cancelVariable === task.id
-              ? "..."
-              : "Cancel"}
+            {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
           </button>
         </div>
       ) : task.taskType === "SCREENSHOT_UPLOAD" ? (
@@ -205,8 +202,18 @@ export function TaskActionButtons({
               />
             ) : (
               <div className="flex flex-col items-center gap-1">
-                <svg className="w-6 h-6 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg
+                  className="w-6 h-6 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
                 </svg>
                 <span className="text-[10px] text-white/50 font-medium">
                   Tap to upload screenshot
@@ -245,9 +252,7 @@ export function TaskActionButtons({
                            px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                            hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {cancelPending && cancelVariable === task.id
-                  ? "..."
-                  : "Cancel"}
+                {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
               </button>
             </div>
           )}
@@ -255,7 +260,6 @@ export function TaskActionButtons({
       ) : !task.platform &&
         task.taskType !== "SCREENSHOT_UPLOAD" &&
         task.taskType !== "social" &&
-        task.taskType !== "social_media" &&
         task.taskType !== "video_watch" ? (
         <button
           onClick={() => onComplete(task.id, "")}
@@ -294,8 +298,18 @@ export function TaskActionButtons({
               />
             ) : (
               <div className="flex flex-col items-center gap-1">
-                <svg className="w-6 h-6 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg
+                  className="w-6 h-6 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
                 </svg>
                 <span className="text-[10px] text-white/50 font-medium">
                   Tap to upload screenshot
@@ -334,9 +348,7 @@ export function TaskActionButtons({
                            px-2.5 py-1 rounded-full backdrop-blur-sm transition-all duration-200
                            hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {cancelPending && cancelVariable === task.id
-                  ? "..."
-                  : "Cancel"}
+                {cancelPending && cancelVariable === task.id ? "..." : "Cancel"}
               </button>
             </div>
           )}

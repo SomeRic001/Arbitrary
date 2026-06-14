@@ -19,7 +19,11 @@ type TaskListProps = {
   onToggleExpand: (e: React.MouseEvent, taskId: number) => void;
   onPickup: (taskId: number) => void;
   onCancel: (taskId: number) => void;
-  onComplete: (taskId: number, proofUrl: string, proofImageUrl?: string) => void;
+  onComplete: (
+    taskId: number,
+    proofUrl: string,
+    proofImageUrl?: string,
+  ) => void;
   onClaimDailyLogin: (taskId: number) => void;
   onClaimProfile: (taskId: number) => void;
   onClaimReferral: (taskId: number) => void;
@@ -36,14 +40,21 @@ type TaskListProps = {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  streak?: number;
 };
 
 function TaskSection({
   title,
   tasks,
-  accent,
+  accentColor,
+  streak,
   ...cardProps
-}: {   title: string; tasks: UserTaskItem[]; accent?: string } & Omit<
+}: {
+  title: string;
+  tasks: UserTaskItem[];
+  accentColor?: string;
+  streak?: number;
+} & Omit<
   TaskListProps,
   | "availableTasks"
   | "inProgressTasks"
@@ -55,22 +66,29 @@ function TaskSection({
   | "isAnimating"
   | "slideDirection"
 >) {
-
   if (tasks.length === 0) return null;
   return (
-    <div className="mb-5">
-      <div className="flex items-center gap-2 mb-2.5 px-1">
-        {accent && <div className={`w-1.5 h-1.5 rounded-full ${accent}`} />}
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.18em]">
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2.5 px-0.5">
+        {accentColor && (
+          <div className={`w-1.5 h-1.5 rounded-full ${accentColor}`} />
+        )}
+        <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.18em]">
           {title}
         </h3>
-        <span className="text-[9px] font-black text-slate-300 bg-slate-100 px-1.5 py-0.5 rounded-full">
+        <span className="text-[9px] font-black text-slate-300 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
           {tasks.length}
         </span>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {tasks.map((task, index) => (
-          <TaskCard key={task.id} task={task} index={index} {...cardProps} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            index={index}
+            streak={streak}
+            {...cardProps}
+          />
         ))}
       </div>
     </div>
@@ -92,9 +110,11 @@ export function TaskList({
   onLoadMore,
   hasMore,
   loadingMore,
+  streak = 0,
   ...cardProps
 }: TaskListProps) {
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+
   const hasAnyTasks =
     availableTasks.length > 0 ||
     inProgressTasks.length > 0 ||
@@ -106,15 +126,15 @@ export function TaskList({
     return availableTasks.filter((t) => t.difficulty === difficultyFilter);
   }, [availableTasks, difficultyFilter]);
 
-  const difficultyColors: Record<string, string> = {
-    all: "bg-slate-800 text-white",
-    easy: "bg-emerald-500 text-white",
-    medium: "bg-amber-500 text-white",
-    hard: "bg-red-500 text-white",
+  const difficultyActiveClass: Record<string, string> = {
+    all: "bg-slate-900 text-white border-slate-900",
+    easy: "bg-emerald-500 text-white border-emerald-500",
+    medium: "bg-orange-500 text-white border-orange-500",
+    hard: "bg-red-500 text-white border-red-500",
   };
 
   return (
-    <div className="px-6 pb-6 min-h-64">
+    <div className="px-5 pb-6 min-h-64">
       <div
         className={
           isAnimating
@@ -128,14 +148,14 @@ export function TaskList({
       >
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <div className="w-8 h-8 border-2 border-slate-100 border-t-slate-800 rounded-full animate-spin" />
-            <p className="text-sm text-slate-400 font-medium">Loading tasks…</p>
+            <div className="w-7 h-7 border-2 border-slate-100 border-t-slate-800 rounded-full animate-spin" />
+            <p className="text-sm text-slate-400">Loading tasks…</p>
           </div>
         ) : !hasAnyTasks && systemTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
               <svg
-                className="w-7 h-7 text-slate-300"
+                className="w-6 h-6 text-slate-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -148,7 +168,7 @@ export function TaskList({
                 />
               </svg>
             </div>
-            <p className="text-sm font-medium">
+            <p className="text-sm">
               {activeTab === "all"
                 ? "No tasks available right now."
                 : `No ${activeTab} tasks found.`}
@@ -156,18 +176,19 @@ export function TaskList({
           </div>
         ) : (
           <div className="pt-3">
-            {/* Difficulty filter */}
+            {/* Difficulty filter pills */}
             {availableTasks.length > 1 && (
-              <div className="flex items-center gap-1.5 mb-4 px-1 overflow-x-auto pb-0.5">
+              <div className="flex items-center gap-1.5 mb-4 px-0.5 overflow-x-auto pb-0.5">
                 {DIFFICULTIES.map((d) => (
                   <button
                     key={d}
                     onClick={() => setDifficultyFilter(d)}
-                    className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full transition-all shrink-0 ${
-                      difficultyFilter === d
-                        ? difficultyColors[d]
-                        : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-                    }`}
+                    className={`text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border transition-all shrink-0
+                      ${
+                        difficultyFilter === d
+                          ? difficultyActiveClass[d]
+                          : "bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                      }`}
                   >
                     {d === "all" ? "All" : d}
                   </button>
@@ -177,30 +198,33 @@ export function TaskList({
 
             <TaskSection
               title="In Progress"
-              accent="bg-amber-400 animate-pulse"
+              accentColor="bg-orange-400 animate-pulse"
               tasks={inProgressTasks}
+              streak={streak}
               {...cardProps}
             />
             <TaskSection
               title="Rejected"
-              accent="bg-red-400"
+              accentColor="bg-red-400"
               tasks={rejectedTasks}
+              streak={streak}
               {...cardProps}
             />
             <TaskSection
               title="Available"
-              accent="bg-slate-300"
+              accentColor="bg-slate-300"
               tasks={filteredAvailable}
+              streak={streak}
               {...cardProps}
             />
 
-            {/* Load More */}
+            {/* Load more */}
             {hasMore && !isLoading && (
               <div className="flex justify-center pt-2 pb-4">
                 <button
                   onClick={onLoadMore}
                   disabled={loadingMore}
-                  className="px-6 py-2.5 text-xs font-black uppercase tracking-wider rounded-full
+                  className="px-6 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-full
                              bg-slate-900 text-white hover:bg-slate-800 transition-all
                              disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -214,18 +238,19 @@ export function TaskList({
         {/* System tasks */}
         {!isLoading && systemTasks.length > 0 && (
           <div className="mt-2">
-            <div className="flex items-center gap-2 mb-2.5 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.18em]">
+              <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.18em]">
                 System Tasks
               </h3>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {systemTasks.map((task, index) => (
                 <TaskCard
                   key={task.id}
                   task={task}
                   index={index}
+                  streak={streak}
                   {...cardProps}
                 />
               ))}

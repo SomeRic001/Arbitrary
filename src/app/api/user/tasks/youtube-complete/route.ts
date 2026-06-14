@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
-  const rl = await rateLimit(`youtube-complete:${auth.data.id}`, 5, 60_000);
+  const rl = await rateLimit(`youtube-complete:${auth.data.id}`, 3, 300_000);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: `Too many attempts. Try again in ${rl.retryAfterSeconds}s.` },

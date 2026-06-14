@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { checkCommentQuality, type CommentQualityOptions } from "./comment-quality";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v20.0";
 
@@ -19,6 +20,14 @@ export interface LikeCheckResult {
     postId: string;
     checkedAt: string;
     error?: string;
+    /** The full text of the matching comment, if one was found. */
+    commentText?: string;
+    /**
+     * True if the matching comment contains more than just the bare
+     * verification code (i.e. it looks like a genuine human comment).
+     * Only present when `liked` is true.
+     */
+    hasQualityComment?: boolean;
 }
 
 /** Generate a deterministic verification code for a user+task combination */
@@ -57,7 +66,8 @@ export async function getPagePosts(): Promise<Post[]> {
 
 export async function findCodeInComments(
     postId: string,
-    code: string
+    code: string,
+    qualityOptions?: CommentQualityOptions,
 ): Promise<LikeCheckResult> {
     const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
 
@@ -77,17 +87,32 @@ export async function findCodeInComments(
         return { liked: false, userId: "", postId, checkedAt: new Date().toISOString(), error: data.error.message };
     }
 
-    const found = Array.isArray(data.data) && data.data.some(
-        (c: { message?: string }) => c.message && c.message.includes(code)
-    );
+    const match = Array.isArray(data.data)
+        ? data.data.find((c: { message?: string }) => c.message && c.message.includes(code))
+        : undefined;
 
-    return { liked: found, userId: code, postId, checkedAt: new Date().toISOString() };
+    if (!match) {
+        return { liked: false, userId: code, postId, checkedAt: new Date().toISOString() };
+    }
+
+    const quality = checkCommentQuality(match.message, code, qualityOptions);
+
+    return {
+        liked: true,
+        userId: code,
+        postId,
+        checkedAt: new Date().toISOString(),
+        commentText: match.message,
+        hasQualityComment: quality.isQualityComment,
+    };
 }
 
 export async function checkUserCommentedOnPost(
     postId: string,
     _userAccessToken: string,
-    asid: string
+    asid: string,
+    code?: string,
+    qualityOptions?: CommentQualityOptions,
 ): Promise<LikeCheckResult> {
     const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
 
@@ -107,9 +132,31 @@ export async function checkUserCommentedOnPost(
         return { liked: false, userId: asid, postId, checkedAt: new Date().toISOString(), error: data.error.message };
     }
 
-    const commented = Array.isArray(data.data) && data.data.some(
-        (comment: { from?: { id: string } }) => comment.from?.id?.toString() === asid.toString()
-    );
+    const match = Array.isArray(data.data)
+        ? data.data.find(
+            (comment: { from?: { id: string }; message?: string }) => comment.from?.id?.toString() === asid.toString(),
+        )
+        : undefined;
 
-    return { liked: commented, userId: asid, postId, checkedAt: new Date().toISOString() };
+    if (!match) {
+        return { liked: false, userId: asid, postId, checkedAt: new Date().toISOString() };
+    }
+
+    // If no code was supplied, fall back to the old behaviour: any comment
+    // from this user on the post counts.
+    if (!code) {
+        return { liked: true, userId: asid, postId, checkedAt: new Date().toISOString(), commentText: match.message };
+    }
+
+    const hasCode = !!match.message && match.message.includes(code);
+    const quality = checkCommentQuality(match.message, code, qualityOptions);
+
+    return {
+        liked: hasCode,
+        userId: asid,
+        postId,
+        checkedAt: new Date().toISOString(),
+        commentText: match.message,
+        hasQualityComment: hasCode && quality.isQualityComment,
+    };
 }

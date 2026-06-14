@@ -170,6 +170,16 @@ export const watchSessionsTable = pgTable("watch_sessions", {
     createdAt: timestamp("created_at").defaultNow(),
 });
 
+// --- Daily Login ---
+export const dailyLoginTable = pgTable("daily_logins", {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }).unique(),
+    claimedAt: timestamp("claimed_at").notNull(),
+    streak: integer("streak").notNull().default(1),
+}, (table) => ({
+    userIdIdx: index("idx_daily_logins_user_id").on(table.userId),
+}));
+
 // --- Rate Limits ---
 export const rateLimitsTable = pgTable("rate_limits", {
     key: varchar("key", { length: 255 }).primaryKey(),
@@ -309,13 +319,13 @@ export const aboutContentTable = pgTable("about_content", {
 
 // --- Live Watch Sessions ---
 export const liveWatchSessionsTable = pgTable("live_watch_sessions", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => usersTable.id),
-  youtubeId: varchar("youtube_id", { length: 255 }).notNull(),
-  accumulatedSeconds: integer("accumulated_seconds").notNull().default(0),
-  pointsAwarded: integer("points_awarded").notNull().default(0),
-  lastHeartbeatAt: timestamp("last_heartbeat_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => usersTable.id),
+    youtubeId: varchar("youtube_id", { length: 255 }).notNull(),
+    accumulatedSeconds: integer("accumulated_seconds").notNull().default(0),
+    pointsAwarded: integer("points_awarded").notNull().default(0),
+    lastHeartbeatAt: timestamp("last_heartbeat_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // --- Admin Activity Log ---
@@ -370,12 +380,23 @@ export const timelineItemsRelations = relations(timelineItemsTable, ({ one }) =>
     }),
 }));
 
-export const usersRelations = relations(usersTable, ({ many }) => ({
+export const usersRelations = relations(usersTable, ({ many, one }) => ({
     userTasks: many(userTasksTable),
     userTickets: many(userTicketsTable),
     pointsLog: many(pointsLogTable),
     watchSessions: many(watchSessionsTable),
     liveWatchSessions: many(liveWatchSessionsTable),
+    dailyLogin: one(dailyLoginTable, {
+        fields: [usersTable.id],
+        references: [dailyLoginTable.userId],
+    }),
+}));
+
+export const dailyLoginRelations = relations(dailyLoginTable, ({ one }) => ({
+    user: one(usersTable, {
+        fields: [dailyLoginTable.userId],
+        references: [usersTable.id],
+    }),
 }));
 
 export const tasksRelations = relations(tasksTable, ({ many, one }) => ({
@@ -450,10 +471,10 @@ export const watchSessionsRelations = relations(watchSessionsTable, ({ one }) =>
 }));
 
 export const liveWatchSessionsRelations = relations(liveWatchSessionsTable, ({ one }) => ({
-  user: one(usersTable, {
-    fields: [liveWatchSessionsTable.userId],
-    references: [usersTable.id],
-  }),
+    user: one(usersTable, {
+        fields: [liveWatchSessionsTable.userId],
+        references: [usersTable.id],
+    }),
 }));
 
 export const dealsRelations = relations(dealsTable, ({ many }) => ({

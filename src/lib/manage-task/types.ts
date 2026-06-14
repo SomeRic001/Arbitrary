@@ -35,11 +35,9 @@ export type TaskSource = "manual" | import("@/src/lib/social/type").Platform;
 export const PLATFORMS: {
     value: import("@/src/lib/social/type").Platform;
     label: string;
-    icon: string;
     color: string;
 }[] = [
-        { value: "facebook", label: "Facebook", icon: "f", color: "#1877F2" },
-        { value: "instagram", label: "Instagram", icon: "📷", color: "#E1306C" },
-        { value: "youtube", label: "YouTube", icon: "▶", color: "#FF0000" },
-        { value: "daily-login", label: "Daily Login", icon: "📅", color: "#10B981" },
+        { value: "facebook", label: "Facebook", color: "#1877F2" },
+        { value: "instagram", label: "Instagram", color: "#E1306C" },
+        { value: "youtube", label: "YouTube", color: "#FF0000" },
     ];

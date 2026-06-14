@@ -241,8 +241,12 @@ export function InstagramModal({
                   />
                 </svg>
               </div>
-              <p className="text-lg font-black text-amber-600">Submitted for Review</p>
-              <p className="text-sm text-gray-500">An admin will review your proof and award points.</p>
+              <p className="text-lg font-black text-amber-600">
+                Submitted for Review
+              </p>
+              <p className="text-sm text-gray-500">
+                An admin will review your proof and award points.
+              </p>
             </div>
           ) : !instagramUsername ? (
             <div className="flex flex-col items-center gap-4 py-4">
@@ -250,9 +254,12 @@ export function InstagramModal({
                 <span className="text-2xl text-pink-600 font-black">📷</span>
               </div>
               <div className="text-center">
-                <p className="font-bold text-gray-800">Link Instagram Account</p>
+                <p className="font-bold text-gray-800">
+                  Link Instagram Account
+                </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  You need to link your Instagram username in your profile settings first.
+                  You need to link your Instagram username in your profile
+                  settings first.
                 </p>
               </div>
               <a
@@ -266,7 +273,9 @@ export function InstagramModal({
             <div className="flex flex-col gap-4">
               <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
                 <p className="text-xs font-bold text-amber-700">
-                  Could not verify your comment automatically. Please upload a screenshot showing your comment with the code on the Instagram post.
+                  Could not verify your comment automatically. Please upload a
+                  screenshot showing your comment with the code on the Instagram
+                  post.
                 </p>
               </div>
               <label
@@ -275,16 +284,37 @@ export function InstagramModal({
                            cursor-pointer hover:bg-white/20 transition-all duration-200"
               >
                 {previewUrl ? (
-                  <img src={previewUrl} alt="Preview" className="w-full max-h-32 object-contain rounded-lg" />
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="w-full max-h-32 object-contain rounded-lg"
+                  />
                 ) : (
                   <div className="flex flex-col items-center gap-1">
-                    <svg className="w-6 h-6 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <svg
+                      className="w-6 h-6 text-zinc-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
                     </svg>
-                    <span className="text-[10px] text-zinc-500 font-medium">Tap to upload screenshot</span>
+                    <span className="text-[10px] text-zinc-500 font-medium">
+                      Tap to upload screenshot
+                    </span>
                   </div>
                 )}
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
               </label>
               {error && (
                 <div className="p-3 bg-red-50 rounded-2xl border border-red-200">
@@ -355,7 +385,7 @@ export function InstagramModal({
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-gray-800 text-sm">
-                    Comment with your unique code
+                    Leave a real comment with your unique code
                   </p>
                   {task.commentInstruction ? (
                     <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-2xl">
@@ -364,15 +394,23 @@ export function InstagramModal({
                       </p>
                       <p className="text-sm font-bold text-blue-800">
                         {task.commentInstruction}{" "}
-                        <span className="font-mono text-blue-600">[your unique code]</span>
+                        <span className="font-mono text-blue-600">
+                          [your unique code]
+                        </span>
                       </p>
                     </div>
                   ) : (
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Copy the code below, go to the post, and paste it in a comment.
-                      Make sure you use @{instagramUsername}.
+                      Write a short comment about the post (a sentence or two),
+                      then paste your code anywhere in it — at the start, end,
+                      or middle. Make sure you&apos;re commenting as @
+                      {instagramUsername}.
                     </p>
                   )}
+                  <p className="text-[11px] text-amber-600 mt-1.5 font-medium">
+                    ⚠️ Don&apos;t post the code by itself — comments with only a
+                    code can get flagged as spam/bot activity.
+                  </p>
                 </div>
               </div>
 
@@ -411,7 +449,8 @@ export function InstagramModal({
                 </div>
               ) : (
                 <div className="text-xs text-red-500 font-medium px-1">
-                  Failed to load verification code. Please refresh and try again.
+                  Failed to load verification code. Please refresh and try
+                  again.
                 </div>
               )}
 
@@ -423,7 +462,8 @@ export function InstagramModal({
                 <div>
                   <p className="font-bold text-gray-800 text-sm">Verify</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Click verify after you&apos;ve posted your comment with the code.
+                    Click verify after you&apos;ve posted your comment with the
+                    code.
                   </p>
                 </div>
               </div>

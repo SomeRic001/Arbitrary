@@ -1,9 +1,9 @@
 import { db } from "@/src/db";
-import { usersTable, referralsTable, userTasksTable, tasksTable } from "@/src/db/schema";
-import { eq, and, desc, sql, aliasedTable } from "drizzle-orm";
+import { usersTable, referralsTable, userTasksTable, tasksTable, pointsLogTable } from "@/src/db/schema";
+import { eq, and, desc, sql, aliasedTable, gte } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { toDateStr } from "@/src/lib/streak-helper";
-import { getStreakMultiplier } from "@/src/lib/gamification";
+import { getStreakMultiplier, getUserTier } from "@/src/lib/gamification";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { ReferralService, REFERRAL_BONUS } from "./referral.service";
 import { ServiceResult, ok, fail } from "./result";
@@ -16,6 +16,8 @@ export type UserPointsResult = {
   longestStreak: number;
   claimedToday: boolean;
   lifetimePoints: number | null;
+  monthlyPoints: number;
+  tier: string;
 };
 
 export type UserProfile = Pick<
@@ -41,6 +43,7 @@ export const UserService = {
 
     const today = new Date().toISOString().split("T")[0];
     const dailyLoginStr = toDateStr(user.dailyLoginDate);
+
     return ok({
       points: user.points,
       completedTasksCount: user.completedTasksCount,
@@ -48,6 +51,8 @@ export const UserService = {
       longestStreak: user.longestStreak || 0,
       claimedToday: dailyLoginStr === today,
       lifetimePoints: user.lifetimePoints,
+      monthlyPoints: user.lifetimePoints ?? 0,
+      tier: getUserTier(user.completedTasksCount || 0),
     });
   },
 

@@ -144,9 +144,9 @@ export const ReferralService = {
     });
   },
 
-  async awardReferralBonusIfEligible(userId: number): Promise<void> {
-    await db.transaction(async (tx) => {
-      const [user] = await tx
+  async awardReferralBonusIfEligible(userId: number, tx?: any): Promise<void> {
+    const runInTransaction = async (transactionContext: any) => {
+      const [user] = await transactionContext
         .select()
         .from(usersTable)
         .where(eq(usersTable.id, userId))
@@ -168,17 +168,18 @@ export const ReferralService = {
       if ((completedResult?.count ?? 0) < 3) return;
 
       const [referrer] = await tx
+
         .select()
         .from(usersTable)
         .where(eq(usersTable.id, referredBy));
       if (!referrer) return;
 
-      await tx
+      await transactionContext
         .update(usersTable)
         .set({ referralRewarded: true })
         .where(eq(usersTable.id, userId));
 
-      await tx
+      await transactionContext
         .update(referralsTable)
         .set({ pointsAwarded: REFERRAL_BONUS })
         .where(
@@ -188,11 +189,7 @@ export const ReferralService = {
           ),
         );
 
-      const [bonusUser] = await tx
-        .select({ lifetimePoints: usersTable.lifetimePoints })
-        .from(usersTable)
-        .where(eq(usersTable.id, referredBy));
-      await tx
+      await transactionContext
         .update(usersTable)
         .set({
           points: sql`${usersTable.points} + ${REFERRAL_BONUS}`,
@@ -200,11 +197,19 @@ export const ReferralService = {
         })
         .where(eq(usersTable.id, referredBy));
 
-      await tx.insert(pointsLogTable).values({
+      await transactionContext.insert(pointsLogTable).values({
         userId: referredBy,
         points: REFERRAL_BONUS,
         reason: `Referral bonus for referring user #${userId}`,
       });
-    });
+    };
+
+    if (tx) {
+      await runInTransaction(tx);
+    } else {
+      await db.transaction(async (newTx) => {
+        await runInTransaction(newTx);
+      });
+    }
   },
 };

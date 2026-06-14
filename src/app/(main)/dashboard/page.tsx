@@ -26,8 +26,11 @@ function nextMilestoneLabel(days: number) {
 
 function formatTabLabel(tab: string) {
   if (tab === "all") return "All";
-  if (tab === "social_media") return "Social Media";
-  if (tab === "video_watch") return "Watch Videos";
+  if (tab === "social" || tab === "social_media") return "Social";
+  if (tab === "share") return "Share";
+  if (tab === "special") return "Special";
+  if (tab === "VIDEO_WATCH") return "Watch Videos";
+  if (tab === "SCREENSHOT_UPLOAD") return "Screenshot";
   return tab.replace(/_/g, " ");
 }
 
@@ -61,8 +64,9 @@ function DashboardInner() {
     const currentOrder = tabs.indexOf(activeTab);
     setSlideDirection(tabOrder > currentOrder ? "left" : "right");
     setIsAnimating(true);
+    const formatTab = formatTabLabel(tab);
     setTimeout(() => {
-      setActiveTab(tab);
+      setActiveTab(formatTab);
       setIsAnimating(false);
     }, 220);
   };
@@ -171,17 +175,11 @@ function DashboardInner() {
   });
 
   const claimDailyLogin = useMutation({
-    mutationFn: async ({
-      taskId,
-      tab: _tab,
-    }: {
-      taskId: number;
-      tab: string;
-    }) => {
+    mutationFn: async ({ tab: _tab }: { tab: string }) => {
       const res = await fetch("/api/user/tasks/daily-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId }),
+        body: JSON.stringify({}),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -298,14 +296,19 @@ function DashboardInner() {
       return res.json();
     },
     onSuccess: () => {
-      toast.success("YouTube task completed and points awarded!");
+      toast.success("Task completed! Points awarded.");
       queryClient.invalidateQueries({
-        queryKey: ["user-tasks", "dashboard", activeTab],
-        exact: true,
+        queryKey: ["user-tasks", "dashboard"],
       });
-      queryClient.invalidateQueries({ queryKey: ["user-points"], exact: true });
+      queryClient.invalidateQueries({
+        queryKey: ["user-tasks", "completed"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["user-points"] });
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => {
+      const msg = err.message || "Failed to complete task";
+      toast.error(`Error: ${msg}`);
+    },
   });
 
   const handleModalComplete = (taskId: number, taskType?: string | null) => {
@@ -331,6 +334,7 @@ function DashboardInner() {
     currentStreak: number;
     longestStreak: number;
     claimedToday: boolean;
+    monthlyPoints: number;
     tier: string;
   }>({
     queryKey: ["user-points"],
@@ -542,7 +546,7 @@ function DashboardInner() {
             </div>
 
             {/* ── Tab pill strip ──────────────────────────────────────── */}
-            <div className="flex p-1 bg-white border border-black/8 rounded-2xl w-fit relative shadow-sm overflow-x-auto hide-scrollbar max-w-full">
+            <div className="flex p-1 bg-white border border-black/8 rounded-2xl w-fit relative shadow-sm overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {/* Sliding pill — positioned by real DOM measurements */}
               <div
                 className="absolute top-1 bottom-1 rounded-xl bg-slate-900 shadow-sm transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
@@ -555,12 +559,12 @@ function DashboardInner() {
                 <button
                   key={tab}
                   ref={(el) => {
-                    tabRefs.current[tab] = el;
+                    tabRefs.current[formatTabLabel(tab)] = el;
                   }}
                   onClick={() => handleTabChange(tab)}
                   className={`relative z-10 px-5 py-2 text-sm font-semibold rounded-xl
                               transition-colors duration-200 capitalize whitespace-nowrap
-                              ${activeTab === tab ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
+                              ${activeTab === formatTabLabel(tab) ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
                 >
                   {formatTabLabel(tab)}
                 </button>
@@ -575,6 +579,8 @@ function DashboardInner() {
                 totalPoints={totalPoints}
                 inProgressCount={inProgressCount}
                 completedCount={completedCount}
+                monthlyPoints={pointsData?.monthlyPoints ?? 0}
+                tier={pointsData?.tier ?? "bronze"}
               />
               <div className="fade-in-up" key={activeTab}>
                 <TaskList
@@ -603,8 +609,8 @@ function DashboardInner() {
                       tab: activeTab,
                     })
                   }
-                  onClaimDailyLogin={(id) =>
-                    claimDailyLogin.mutate({ taskId: id, tab: activeTab })
+                  onClaimDailyLogin={(_id) =>
+                    claimDailyLogin.mutate({ tab: activeTab })
                   }
                   onClaimProfile={(id) =>
                     claimProfile.mutate({ taskId: id, tab: activeTab })

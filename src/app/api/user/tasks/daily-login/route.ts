@@ -18,12 +18,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { taskId } = await req.json();
-  if (!taskId) {
-    return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-  }
-
-  const result = await TaskService.claimDailyLogin(auth.data.id, taskId);
+  const result = await TaskService.claimDailyLogin(auth.data.id);
   if (!result.success) return toNextResponse(result);
 
   return NextResponse.json(result.data, { status: 200 });

@@ -227,7 +227,7 @@ export function FacebookModal({
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-gray-800 text-sm">
-                    Comment with your unique code
+                    Leave a real comment with your unique code
                   </p>
                   {task.commentInstruction ? (
                     <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-2xl">
@@ -236,14 +236,22 @@ export function FacebookModal({
                       </p>
                       <p className="text-sm font-bold text-blue-800">
                         {task.commentInstruction}{" "}
-                        <span className="font-mono text-blue-600">[your unique code]</span>
+                        <span className="font-mono text-blue-600">
+                          [your unique code]
+                        </span>
                       </p>
                     </div>
                   ) : (
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Copy the code below, go to the post, and paste it in a comment.
+                      Write a short comment about the post (a sentence or two),
+                      then paste your code anywhere in it — at the start, end,
+                      or middle.
                     </p>
                   )}
+                  <p className="text-[11px] text-amber-600 mt-1.5 font-medium">
+                    ⚠️ Don&apos;t post the code by itself — comments with only a
+                    code can get flagged as spam/bot activity.
+                  </p>
                 </div>
               </div>
 

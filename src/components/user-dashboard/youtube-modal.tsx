@@ -58,8 +58,8 @@ export function YoutubeModal({
   const [playerReady, setPlayerReady] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [isSessionReady, setIsSessionReady] = useState(false);
-  const [localRequiredSeconds, setLocalRequiredSeconds] = useState(requiredSeconds);
+  const [localRequiredSeconds, setLocalRequiredSeconds] =
+    useState(requiredSeconds);
 
   const playerRef = useRef<YTPlayer | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,63 +69,151 @@ export function YoutubeModal({
   const isPausedByVisibilityRef = useRef(false);
   const sessionIdRef = useRef<number | null>(null);
   const reportingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const startSession = useCallback(async () => {
     if (sessionIdRef.current) return sessionIdRef.current;
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/watch-session`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not start watch session");
-      sessionIdRef.current = data.sessionId;
-      if (data.requiredSeconds) {
-        setLocalRequiredSeconds(data.requiredSeconds);
+
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/watch-session`, {
+          method: "POST",
+          signal: AbortSignal.timeout(10000),
+        });
+        const data = await res.json();
+        if (!res.ok)
+          throw new Error(data.error ?? "Could not start watch session");
+        sessionIdRef.current = data.sessionId;
+        if (data.requiredSeconds) setLocalRequiredSeconds(data.requiredSeconds);
+        return data.sessionId;
+      } catch (err: any) {
+        const isTransient =
+          err.name === "AbortError" || err.name === "TimeoutError";
+        if (isTransient) {
+          if (attempt < maxAttempts - 1) {
+            await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+            continue;
+          }
+          return null; // retried later by heartbeat/completion check
+        }
+        setSessionError(err.message || "Failed to start watch session");
+        return null;
       }
-      setIsSessionReady(true);
-      return data.sessionId;
-    } catch (err: any) {
-      setSessionError(err.message || "Failed to start watch session");
-      return null;
+    }
+    return null;
+  }, [taskId]);
+
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const handleComplete = useCallback(async () => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+
+    const finalSeconds = watchedSecondsRef.current;
+    let sessId = sessionIdRef.current;
+
+    if (!sessId) {
+      try {
+        sessId = await startSession();
+      } catch {
+        completedRef.current = false;
+        setSessionError("Failed to record watch session. Please try again.");
+        return;
+      }
+    }
+
+    if (!sessId) {
+      completedRef.current = false;
+      setSessionError("Watch session required. Please start video again.");
+      return;
+    }
+
+    setIsCompleted(true);
+    setWatchedSeconds(localRequiredSeconds);
+    watchedSecondsRef.current = localRequiredSeconds;
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    try {
+      onCompleteRef.current(finalSeconds, sessId);
+    } catch {
+      // non-critical
+    }
+    setTimeout(() => {
+      onCloseRef.current();
+    }, 4000);
+  }, [localRequiredSeconds, startSession]);
+
+  const handleSessionPause = useCallback(async () => {
+    const sessId = sessionIdRef.current;
+    if (!sessId) return;
+    // Clear the cached id BEFORE the await so that any heartbeat that races
+    // in after close cannot re-use the stale id against a paused session.
+    sessionIdRef.current = null;
+    try {
+      await fetch(`/api/tasks/${taskId}/watch-session/pause`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessId }),
+      });
+    } catch {
+      // non-critical
     }
   }, [taskId]);
 
-  const handleComplete = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    setIsCompleted(true);
-    if (timerRef.current) clearInterval(timerRef.current);
-    const finalSeconds = watchedSecondsRef.current;
-    const sessId = sessionIdRef.current ?? undefined;
-    setTimeout(() => {
-      onComplete(finalSeconds, sessId);
-    }, 1200);
-  }, [onComplete]);
+  const reportProgress = useCallback(
+    async (isFinal = false) => {
+      if (!playerRef.current || completedRef.current) return;
+      if (!isFinal && reportingRef.current) return;
 
-  const reportProgress = useCallback(async (isFinal = false) => {
-    if (!playerRef.current || reportingRef.current || completedRef.current) return;
-    const sessionId = sessionIdRef.current ?? (await startSession());
-    if (!sessionId) return;
-    reportingRef.current = true;
-    try {
-      const positionSeconds = Math.floor(playerRef.current.getCurrentTime?.() ?? 0);
-      const res = await fetch(`/api/tasks/${taskId}/watch-session`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, positionSeconds }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setSessionError(data.error || "Heartbeat failed");
-        return;
+      const sessionId = sessionIdRef.current ?? (await startSession());
+      if (!sessionId) return;
+
+      reportingRef.current = true;
+
+      const maxRetries = isFinal ? 3 : 1;
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const positionSeconds = Math.floor(
+            playerRef.current?.getCurrentTime?.() ?? 0,
+          );
+          const res = await fetch(`/api/tasks/${taskId}/watch-session`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId, positionSeconds }),
+            signal: AbortSignal.timeout(8000),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || `${res.status} ${res.statusText}`);
+          }
+          if (data.completed) {
+            handleComplete();
+          }
+          reportingRef.current = false;
+          return;
+        } catch (err) {
+          lastError = err as Error;
+          if (attempt < maxRetries - 1) {
+            const delayMs = 200 * Math.pow(2, attempt);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          }
+        }
       }
-      if (data.completed) {
-        handleComplete();
+
+      if (isFinal && lastError) {
+        console.error("Final heartbeat failed after retries:", lastError);
       }
-    } catch {
-      // silent — non-critical
-    } finally {
+
       reportingRef.current = false;
-    }
-  }, [taskId, startSession, handleComplete]);
+    },
+    [taskId, startSession, handleComplete],
+  );
 
   const videoId = getYoutubeId(url);
 
@@ -147,7 +235,7 @@ export function YoutubeModal({
     };
   }, [isOpen]);
 
-  // Session reset on modal open
+  // Session reset on modal open (preserve existing sessionId for resume)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -158,17 +246,32 @@ export function YoutubeModal({
     setPlayerReady(false);
     completedRef.current = false;
     setSessionError(null);
-    setIsSessionReady(false);
     setLocalRequiredSeconds(requiredSeconds);
-    sessionIdRef.current = null;
   }, [isOpen, requiredSeconds]);
+
+  // Pause session and cancel in-flight requests on modal close
+  useEffect(() => {
+    if (isOpen) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    handleSessionPause();
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, [isOpen, handleSessionPause]);
 
   // Page Visibility API
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.hidden) {
         if (playerRef.current) {
-          try { playerRef.current.pauseVideo(); } catch (_) {}
+          try {
+            playerRef.current.pauseVideo();
+          } catch (_) {}
         }
         isPausedByVisibilityRef.current = true;
         setIsPlaying(false);
@@ -249,8 +352,14 @@ export function YoutubeModal({
     return () => {
       clearTimeout(t);
       if (timerRef.current) clearInterval(timerRef.current);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch (_) {}
+        try {
+          playerRef.current.destroy();
+        } catch (_) {}
         playerRef.current = null;
       }
       setPlayerReady(false);
@@ -282,67 +391,16 @@ export function YoutubeModal({
     if (completedRef.current) return;
     if (watchedSeconds < localRequiredSeconds) return;
 
-    // Time threshold crossed — send a final heartbeat to let the server
-    // mark the session as completed. We bypass the reportingRef mutex here
-    // because this is the critical completion call and must not be silently
-    // dropped by a concurrent periodic heartbeat.
-    const sendFinalHeartbeat = async () => {
-      const sessionId = sessionIdRef.current;
-      if (!sessionId || !playerRef.current) {
-        // No session yet — fall back to direct client-side completion
-        handleComplete();
-        return;
-      }
-
-      try {
-        const positionSeconds = Math.floor(playerRef.current.getCurrentTime?.() ?? 0);
-        const res = await fetch(`/api/tasks/${taskId}/watch-session`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, positionSeconds }),
-        });
-        const data = await res.json();
-
-        if (data.completed) {
-          handleComplete();
-        } else if (res.ok) {
-          // Server hasn't accumulated enough time yet (e.g. heartbeats
-          // were rejected earlier). Retry once after a short delay.
-          setTimeout(async () => {
-            if (completedRef.current) return;
-            try {
-              const pos = Math.floor(playerRef.current?.getCurrentTime?.() ?? 0);
-              const r2 = await fetch(`/api/tasks/${taskId}/watch-session`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sessionId, positionSeconds: pos }),
-              });
-              const d2 = await r2.json();
-              if (d2.completed) {
-                handleComplete();
-              } else {
-                // Server still disagrees — complete on the client side anyway;
-                // the youtube-complete endpoint will do its own final validation.
-                handleComplete();
-              }
-            } catch {
-              handleComplete();
-            }
-          }, 6000);
-        } else {
-          // Server returned an error (e.g. session already completed by a
-          // periodic heartbeat). No need to retry — complete on the client
-          // side; the youtube-complete endpoint does the real validation.
-          handleComplete();
-        }
-      } catch {
-        // Network error — still complete on client side
+    // Time threshold crossed — send a final heartbeat with retries.
+    // The reportProgress function now handles retry and mutex bypass for isFinal=true.
+    const complete = async () => {
+      await reportProgress(true);
+      if (!completedRef.current) {
         handleComplete();
       }
     };
-
-    sendFinalHeartbeat();
-  }, [watchedSeconds, localRequiredSeconds, isSessionReady, taskId, handleComplete]);
+    complete();
+  }, [watchedSeconds, localRequiredSeconds, reportProgress, handleComplete]);
 
   // Report server progress every 15s while playing (periodic heartbeat)
   useEffect(() => {
@@ -498,7 +556,6 @@ export function YoutubeModal({
               </button>
             </div>
           )}
-
 
           {/* Completed overlay */}
           {isCompleted && (

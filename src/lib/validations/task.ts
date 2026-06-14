@@ -1,17 +1,17 @@
 import z from "zod";
 
 const socialProfileRegex =
-  /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com|facebook\.com|instagram\.com)\/[a-zA-Z0-9_.]+\/?$/i;
+    /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com|facebook\.com|instagram\.com)\/[a-zA-Z0-9_.]+\/?$/i;
 
 export const socialProfileUrlSchema = z
-  .string()
-  .url("Must be a valid URL")
-  .regex(socialProfileRegex, "Must be a valid social media profile URL (Twitter/X, Facebook, Instagram)")
-  .max(2048, "URL too long");
+    .string()
+    .url("Must be a valid URL")
+    .regex(socialProfileRegex, "Must be a valid social media profile URL (Twitter/X, Facebook, Instagram)")
+    .max(2048, "URL too long");
 
 export const TaskStatusEnum = z.enum(["In Progress", "Pending Verification", "Completed", "Cancelled"]);
 export const VerifyStatusEnum = z.enum(["Verified", "Rejected", "In Progress"]);
-export const PlatformEnum = z.enum(["facebook", "instagram", "youtube", "tiktok", "daily-login"]).nullable().optional();
+export const PlatformEnum = z.enum(["facebook", "instagram", "youtube", "daily-login"]).nullable().optional();
 
 
 export const pickUpTaskSchema = z.object({
@@ -84,10 +84,7 @@ export const adminTaskSchema = z.object({
     title: z.string().min(1, "Title is required").max(255),
     description: z.string().min(1, "Description is required").max(5000),
     taskType: z.string().min(1, "Task type is required").max(50)
-      .refine((val) => ["daily","monthly","social","special","share",
-        "VIDEO_WATCH","SCREENSHOT_UPLOAD",
-        "manual","social_media","video_watch"
-      ].includes(val) || val.length >= 1, "Unknown task type"),
+        .refine((val) => ["social", "share", "special", "video_watch", "SCREENSHOT_UPLOAD"].includes(val), "Invalid task type"),
     rewardPoint: z.number("rewardPoint must be a number").int().positive("rewardPoint must be positive"),
     socialPostUrl: z.string().url().max(2048).nullable().optional(),
     videoUrl: z.string().url().max(2048).nullable().optional(),
@@ -117,5 +114,3 @@ export const youtubeCompleteSchema = z.object({
     sessionId: z.number("sessionId must be a number").int().positive().optional(),
     fingerprint: z.string().max(255).optional(),
 }).strict();
-
-

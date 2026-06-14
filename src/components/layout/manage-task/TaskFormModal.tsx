@@ -4,26 +4,22 @@ import { toast } from "sonner";
 import {
   Globe,
   Type,
-  Trophy,
   Clock,
   Zap,
-  Share2,
   CheckCircle2,
   Video,
   ThumbsUp,
   Bell,
   MessageSquare,
   Eye,
+  Share2,
+  Users,
 } from "lucide-react";
 
 import { ModalShell } from "./ModalShell";
 import { PlatformSelector } from "./PlatformSelector";
 import { SocialPostPicker } from "./SocialPostPicker";
-import {
-  Platform,
-  PLATFORM_LABELS,
-  SocialPost,
-} from "@/src/lib/social/type";
+import { Platform, PLATFORM_LABELS, SocialPost } from "@/src/lib/social/type";
 import { ModalMode, Task, TaskSource } from "@/src/lib/manage-task/types";
 
 export type TaskFormPayload = {
@@ -72,36 +68,39 @@ export function TaskFormModal({
   onSubmit,
 }: Props) {
   const [taskSource, setTaskSource] = useState<TaskSource>(
-    task?.platform ?? "manual",
+    task?.isShare ? "share" : (task?.platform ?? "manual"),
   );
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
-  const [isFlash, setIsFlash] = useState<boolean>(
-    task?.isFlash === true,
-  );
-  const [isShare, setIsShare] = useState<boolean>(
-    task?.isShare === true,
-  );
+  const [isFlash, setIsFlash] = useState<boolean>(task?.isFlash === true);
 
-  // Detect YouTube action from existing task data when editing
-  const detectYoutubeAction = (): "watch" | "subscribe" | "like" | "comment" => {
+  const detectYoutubeAction = ():
+    | "watch"
+    | "subscribe"
+    | "like"
+    | "comment" => {
     if (!task) return "watch";
     const tt = (task.taskType || "").toLowerCase();
     if (tt === "video_watch") return "watch";
-    const text = ((task.title || "") + " " + (task.description || "")).toLowerCase();
+    const text = (
+      (task.title || "") +
+      " " +
+      (task.description || "")
+    ).toLowerCase();
     if (text.includes("subscribe") || text.includes("sub")) return "subscribe";
     if (text.includes("like")) return "like";
     if (text.includes("comment")) return "comment";
     return "watch";
   };
 
-  const [youtubeAction, setYoutubeAction] = useState<"watch" | "subscribe" | "like" | "comment">(
-    detectYoutubeAction,
-  );
+  const [youtubeAction, setYoutubeAction] = useState<
+    "watch" | "subscribe" | "like" | "comment"
+  >(detectYoutubeAction);
 
-  const isSocialPlatform = taskSource !== "manual" && taskSource !== "daily-login";
+  const isShare = taskSource === "share";
+  const isSocialPlatform = taskSource !== "manual" && taskSource !== "share";
   const isYoutube = taskSource === "youtube";
-  const isDailyLogin = taskSource === "daily-login";
   const isYtWatch = isYoutube && youtubeAction === "watch";
+  const isManualScreenshot = taskSource === "manual";
 
   const handleSourceChange = (source: TaskSource) => {
     setTaskSource(source);
@@ -127,13 +126,15 @@ export function TaskFormModal({
     const rawDuration = formData.get("watchDuration");
     const watchDuration =
       isYtWatch && rawDuration ? Math.max(1, Number(rawDuration)) : null;
-
     const flashValue = formData.get("isFlash") === "on" || isFlash;
 
-    // Auto-set taskType based on YouTube action when YouTube is selected
     let resolvedTaskType = formData.get("taskType") as string;
-    if (isYoutube) {
-      resolvedTaskType = youtubeAction === "watch" ? "video_watch" : "social_media";
+    if (isShare) {
+      resolvedTaskType = "share";
+    } else if (isYoutube) {
+      resolvedTaskType = youtubeAction === "watch" ? "video_watch" : "social";
+    } else if (isManualScreenshot) {
+      resolvedTaskType = "SCREENSHOT_UPLOAD";
     }
 
     onSubmit({
@@ -141,27 +142,32 @@ export function TaskFormModal({
       description: formData.get("description") as string,
       taskType: resolvedTaskType,
       rewardPoint: Number(formData.get("points")),
-      videoUrl: isDailyLogin ? null : (formData.get("videoUrl") as string) || null,
-      platform: isSocialPlatform || isDailyLogin ? (taskSource as Platform) : null,
+      videoUrl: (formData.get("videoUrl") as string) || null,
+      platform: isSocialPlatform ? (taskSource as Platform) : null,
       socialPostId:
         selectedPost?.id ??
         (mode === "edit" ? (task?.socialPostId ?? null) : null),
       socialPostUrl: isSocialPlatform
         ? (selectedPost?.url ??
           (mode === "edit" ? (task?.socialPostUrl ?? null) : null))
-        : isDailyLogin
-          ? null
-          : (formData.get("manualUrl") as string) || null,
+        : (formData.get("manualUrl") as string) || null,
       socialPlatform: isYoutube ? "youtube" : null,
-      targetUrl: (formData.get("videoUrl") as string) || null,
+      targetUrl: isShare
+        ? (formData.get("shareUrl") as string) || null
+        : (formData.get("videoUrl") as string) || null,
       isActive: true,
-      watchDuration: isDailyLogin ? null : watchDuration,
-      difficulty: (formData.get("difficulty") as "easy" | "medium" | "hard") || "easy",
+      watchDuration,
+      difficulty:
+        (formData.get("difficulty") as "easy" | "medium" | "hard") || "easy",
       isFlash: flashValue,
       isShare: isShare,
-      shareThreshold: Number(formData.get("shareThreshold")) || 3,
-      expiresAt: (flashValue || task?.isFlash) ? (formData.get("expiresAt") as string) || null : null,
-      commentInstruction: (formData.get("commentInstruction") as string) || null,
+      shareThreshold: isShare ? Number(formData.get("shareThreshold")) || 3 : 3,
+      expiresAt:
+        flashValue || task?.isFlash
+          ? (formData.get("expiresAt") as string) || null
+          : null,
+      commentInstruction:
+        (formData.get("commentInstruction") as string) || null,
     });
   };
 
@@ -176,18 +182,21 @@ export function TaskFormModal({
       scrollableBody
     >
       <form className="px-6 pb-6 space-y-8" onSubmit={handleSubmit}>
-
-        {/* STEP 1: Source Selection — always visible, prominent */}
+        {/* STEP 1: Source */}
         <div className={sectionClass}>
           <div className={sectionHeaderClass}>
             <Globe className="w-4 h-4 text-[#FACC15]" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-black">1. Choose Source</span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-black">
+              1. Choose Source
+            </span>
           </div>
-
           <div className="space-y-5">
-            <PlatformSelector value={taskSource} onChange={handleSourceChange} />
+            <PlatformSelector
+              value={taskSource}
+              onChange={handleSourceChange}
+            />
 
-            {/* YouTube Action Sub-selector */}
+            {/* YouTube action sub-selector */}
             <AnimatePresence mode="wait">
               {isYoutube && (
                 <motion.div
@@ -200,12 +209,24 @@ export function TaskFormModal({
                 >
                   <p className={labelClass}>YouTube Action</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {([
-                      { value: "watch" as const, label: "Watch Video", icon: Eye, desc: "User must watch for a set duration" },
-                      { value: "subscribe" as const, label: "Subscribe", icon: Bell, desc: "User must subscribe to channel" },
-                      { value: "like" as const, label: "Like", icon: ThumbsUp, desc: "User must like the video" },
-                      { value: "comment" as const, label: "Comment", icon: MessageSquare, desc: "User must comment on the video" },
-                    ]).map((action) => (
+                    {[
+                      {
+                        value: "watch" as const,
+                        label: "Watch Video",
+                        icon: Eye,
+                      },
+                      {
+                        value: "subscribe" as const,
+                        label: "Subscribe",
+                        icon: Bell,
+                      },
+                      { value: "like" as const, label: "Like", icon: ThumbsUp },
+                      {
+                        value: "comment" as const,
+                        label: "Comment",
+                        icon: MessageSquare,
+                      },
+                    ].map((action) => (
                       <button
                         key={action.value}
                         type="button"
@@ -222,10 +243,14 @@ export function TaskFormModal({
                     ))}
                   </div>
                   <p className="text-[10px] text-red-400/80 font-medium">
-                    {youtubeAction === "watch" && "Users must watch the video for the specified duration to earn points."}
-                    {youtubeAction === "subscribe" && "Users must subscribe to the YouTube channel. Include the channel URL or handle."}
-                    {youtubeAction === "like" && "Users must like the YouTube video. Verified via YouTube API."}
-                    {youtubeAction === "comment" && "Users must comment on the YouTube video. Verified via YouTube API."}
+                    {youtubeAction === "watch" &&
+                      "Users must watch the video for the specified duration to earn points."}
+                    {youtubeAction === "subscribe" &&
+                      "Users must subscribe to the YouTube channel. Include the channel URL or handle."}
+                    {youtubeAction === "like" &&
+                      "Users must like the YouTube video. Verified via YouTube API."}
+                    {youtubeAction === "comment" &&
+                      "Users must comment on the YouTube video. Verified via YouTube API."}
                   </p>
                 </motion.div>
               )}
@@ -233,7 +258,7 @@ export function TaskFormModal({
           </div>
         </div>
 
-        {/* STEP 2: Task Details — revealed with smooth transition */}
+        {/* STEP 2: Task Details */}
         <AnimatePresence mode="wait">
           <motion.div
             key={taskSource}
@@ -243,298 +268,392 @@ export function TaskFormModal({
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="space-y-8"
           >
-
-            {/* SECTION: Task Details */}
-            <div className={sectionClass}>
-              <div className={sectionHeaderClass}>
-                <Type className="w-4 h-4 text-[#FACC15]" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-black">Task Details</span>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="title" className={labelClass}>Task Title</label>
-                  <input
-                    type="text"
-                    id="title"
-                    name="title"
-                    required
-                    defaultValue={
-                      mode === "edit"
-                        ? task?.title
-                        : selectedPost
-                          ? `Like our ${PLATFORM_LABELS[taskSource as Platform] || ""} post`
-                          : ""
-                    }
-                    placeholder="e.g. Watch our latest video"
-                    className={inputClass}
-                  />
+            {/* ── SHARE SOURCE: dedicated form ── */}
+            {isShare ? (
+              <div className={sectionClass}>
+                <div className={sectionHeaderClass}>
+                  <Share2 className="w-4 h-4 text-blue-500" />
+                  <span className="text-[11px] font-black uppercase tracking-widest text-black">
+                    Share Task Details
+                  </span>
                 </div>
 
-                <div>
-                  <label htmlFor="description" className={labelClass}>Description</label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    rows={2}
-                    required
-                    defaultValue={mode === "edit" ? task?.description : ""}
-                    placeholder="Describe the task..."
-                    className={`${inputClass} resize-none`}
-                  />
-                </div>
-
-                {taskSource === "manual" && (
+                <div className="space-y-4">
                   <div>
-                    <label htmlFor="manualUrl" className={labelClass}>Target URL (Optional)</label>
+                    <label htmlFor="title" className={labelClass}>
+                      Task Title
+                    </label>
                     <input
-                      type="url"
-                      id="manualUrl"
-                      name="manualUrl"
-                      defaultValue={mode === "edit" ? task?.socialPostUrl : ""}
-                      placeholder="https://..."
+                      type="text"
+                      id="title"
+                      name="title"
+                      required
+                      defaultValue={mode === "edit" ? task?.title : ""}
+                      placeholder="e.g. Share our referral link"
                       className={inputClass}
                     />
                   </div>
-                )}
 
-                {isYoutube && (
                   <div>
-                    <label htmlFor="videoUrl" className={labelClass}>
-                      YouTube Video URL <span className="text-red-400">*</span>
+                    <label htmlFor="description" className={labelClass}>
+                      Description
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      rows={2}
+                      required
+                      defaultValue={mode === "edit" ? task?.description : ""}
+                      placeholder="Describe what users need to share and why..."
+                      className={`${inputClass} resize-none`}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="shareUrl" className={labelClass}>
+                      Link to Share <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="url"
-                      id="videoUrl"
-                      name="videoUrl"
+                      id="shareUrl"
+                      name="shareUrl"
                       required
-                      defaultValue={mode === "edit" ? (task?.videoUrl ?? "") : ""}
-                      placeholder="https://youtube.com/watch?v=..."
+                      defaultValue={
+                        mode === "edit" ? (task?.targetUrl ?? "") : ""
+                      }
+                      placeholder="https://... (link users must share)"
                       className={inputClass}
                     />
-                  </div>
-                )}
-
-                {/* Social Post Picker for Facebook / Instagram */}
-                {isSocialPlatform && !isYoutube && (
-                  <div className="border border-black/5 rounded-2xl p-4 bg-zinc-50 space-y-3">
-                    <p className={labelClass}>
-                      Select {PLATFORM_LABELS[taskSource as Platform]} Post
-                    </p>
-                    <SocialPostPicker
-                      platform={taskSource as Platform}
-                      selected={selectedPost}
-                      onSelect={setSelectedPost}
-                    />
-                    {selectedPost && (
-                      <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <p className="text-xs font-bold text-emerald-700 truncate">
-                          Post selected: {selectedPost.title}
-                        </p>
-                      </div>
-                    )}
-                    {mode === "edit" && task?.socialPostId && !selectedPost && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-bold text-amber-700">
-                        Previously linked post will be kept unless you select a new one.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Comment Instruction — only for Facebook / Instagram */}
-                {isSocialPlatform && !isYoutube && (
-                  <div>
-                    <label htmlFor="commentInstruction" className={labelClass}>Comment Instruction</label>
-                    <textarea
-                      id="commentInstruction"
-                      name="commentInstruction"
-                      rows={2}
-                      defaultValue={mode === "edit" ? task?.commentInstruction ?? "" : ""}
-                      placeholder='Tell users what to write — e.g. "Comment LOVE2025 below this post"'
-                      className={`${inputClass} resize-none`}
-                    />
                     <p className="text-[10px] text-zinc-400 font-medium mt-1.5">
-                      Users will see this instruction when they pick up the task. They must paste their unique comment code after the phrase you specify.
+                      This is the link users will share with others to complete
+                      the task.
                     </p>
                   </div>
-                )}
 
-                {isYtWatch && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50/60 p-5 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Video className="w-4 h-4 text-red-600" />
-                      <label htmlFor="watchDuration" className="block text-[10px] font-black uppercase tracking-widest text-red-600">
-                        Required Watch Duration
-                      </label>
-                    </div>
-                    <p className="text-[11px] text-red-400/80 mt-0.5 font-medium">
-                      Users must watch the video for this many seconds to earn points.
-                    </p>
+                  <div>
+                    <label htmlFor="shareThreshold" className={labelClass}>
+                      <Users className="w-3 h-3 inline mr-1" />
+                      Minimum Shares Required{" "}
+                      <span className="text-red-400">*</span>
+                    </label>
                     <div className="flex items-center gap-3 flex-wrap">
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          id="watchDuration"
-                          name="watchDuration"
-                          min={10}
-                          max={3600}
+                          id="shareThreshold"
+                          name="shareThreshold"
+                          min={1}
+                          max={100}
                           required
-                          defaultValue={defaultDuration}
-                          className="w-24 px-4 py-2.5 bg-white border border-red-200 rounded-2xl text-sm font-black text-red-700 focus:outline-none focus:border-red-400 transition-all"
+                          defaultValue={
+                            mode === "edit" ? (task?.shareThreshold ?? 3) : 3
+                          }
+                          className="w-24 px-4 py-2.5 bg-white border border-blue-200 rounded-2xl text-sm font-black text-blue-700 focus:outline-none focus:border-blue-400 transition-all"
                         />
-                        <span className="text-sm font-bold text-red-500">seconds</span>
+                        <span className="text-sm font-bold text-blue-500">
+                          users
+                        </span>
                       </div>
                       <div className="flex gap-1.5">
-                        {[30, 60, 120, 300].map((s) => (
+                        {[3, 5, 10, 20].map((n) => (
                           <button
-                            key={s}
+                            key={n}
                             type="button"
                             onClick={() => {
-                              const input = document.getElementById("watchDuration") as HTMLInputElement;
-                              if (input) input.value = String(s);
+                              const input = document.getElementById(
+                                "shareThreshold",
+                              ) as HTMLInputElement;
+                              if (input) input.value = String(n);
                             }}
-                            className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+                            className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-500 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all"
                           >
-                            {s >= 60 ? `${s / 60}m` : `${s}s`}
+                            {n}
                           </button>
                         ))}
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* SECTION: Rewards & Difficulty */}
-            <div className={sectionClass}>
-              <div className={sectionHeaderClass}>
-                <Trophy className="w-4 h-4 text-[#FACC15]" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-black">Rewards & Difficulty</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label htmlFor="taskType" className={labelClass}>Type</label>
-                  <select
-                    id="taskType"
-                    name="taskType"
-                    required
-                    disabled={isYoutube}
-                    defaultValue={mode === "edit" ? task?.taskType : "social"}
-                    className={`${inputClass} ${isYoutube ? "opacity-50 cursor-not-allowed" : ""}`}
-                  >
-                    <option value="daily">Daily Task</option>
-                    <option value="social">Social Action</option>
-                    <option value="share">Share Task</option>
-                    <option value="special">Special Task</option>
-                    <option value="video_watch">Video Watch</option>
-                    <option value="social_media">Social Media</option>
-                    <option value="SCREENSHOT_UPLOAD">Screenshot Upload</option>
-                  </select>
-                  {isYoutube && (
-                    <p className="text-[9px] text-red-400 font-medium mt-1">
-                      Auto-set to {youtubeAction === "watch" ? "Video Watch" : "Social Media"} based on YouTube action
+                    <p className="text-[10px] text-zinc-400 font-medium mt-1.5">
+                      User must share the link with at least this many people to
+                      earn points.
                     </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="points" className={labelClass}>
+                      Reward Points
+                    </label>
+                    <input
+                      type="number"
+                      id="points"
+                      name="points"
+                      min={1}
+                      required
+                      defaultValue={mode === "edit" ? task?.rewardPoint : 10}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ── ALL OTHER SOURCES: original Task Details form ── */
+              <div className={sectionClass}>
+                <div className={sectionHeaderClass}>
+                  <Type className="w-4 h-4 text-[#FACC15]" />
+                  <span className="text-[11px] font-black uppercase tracking-widest text-black">
+                    Task Details
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="title" className={labelClass}>
+                      Task Title
+                    </label>
+                    <input
+                      type="text"
+                      id="title"
+                      name="title"
+                      required
+                      defaultValue={
+                        mode === "edit"
+                          ? task?.title
+                          : selectedPost
+                            ? `Like our ${PLATFORM_LABELS[taskSource as Platform] || ""} post`
+                            : ""
+                      }
+                      placeholder="e.g. Watch our latest video"
+                      className={inputClass}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="description" className={labelClass}>
+                      Description
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      rows={2}
+                      required
+                      defaultValue={mode === "edit" ? task?.description : ""}
+                      placeholder="Describe the task..."
+                      className={`${inputClass} resize-none`}
+                    />
+                  </div>
+
+                  {isManualScreenshot && (
+                    <div>
+                      <label htmlFor="manualUrl" className={labelClass}>
+                        Target URL (Optional)
+                      </label>
+                      <input
+                        type="url"
+                        id="manualUrl"
+                        name="manualUrl"
+                        defaultValue={
+                          mode === "edit" ? task?.socialPostUrl : ""
+                        }
+                        placeholder="https://..."
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
+
+                  {isYoutube && (
+                    <div>
+                      <label htmlFor="videoUrl" className={labelClass}>
+                        YouTube Video URL{" "}
+                        <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        id="videoUrl"
+                        name="videoUrl"
+                        required
+                        defaultValue={
+                          mode === "edit" ? (task?.videoUrl ?? "") : ""
+                        }
+                        placeholder="https://youtube.com/watch?v=..."
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
+
+                  {isSocialPlatform && !isYoutube && (
+                    <div className="border border-black/5 rounded-2xl p-4 bg-zinc-50 space-y-3">
+                      <p className={labelClass}>
+                        Select {PLATFORM_LABELS[taskSource as Platform]} Post
+                      </p>
+                      <SocialPostPicker
+                        platform={taskSource as Platform}
+                        selected={selectedPost}
+                        onSelect={setSelectedPost}
+                      />
+                      {selectedPost && (
+                        <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <p className="text-xs font-bold text-emerald-700 truncate">
+                            Post selected: {selectedPost.title}
+                          </p>
+                        </div>
+                      )}
+                      {mode === "edit" &&
+                        task?.socialPostId &&
+                        !selectedPost && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-bold text-amber-700">
+                            Previously linked post will be kept unless you
+                            select a new one.
+                          </div>
+                        )}
+                    </div>
+                  )}
+
+                  {isSocialPlatform && !isYoutube && (
+                    <div>
+                      <label
+                        htmlFor="commentInstruction"
+                        className={labelClass}
+                      >
+                        Comment Instruction
+                      </label>
+                      <textarea
+                        id="commentInstruction"
+                        name="commentInstruction"
+                        rows={2}
+                        defaultValue={
+                          mode === "edit"
+                            ? (task?.commentInstruction ?? "")
+                            : ""
+                        }
+                        placeholder='Tell users what to write — e.g. "Comment LOVE2025 below this post"'
+                        className={`${inputClass} resize-none`}
+                      />
+                      <p className="text-[10px] text-zinc-400 font-medium mt-1.5">
+                        Users will see this instruction when they pick up the
+                        task. They must paste their unique comment code after
+                        the phrase you specify.
+                      </p>
+                    </div>
+                  )}
+
+                  {isYtWatch && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50/60 p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Video className="w-4 h-4 text-red-600" />
+                        <label
+                          htmlFor="watchDuration"
+                          className="block text-[10px] font-black uppercase tracking-widest text-red-600"
+                        >
+                          Required Watch Duration
+                        </label>
+                      </div>
+                      <p className="text-[11px] text-red-400/80 mt-0.5 font-medium">
+                        Users must watch the video for this many seconds to earn
+                        points.
+                      </p>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            id="watchDuration"
+                            name="watchDuration"
+                            min={10}
+                            max={3600}
+                            required
+                            defaultValue={defaultDuration}
+                            className="w-24 px-4 py-2.5 bg-white border border-red-200 rounded-2xl text-sm font-black text-red-700 focus:outline-none focus:border-red-400 transition-all"
+                          />
+                          <span className="text-sm font-bold text-red-500">
+                            seconds
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {[30, 60, 120, 300].map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => {
+                                const input = document.getElementById(
+                                  "watchDuration",
+                                ) as HTMLInputElement;
+                                if (input) input.value = String(s);
+                              }}
+                              className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+                            >
+                              {s >= 60 ? `${s / 60}m` : `${s}s`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <div>
-                  <label htmlFor="points" className={labelClass}>Points</label>
-                  <input
-                    type="number"
-                    id="points"
-                    name="points"
-                    min="0"
-                    required
-                    defaultValue={mode === "edit" ? task?.rewardPoint : 10}
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="difficulty" className={labelClass}>Difficulty</label>
-                  <select
-                    id="difficulty"
-                    name="difficulty"
-                    defaultValue={mode === "edit" ? task?.difficulty || "easy" : "easy"}
-                    className={inputClass}
-                  >
-                    <option value="easy">Easy (10 pts)</option>
-                    <option value="medium">Medium (25 pts)</option>
-                    <option value="hard">Hard (50 pts)</option>
-                  </select>
-                </div>
               </div>
-            </div>
+            )}
 
-            {/* SECTION: Rules & Expirations */}
+            {/* SECTION: Rules & Expirations — only Flash Task, no Share toggle here */}
             <div className={sectionClass}>
               <div className={sectionHeaderClass}>
                 <Clock className="w-4 h-4 text-[#FACC15]" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-black">Rules & Expirations</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-black">
+                  Rules & Expirations
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Flash Task Toggle */}
-                <div
-                  onClick={() => setIsFlash(!isFlash)}
-                  className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
-                    isFlash
+              <div
+                onClick={() => setIsFlash(!isFlash)}
+                className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
+                  isFlash
                     ? "border-[#FACC15] bg-[#FACC15]/5 shadow-inner"
                     : "border-black/5 bg-zinc-50 hover:border-black/10"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isFlash ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}>
-                        <Zap className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-black uppercase tracking-wider text-black">Flash Task</span>
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`p-2 rounded-lg ${isFlash ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}
+                    >
+                      <Zap className="w-4 h-4" />
                     </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      isFlash ? "border-[#FACC15] bg-[#FACC15]" : "border-zinc-300 bg-white"
-                    }`}>
-                      {isFlash && <CheckCircle2 className="w-3 h-3 text-black" />}
-                    </div>
+                    <span className="text-xs font-black uppercase tracking-wider text-black">
+                      Flash Task
+                    </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 font-medium">
-                    Time-limited task with countdown
-                  </p>
-                  <input type="checkbox" name="isFlash" checked={isFlash} readOnly className="hidden" />
-                </div>
-
-                {/* Share Task Toggle */}
-                <div
-                  onClick={() => setIsShare(!isShare)}
-                  className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
-                    isShare
-                    ? "border-[#FACC15] bg-[#FACC15]/5 shadow-inner"
-                    : "border-black/5 bg-zinc-50 hover:border-black/10"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isShare ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}>
-                        <Share2 className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-black uppercase tracking-wider text-black">Share Task</span>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      isShare ? "border-[#FACC15] bg-[#FACC15]" : "border-zinc-300 bg-white"
-                    }`}>
-                      {isShare && <CheckCircle2 className="w-3 h-3 text-black" />}
-                    </div>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      isFlash
+                        ? "border-[#FACC15] bg-[#FACC15]"
+                        : "border-zinc-300 bg-white"
+                    }`}
+                  >
+                    {isFlash && <CheckCircle2 className="w-3 h-3 text-black" />}
                   </div>
-                  <p className="text-[10px] text-zinc-400 font-medium">
-                    Generates a unique share link; rewards when N people click
-                  </p>
-                  <input type="checkbox" name="isShare" checked={isShare} readOnly className="hidden" />
                 </div>
+                <p className="text-[10px] text-zinc-400 font-medium">
+                  Time-limited task with countdown
+                </p>
+                <input
+                  type="checkbox"
+                  name="isFlash"
+                  checked={isFlash}
+                  readOnly
+                  className="hidden"
+                />
               </div>
 
-              <div className="mt-6 space-y-4">
+              <AnimatePresence>
                 {isFlash && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label htmlFor="expiresAt" className={labelClass}>Expires At</label>
+                  <motion.div
+                    key="expiresAt"
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    style={{ overflow: "hidden" }}
+                  >
+                    <label htmlFor="expiresAt" className={labelClass}>
+                      Expires At
+                    </label>
                     <input
                       type="datetime-local"
                       id="expiresAt"
@@ -546,23 +665,9 @@ export function TaskFormModal({
                       }
                       className={inputClass}
                     />
-                  </div>
+                  </motion.div>
                 )}
-                {isShare && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label htmlFor="shareThreshold" className={labelClass}>Required Clicks</label>
-                    <input
-                      type="number"
-                      id="shareThreshold"
-                      name="shareThreshold"
-                      min={1}
-                      max={100}
-                      defaultValue={mode === "edit" ? task?.shareThreshold ?? 3 : 3}
-                      className={inputClass}
-                    />
-                  </div>
-                )}
-              </div>
+              </AnimatePresence>
             </div>
 
             {/* Actions */}
@@ -586,10 +691,8 @@ export function TaskFormModal({
                     : "Create Task"}
               </button>
             </div>
-
           </motion.div>
         </AnimatePresence>
-
       </form>
     </ModalShell>
   );

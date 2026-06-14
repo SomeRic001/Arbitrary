@@ -1,4 +1,4 @@
-// stats-header.tsx — cleaner, more refined dark header
+// stats-header.tsx — cleaner, more refined dark header with milestone tracker
 import { AnimatedCounter } from "@/src/components/rewards/animated-counter";
 
 type StatsHeaderProps = {
@@ -7,7 +7,39 @@ type StatsHeaderProps = {
   totalPoints: number;
   inProgressCount: number;
   completedCount: number;
+  monthlyPoints: number;
+  tier: string;
 };
+
+// Monthly point thresholds to reach each tier this month
+const TIER_THRESHOLDS: Record<string, number> = {
+  Bronze: 0,
+  Silver: 100,
+  Gold: 300,
+  "Arbitrary Elite": 600,
+};
+
+const TIER_ORDER = ["Bronze", "Silver", "Gold", "Arbitrary Elite"];
+
+function getCurrentMonthlyTier(pts: number): string {
+  if (pts >= 600) return "Arbitrary Elite";
+  if (pts >= 300) return "Gold";
+  if (pts >= 100) return "Silver";
+  return "Bronze";
+}
+
+function getNextTier(pts: number): { name: string; threshold: number } | null {
+  const currentTier = getCurrentMonthlyTier(pts);
+  const idx = TIER_ORDER.indexOf(currentTier);
+  if (idx === -1 || idx >= TIER_ORDER.length - 1) return null;
+  const name = TIER_ORDER[idx + 1];
+  return { name, threshold: TIER_THRESHOLDS[name] };
+}
+
+function getPrevThreshold(pts: number): number {
+  const currentTier = getCurrentMonthlyTier(pts);
+  return TIER_THRESHOLDS[currentTier] ?? 0;
+}
 
 export function StatsHeader({
   activeTab,
@@ -15,6 +47,8 @@ export function StatsHeader({
   totalPoints,
   inProgressCount,
   completedCount,
+  monthlyPoints,
+  tier,
 }: StatsHeaderProps) {
   const tabLabel =
     activeTab === "all"
@@ -79,12 +113,60 @@ export function StatsHeader({
               <p className={`${color} text-xl font-black tabular-nums`}>
                 {isAnimated ? (
                   <AnimatedCounter value={value} />
+                ) : typeof value === "number" ? (
+                  value.toLocaleString()
                 ) : (
-                  typeof value === "number" ? value.toLocaleString() : value
+                  value
                 )}
               </p>
             </div>
           ))}
+        </div>
+
+        {/* Milestone tracker */}
+        <div className="relative z-10 mt-4 bg-white/8 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-white/40 text-[9px] uppercase tracking-wider font-bold">
+              Monthly Milestone
+            </p>
+            <span className="text-[10px] font-bold text-[#FACC15]">
+              {monthlyPoints} pts
+            </span>
+          </div>
+          {(() => {
+            const next = getNextTier(monthlyPoints);
+            if (!next) {
+              return (
+                <p className="text-white/30 text-[10px]">
+                  Max tier reached — Arbitrary Elite 🏆
+                </p>
+              );
+            }
+            const prev = getPrevThreshold(monthlyPoints);
+            const currentMonthlyTier = getCurrentMonthlyTier(monthlyPoints);
+            const progress = Math.min(
+              ((monthlyPoints - prev) / (next.threshold - prev)) * 100,
+              100,
+            );
+            return (
+              <>
+                <div className="relative w-full h-1.5 rounded-full bg-white/10 overflow-hidden mb-1.5">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#FACC15] to-orange-400 transition-all duration-700"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] text-white/30">
+                    {currentMonthlyTier}
+                  </span>
+                  <span className="text-[9px] text-[#FACC15]/70">
+                    {monthlyPoints}/{next.threshold} pts to {next.name}
+                  </span>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
