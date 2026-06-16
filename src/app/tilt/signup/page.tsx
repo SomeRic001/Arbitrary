@@ -1,11 +1,11 @@
 "use client";
 
-// src/app/tilde/login/page.tsx
+// src/app/tilt/signup/page.tsx
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export default function TildeLoginPage() {
+export default function TiltSignupPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -14,7 +14,7 @@ export default function TildeLoginPage() {
 
   useEffect(() => {
     setMounted(true);
-    document.title = "Sign In | Tilde";
+    document.title = "Sign Up | Tiltyourmusic";
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -23,14 +23,22 @@ export default function TildeLoginPage() {
     setError("");
 
     const fd = new FormData(e.currentTarget);
+    const name = fd.get("name") as string;
     const email = fd.get("email") as string;
     const password = fd.get("password") as string;
+    const confirm = fd.get("confirm") as string;
+
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const res = await fetch("/api/tilde/login", {
+      const res = await fetch("/api/tilt/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -38,7 +46,7 @@ export default function TildeLoginPage() {
         setIsLoading(false);
         return;
       }
-      router.push("/tilde");
+      router.push("/tilt");
     } catch {
       setError("Network error. Please try again.");
       setIsLoading(false);
@@ -47,18 +55,18 @@ export default function TildeLoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-14 relative overflow-hidden">
-      {/* Ambient glow */}
+      {/* Bottle-green ambient glow */}
       <div
         style={{
           position: "absolute",
-          bottom: "-80px",
+          top: "-120px",
           left: "50%",
           transform: "translateX(-50%)",
-          width: "500px",
-          height: "500px",
+          width: "600px",
+          height: "600px",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(28,74,30,0.45) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(28,74,30,0.55) 0%, transparent 70%)",
           pointerEvents: "none",
         }}
       />
@@ -72,7 +80,7 @@ export default function TildeLoginPage() {
         .rise2 { animation: riseUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.1s forwards; opacity: 0; }
         .rise3 { animation: riseUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.2s forwards; opacity: 0; }
 
-        .tilde-input {
+        .tilt-input {
           width: 100%;
           padding: 12px 16px;
           background: rgba(255,255,255,0.04);
@@ -83,13 +91,13 @@ export default function TildeLoginPage() {
           outline: none;
           transition: border-color 0.2s, background 0.2s;
         }
-        .tilde-input::placeholder { color: rgba(255,255,255,0.28); }
-        .tilde-input:focus {
+        .tilt-input::placeholder { color: rgba(255,255,255,0.28); }
+        .tilt-input:focus {
           border-color: #c8e63c;
           background: rgba(200,230,60,0.06);
         }
 
-        .tilde-label {
+        .tilt-label {
           display: block;
           font-size: 10px;
           font-weight: 900;
@@ -99,7 +107,7 @@ export default function TildeLoginPage() {
           margin-bottom: 6px;
         }
 
-        .tilde-btn {
+        .tilt-btn {
           position: relative;
           width: 100%;
           padding: 14px;
@@ -116,10 +124,10 @@ export default function TildeLoginPage() {
           transition: transform 0.15s, opacity 0.2s;
           margin-top: 8px;
         }
-        .tilde-btn:hover { transform: scale(1.015); }
-        .tilde-btn:active { transform: scale(0.985); }
-        .tilde-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .tilde-btn::after {
+        .tilt-btn:hover { transform: scale(1.015); }
+        .tilt-btn:active { transform: scale(0.985); }
+        .tilt-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .tilt-btn::after {
           content: '';
           position: absolute;
           inset: 0;
@@ -127,12 +135,13 @@ export default function TildeLoginPage() {
           transform: translateX(-100%);
           transition: transform 0.6s;
         }
-        .tilde-btn:hover::after { transform: translateX(100%); }
+        .tilt-btn:hover::after { transform: translateX(100%); }
       `}</style>
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand header */}
         <div className={mounted ? "rise" : "opacity-0"}>
+          {/* Tuborg-style label card */}
           <div
             style={{
               background: "linear-gradient(135deg, #1a4a1f 0%, #0e2b10 100%)",
@@ -143,6 +152,7 @@ export default function TildeLoginPage() {
               overflow: "hidden",
             }}
           >
+            {/* Red stripe across mid-section of header, like the Tuborg label */}
             <div
               style={{
                 position: "absolute",
@@ -157,6 +167,7 @@ export default function TildeLoginPage() {
             />
 
             <div className="flex flex-col items-center text-center gap-4 relative z-10">
+              {/* tilt logo mark */}
               <div
                 style={{
                   width: "60px",
@@ -192,7 +203,7 @@ export default function TildeLoginPage() {
                     margin: 0,
                   }}
                 >
-                  Tilde
+                  tilt
                 </h1>
                 <p
                   style={{
@@ -204,13 +215,13 @@ export default function TildeLoginPage() {
                     margin: "6px 0 0",
                   }}
                 >
-                  Sign in to continue
+                  Create account
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Red-stripe seam */}
+          {/* Connector seam with red stripe */}
           <div
             style={{
               height: "8px",
@@ -318,9 +329,25 @@ export default function TildeLoginPage() {
             onSubmit={handleSubmit}
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
+            {/* Full Name */}
+            <div>
+              <label htmlFor="name" className="tilt-label">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                autoComplete="name"
+                placeholder="Your full name"
+                className="tilt-input"
+              />
+            </div>
+
             {/* Email */}
             <div>
-              <label htmlFor="email" className="tilde-label">
+              <label htmlFor="email" className="tilt-label">
                 Email
               </label>
               <input
@@ -330,13 +357,13 @@ export default function TildeLoginPage() {
                 required
                 autoComplete="email"
                 placeholder="your@email.com"
-                className="tilde-input"
+                className="tilt-input"
               />
             </div>
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="tilde-label">
+              <label htmlFor="password" className="tilt-label">
                 Password
               </label>
               <div style={{ position: "relative" }}>
@@ -345,8 +372,8 @@ export default function TildeLoginPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   required
-                  placeholder="Your password"
-                  className="tilde-input"
+                  placeholder="Min. 8 characters"
+                  className="tilt-input"
                   style={{ paddingRight: "44px" }}
                 />
                 <button
@@ -399,9 +426,24 @@ export default function TildeLoginPage() {
               </div>
             </div>
 
+            {/* Confirm Password */}
+            <div>
+              <label htmlFor="confirm" className="tilt-label">
+                Confirm Password
+              </label>
+              <input
+                id="confirm"
+                name="confirm"
+                type={showPassword ? "text" : "password"}
+                required
+                placeholder="Repeat your password"
+                className="tilt-input"
+              />
+            </div>
+
             {/* Submit */}
-            <button type="submit" disabled={isLoading} className="tilde-btn">
-              {isLoading ? "Signing in…" : "Sign In"}
+            <button type="submit" disabled={isLoading} className="tilt-btn">
+              {isLoading ? "Creating account…" : "Create Account"}
             </button>
 
             <p
@@ -412,16 +454,16 @@ export default function TildeLoginPage() {
                 marginTop: "4px",
               }}
             >
-              Don&apos;t have an account?{" "}
+              Already have an account?{" "}
               <Link
-                href="/tilde/signup"
+                href="/tilt/login"
                 style={{
                   color: "#c8e63c",
                   fontWeight: 700,
                   textDecoration: "none",
                 }}
               >
-                Sign up
+                Sign in
               </Link>
             </p>
           </form>

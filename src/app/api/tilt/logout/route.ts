@@ -1,11 +1,11 @@
-// src/app/api/tilde/logout/route.ts
-// Clears the tilde_token cookie, ending the Tilde session.
+// src/app/api/tilt/logout/route.ts
+// Clears the tilt_token cookie, ending the tilt session.
 
 import { NextResponse } from 'next/server';
 
 export async function POST() {
     const response = NextResponse.json({ ok: true });
-    response.cookies.set('tilde_token', '', {
+    response.cookies.set('tilt_token', '', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

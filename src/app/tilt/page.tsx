@@ -1,8 +1,8 @@
 "use client";
 
-// src/app/tilde/page.tsx
-// Event registration form — only accessible after Tilde login.
-// Checks the tilde_token cookie on mount; redirects to /tilde/login if missing.
+// src/app/tilt/page.tsx
+// Event registration form — only accessible after tilt login.
+// Checks the tilt_token cookie on mount; redirects to /tilt/login if missing.
 // Pre-fills existing submission. Uses PATCH/upsert so users can update their entry.
 
 import { useState, useEffect } from "react";
@@ -14,7 +14,7 @@ interface UserInfo {
   email: string;
 }
 
-export default function TildePage() {
+export default function TiltPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,13 +26,13 @@ export default function TildePage() {
 
   useEffect(() => {
     setMounted(true);
-    document.title = "Register | Tilde Event";
+    document.title = "Register | Tilt Event";
 
-    // Auth check: GET /api/tilde/me returns 200+user or 401
-    fetch("/api/tilde/me")
+    // Auth check: GET /api/tilt/me returns 200+user or 401
+    fetch("/api/tilt/me")
       .then(async (r) => {
         if (r.status === 401) {
-          router.replace("/tilde/login");
+          router.replace("/tilt/login");
           return;
         }
         if (r.ok) {
@@ -59,7 +59,7 @@ export default function TildePage() {
     };
 
     try {
-      const res = await fetch("/api/tilde/register", {
+      const res = await fetch("/api/tilt/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -67,7 +67,7 @@ export default function TildePage() {
       const data = await res.json();
 
       if (res.status === 401) {
-        router.replace("/tilde/login");
+        router.replace("/tilt/login");
         return;
       }
       if (!res.ok) {
@@ -83,8 +83,8 @@ export default function TildePage() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/tilde/logout", { method: "POST" });
-    router.push("/tilde/login");
+    await fetch("/api/tilt/logout", { method: "POST" });
+    router.push("/tilt/login");
   };
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ export default function TildePage() {
                 marginTop: "8px",
               }}
             >
-              We&apos;ve received your details. See you at Tilde.
+              We&apos;ve received your details. See you at Tilt.
             </p>
           </div>
           <Link
@@ -218,7 +218,7 @@ export default function TildePage() {
         .rise  { animation: riseUp 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
         .rise2 { animation: riseUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.1s forwards; opacity: 0; }
 
-        .tilde-input {
+        .tilt-input {
           width: 100%;
           padding: 12px 16px;
           background: rgba(255,255,255,0.04);
@@ -230,17 +230,17 @@ export default function TildePage() {
           transition: border-color 0.2s, background 0.2s;
           font-family: inherit;
         }
-        .tilde-input::placeholder { color: rgba(255,255,255,0.28); }
-        .tilde-input:focus {
+        .tilt-input::placeholder { color: rgba(255,255,255,0.28); }
+        .tilt-input:focus {
           border-color: #c8e63c;
           background: rgba(200,230,60,0.06);
         }
-        .tilde-textarea {
+        .tilt-textarea {
           resize: none;
           min-height: 80px;
         }
 
-        .tilde-label {
+        .tilt-label {
           display: block;
           font-size: 10px;
           font-weight: 900;
@@ -250,7 +250,7 @@ export default function TildePage() {
           margin-bottom: 6px;
         }
 
-        .tilde-btn {
+        .tilt-btn {
           position: relative;
           width: 100%;
           padding: 14px;
@@ -268,9 +268,9 @@ export default function TildePage() {
           margin-top: 8px;
           font-family: inherit;
         }
-        .tilde-btn:hover { transform: scale(1.015); }
-        .tilde-btn:active { transform: scale(0.985); }
-        .tilde-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .tilt-btn:hover { transform: scale(1.015); }
+        .tilt-btn:active { transform: scale(0.985); }
+        .tilt-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
       `}</style>
 
       <div className="relative z-10 w-full max-w-sm">
@@ -335,7 +335,7 @@ export default function TildePage() {
                     margin: 0,
                   }}
                 >
-                  Tilde
+                  tilt
                 </h1>
                 <p
                   style={{
@@ -489,7 +489,7 @@ export default function TildePage() {
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
             <div>
-              <label htmlFor="name" className="tilde-label">
+              <label htmlFor="name" className="tilt-label">
                 Full Name
               </label>
               <input
@@ -500,12 +500,12 @@ export default function TildePage() {
                 placeholder="Your full name"
                 autoComplete="name"
                 defaultValue={existing?.name ?? userInfo?.name ?? ""}
-                className="tilde-input"
+                className="tilt-input"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="tilde-label">
+              <label htmlFor="email" className="tilt-label">
                 Email
               </label>
               <input
@@ -516,12 +516,12 @@ export default function TildePage() {
                 placeholder="your@email.com"
                 autoComplete="email"
                 defaultValue={existing?.email ?? userInfo?.email ?? ""}
-                className="tilde-input"
+                className="tilt-input"
               />
             </div>
 
             <div>
-              <label htmlFor="phone" className="tilde-label">
+              <label htmlFor="phone" className="tilt-label">
                 Phone Number
               </label>
               <input
@@ -532,12 +532,12 @@ export default function TildePage() {
                 placeholder="+977 98XXXXXXXX"
                 autoComplete="tel"
                 defaultValue={existing?.phone ?? ""}
-                className="tilde-input"
+                className="tilt-input"
               />
             </div>
 
             <div>
-              <label htmlFor="address" className="tilde-label">
+              <label htmlFor="address" className="tilt-label">
                 Address
               </label>
               <textarea
@@ -547,16 +547,16 @@ export default function TildePage() {
                 rows={3}
                 placeholder="Your full address"
                 defaultValue={existing?.address ?? ""}
-                className="tilde-input tilde-textarea"
+                className="tilt-input tilt-textarea"
               />
             </div>
 
-            <button type="submit" disabled={isLoading} className="tilde-btn">
+            <button type="submit" disabled={isLoading} className="tilt-btn">
               {isLoading
                 ? "Submitting…"
                 : existing
                   ? "Update Registration"
-                  : "Register for Tilde"}
+                  : "Register for tilt"}
             </button>
           </form>
         </div>

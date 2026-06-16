@@ -1,14 +1,14 @@
-// src/app/api/tilde/signup/route.ts
+// src/app/api/tilt/signup/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { tildeDb } from '@/src/db/tilde-db';
-import { tildeUsersTable } from '@/src/db/tilde-schema';
+import { tiltDb } from '@/src/db/tilt-db';
+import { tiltUsersTable } from '@/src/db/tilt-schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 
-const TILDE_JWT_SECRET = new TextEncoder().encode(
-    process.env.TILDE_JWT_SECRET ?? 'tilde-fallback-secret-change-in-production'
+const TILT_JWT_SECRET = new TextEncoder().encode(
+    process.env.TILT_JWT_SECRET ?? 'tilt-fallback-secret-change-in-production'
 );
 
 export async function POST(req: NextRequest) {
@@ -25,10 +25,10 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Check duplicate email ──────────────────────────────────────────
-        const [existing] = await tildeDb
-            .select({ id: tildeUsersTable.id })
-            .from(tildeUsersTable)
-            .where(eq(tildeUsersTable.email, email.toLowerCase().trim()));
+        const [existing] = await tiltDb
+            .select({ id: tiltUsersTable.id })
+            .from(tiltUsersTable)
+            .where(eq(tiltUsersTable.email, email.toLowerCase().trim()));
 
         if (existing) {
             return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
@@ -37,19 +37,19 @@ export async function POST(req: NextRequest) {
         // ── Hash password & insert ─────────────────────────────────────────
         const passwordHash = await bcrypt.hash(password, 12);
 
-        const [user] = await tildeDb
-            .insert(tildeUsersTable)
+        const [user] = await tiltDb
+            .insert(tiltUsersTable)
             .values({ name: name.trim(), email: email.toLowerCase().trim(), passwordHash })
-            .returning({ id: tildeUsersTable.id, name: tildeUsersTable.name, email: tildeUsersTable.email });
+            .returning({ id: tiltUsersTable.id, name: tiltUsersTable.name, email: tiltUsersTable.email });
 
         // ── Issue JWT ──────────────────────────────────────────────────────
         const token = await new SignJWT({ id: user.id, email: user.email, name: user.name })
             .setProtectedHeader({ alg: 'HS256' })
             .setExpirationTime('7d')
-            .sign(TILDE_JWT_SECRET);
+            .sign(TILT_JWT_SECRET);
 
         const response = NextResponse.json({ ok: true }, { status: 201 });
-        response.cookies.set('tilde_token', token, {
+        response.cookies.set('tilt_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
         return response;
     } catch (err) {
-        console.error('[tilde/signup]', err);
+        console.error('[tilt/signup]', err);
         return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
     }
 }

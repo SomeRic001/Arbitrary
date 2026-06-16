@@ -4,8 +4,8 @@
 // Uses upsert: one registration per user (insert or update on conflict).
 
 import { NextRequest, NextResponse } from 'next/server';
-import { tildeDb } from '@/src/db/tilde-db';
-import { tildeRegistrationsTable } from '@/src/db/tilde-schema';
+import { tildeDb } from '@/src/db/tilt-db';
+import { tildeRegistrationsTable } from '@/src/db/tilt-schema';
 import { eq } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
 

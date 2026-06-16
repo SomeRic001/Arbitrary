@@ -3,7 +3,7 @@
 import { pgTable, serial, varchar, text, timestamp } from 'drizzle-orm/pg-core';
 
 // ── Table for Tilde users ───────────────────────────────
-export const tildeUsersTable = pgTable('tilde_users', {
+export const tiltUsersTable = pgTable('tilt_users', {
     id: serial('id').primaryKey(),
     name: varchar('name', { length: 255 }).notNull(),
     email: varchar('email', { length: 255 }).notNull().unique(),
@@ -12,9 +12,9 @@ export const tildeUsersTable = pgTable('tilde_users', {
 });
 
 // ── Table for Tilde registration ──────────────
-export const tildeRegistrationsTable = pgTable('tilde_registrations', {
+export const tiltRegistrationsTable = pgTable('tilt_registrations', {
     id: serial('id').primaryKey(),
-    userId: serial('user_id').notNull().references(() => tildeUsersTable.id, { onDelete: 'cascade' }),
+    userId: serial('user_id').notNull().references(() => tiltUsersTable.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 255 }).notNull(),
     email: varchar('email', { length: 255 }).notNull(),
     phone: varchar('phone', { length: 50 }).notNull(),

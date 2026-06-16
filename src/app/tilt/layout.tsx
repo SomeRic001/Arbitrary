@@ -3,7 +3,7 @@
 // No Arbitary header, footer, or NextAuth session provider.
 // Tuborg-inspired theme: bottle green, lime yellow, red stripe, black.
 
-export default function TildeLayout({
+export default function TiltLayout({
   children,
 }: {
   children: React.ReactNode;
