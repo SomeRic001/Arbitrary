@@ -11,6 +11,7 @@ import { usersTable } from "@/src/db/schema";
 import FacebookProvider from "next-auth/providers/facebook";
 import { ReferralService } from "@/src/services/referral.service";
 import { encryptToken, decryptToken } from "@/src/lib/token-crypto";
+import { getBaseUrl } from "./lib/get-base-url";
 
 export const authOptions: import("next-auth").NextAuthOptions = {
     providers: [

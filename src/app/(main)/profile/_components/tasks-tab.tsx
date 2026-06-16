@@ -165,7 +165,7 @@ export default function TasksTab({
                       className={`absolute left-0 top-0 bottom-0 w-[3px] ${accentClass}`}
                     />
 
-                    <div className="pl-4 pr-4 py-3.5 flex items-center gap-3">
+                    <div className="pl-4 pr-4 py-3.5 flex items-start gap-3">
                       {/* Platform icon */}
                       <PlatformIcon
                         taskType={task.taskType}
@@ -174,24 +174,10 @@ export default function TasksTab({
 
                       {/* Task info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-0.5">
+                        <div className="flex items-start mb-0.5">
                           <h3 className="text-[13px] font-semibold text-slate-900 leading-snug truncate">
                             {task.title}
                           </h3>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {task.isRecurring && (
-                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                🔄 Daily
-                              </span>
-                            )}
-                            {task.difficulty && (
-                              <span
-                                className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
-                              >
-                                {task.difficulty}
-                              </span>
-                            )}
-                          </div>
                         </div>
 
                         {task.description && (
@@ -215,16 +201,30 @@ export default function TasksTab({
                         )}
                       </div>
 
-                      {/* Right: points + status */}
+                      {/* Right: points + badges + status */}
                       <div className="shrink-0 flex flex-col items-end gap-1.5">
-                        <span className="text-[11px] font-bold text-slate-500">
+                        <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">
                           +{task.points} pts
                         </span>
-                        <span
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${statusClass}`}
-                        >
-                          {task.status.toUpperCase()}
-                        </span>
+                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                          {task.isRecurring && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              🔄 Daily
+                            </span>
+                          )}
+                          {task.difficulty && (
+                            <span
+                              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
+                            >
+                              {task.difficulty}
+                            </span>
+                          )}
+                          <span
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${statusClass}`}
+                          >
+                            {task.status.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
