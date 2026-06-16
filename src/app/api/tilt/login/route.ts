@@ -36,12 +36,12 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Issue JWT ──────────────────────────────────────────────────────
-        const token = await new SignJWT({ id: user.id, email: user.email, name: user.name })
+        const token = await new SignJWT({ id: user.id, email: user.email, name: user.name ,role:user.role})
             .setProtectedHeader({ alg: 'HS256' })
             .setExpirationTime('7d')
             .sign(TILT_JWT_SECRET);
 
-        const response = NextResponse.json({ ok: true }, { status: 200 });
+        const response = NextResponse.json({ ok: true, role: user.role }, { status: 200 });
         response.cookies.set('tilt_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',

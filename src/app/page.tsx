@@ -219,7 +219,7 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* ── Tilde Event Banner ──────────────────────────────────────────── */}
+        {/* ── Tilt Your Music Banner ─────────────────────────────────────── */}
         <section className="relative overflow-hidden bg-black py-20">
           {/* Tuborg bottle-green glow */}
           <div
@@ -229,7 +229,7 @@ const HomePage = () => {
                 "radial-gradient(circle, #1a4a1f 0%, transparent 70%)",
             }}
           />
-          {/* Background tilde watermark */}
+          {/* Background tilt watermark */}
           <div
             className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[22vw] font-black leading-none select-none"
             style={{ color: "rgba(200,230,60,0.04)" }}
@@ -241,7 +241,7 @@ const HomePage = () => {
             <div className="flex flex-col md:flex-row items-center justify-between gap-10">
               {/* Left — branding */}
               <div className="flex items-center gap-6">
-                {/* Tilde logo mark */}
+                {/* tilt logo mark */}
                 <div
                   className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-4xl font-black"
                   style={{
@@ -271,7 +271,7 @@ const HomePage = () => {
                     />
                   </div>
                   <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-white leading-none">
-                    Tilde <span style={{ color: "#c8e63c" }}>Event</span>
+                    Tilt Your <span style={{ color: "#c8e63c" }}>Music</span>
                   </h2>
                   <p className="text-zinc-400 text-sm mt-1 uppercase tracking-widest font-medium">
                     Register now — limited spots
@@ -282,7 +282,7 @@ const HomePage = () => {
               {/* Right — CTA */}
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Link
-                  href="/tilde/signup"
+                  href="/tilt/signup"
                   className="px-10 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:scale-105"
                   style={{
                     background: "#c8e63c",
@@ -293,7 +293,7 @@ const HomePage = () => {
                   Register
                 </Link>
                 <Link
-                  href="/tilde/login"
+                  href="/tilt/login"
                   className="px-10 py-4 rounded-xl font-black text-sm uppercase tracking-widest border transition-all duration-300 hover:bg-white/5"
                   style={{
                     color: "rgba(255,255,255,0.6)",
@@ -315,7 +315,7 @@ const HomePage = () => {
             }}
           />
         </section>
-        {/* ── End Tilde Banner ─────────────────────────────────────────────── */}
+        {/* ── End Tilt Your Music Banner ─────────────────────────────────── */}
 
         {/* 4. Featured Work Section */}
         {featuredRecords.length > 0 && (

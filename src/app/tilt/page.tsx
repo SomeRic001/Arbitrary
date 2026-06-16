@@ -109,7 +109,7 @@ export default function TiltPage() {
   // ── Success ───────────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="tilt-noise min-h-screen flex items-center justify-center px-4">
         <div
           className="relative z-10 w-full max-w-sm text-center"
           style={{
@@ -195,7 +195,7 @@ export default function TiltPage() {
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-14 relative overflow-hidden">
+    <div className="tilt-noise min-h-screen flex items-center justify-center px-4 py-14 relative overflow-hidden">
       <div
         style={{
           position: "absolute",
@@ -275,172 +275,80 @@ export default function TiltPage() {
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Header */}
-        <div className={mounted ? "rise" : "opacity-0"}>
-          <div
+        <div className={`text-center mb-10 ${mounted ? "rise" : "opacity-0"}`}>
+          <h1
             style={{
-              background: "linear-gradient(135deg, #1a4a1f 0%, #0e2b10 100%)",
-              border: "1.5px solid rgba(200,230,60,0.2)",
-              borderRadius: "18px 18px 0 0",
-              padding: "28px 32px 24px",
-              position: "relative",
-              overflow: "hidden",
+              color: "#fff",
+              fontSize: "28px",
+              fontWeight: 900,
+              letterSpacing: "0.25em",
+              textTransform: "uppercase",
+              margin: 0,
             }}
           >
+            tilt
+          </h1>
+          <p
+            style={{
+              color: "rgba(200,230,60,0.5)",
+              fontSize: "13px",
+              fontWeight: 600,
+              marginTop: "6px",
+            }}
+          >
+            {existing ? "Update your registration" : "Register for the event"}
+          </p>
+
+          {/* Logged-in user badge + logout */}
+          {userInfo && (
             <div
               style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: "50%",
-                height: "2px",
-                background:
-                  "linear-gradient(90deg, transparent, #d42b2b 20%, #d42b2b 80%, transparent)",
-                opacity: 0.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                marginTop: "16px",
               }}
-            />
-
-            <div className="flex flex-col items-center text-center gap-3 relative z-10">
-              <div
+            >
+              <span
                 style={{
-                  width: "56px",
-                  height: "56px",
-                  background: "#c8e63c",
-                  borderRadius: "13px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 0 24px rgba(200,230,60,0.35)",
+                  fontSize: "11px",
+                  color: "rgba(200,230,60,0.45)",
+                  fontWeight: 600,
                 }}
               >
-                <span
-                  style={{
-                    color: "#0e1f10",
-                    fontWeight: 900,
-                    fontSize: "30px",
-                    lineHeight: 1,
-                  }}
-                >
-                  ~
-                </span>
-              </div>
-
-              <div>
-                <h1
-                  style={{
-                    color: "#fff",
-                    fontSize: "24px",
-                    fontWeight: 900,
-                    letterSpacing: "0.25em",
-                    textTransform: "uppercase",
-                    margin: 0,
-                  }}
-                >
-                  tilt
-                </h1>
-                <p
-                  style={{
-                    color: "rgba(200,230,60,0.65)",
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    letterSpacing: "0.3em",
-                    textTransform: "uppercase",
-                    margin: "5px 0 0",
-                  }}
-                >
-                  {existing ? "Update your registration" : "Event Registration"}
-                </p>
-              </div>
+                {userInfo.name}
+              </span>
+              <button
+                onClick={handleLogout}
+                title="Sign out"
+                style={{
+                  background: "rgba(212,43,43,0.12)",
+                  border: "1px solid rgba(212,43,43,0.25)",
+                  borderRadius: "6px",
+                  padding: "3px 8px",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "rgba(212,43,43,0.7)",
+                  cursor: "pointer",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(212,43,43,0.2)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "rgba(212,43,43,0.12)"}
+              >
+                Sign out
+              </button>
             </div>
-
-            {/* Logged-in user badge + logout */}
-            {userInfo && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "12px",
-                  right: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: "rgba(200,230,60,0.55)",
-                    fontWeight: 600,
-                    maxWidth: "100px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {userInfo.name}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  title="Sign out"
-                  style={{
-                    background: "rgba(212,43,43,0.15)",
-                    border: "1px solid rgba(212,43,43,0.3)",
-                    borderRadius: "6px",
-                    padding: "3px 7px",
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    color: "#d42b2b",
-                    cursor: "pointer",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Out
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Red-stripe seam */}
-          <div
-            style={{
-              height: "8px",
-              background: "linear-gradient(135deg, #1a4a1f 0%, #0e2b10 100%)",
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: 0,
-                right: 0,
-                height: "2px",
-                background: "#d42b2b",
-                transform: "translateY(-50%)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: "8px",
-                background: "#0e1f10",
-                borderRadius: "12px 12px 0 0",
-              }}
-            />
-          </div>
+          )}
         </div>
 
         {/* Form body */}
         <div
           className={mounted ? "rise2" : "opacity-0"}
           style={{
-            background: "#0e1f10",
-            border: "1.5px solid rgba(200,230,60,0.12)",
-            borderTop: "none",
-            borderRadius: "0 0 18px 18px",
-            padding: "24px 32px 32px",
+            padding: "0",
           }}
         >
           {/* Pre-fill notice */}

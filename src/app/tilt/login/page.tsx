@@ -38,7 +38,7 @@ export default function TiltLoginPage() {
         setIsLoading(false);
         return;
       }
-      router.push("/tilt");
+      router.push(data.role ==="SUPERADMIN" ? "/tilt/admin" :"/tilt/outlet");
     } catch {
       setError("Network error. Please try again.");
       setIsLoading(false);
@@ -46,7 +46,7 @@ export default function TiltLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-14 relative overflow-hidden">
+    <div className="tilt-noise min-h-screen flex items-center justify-center px-4 py-14 relative overflow-hidden">
       {/* Ambient glow */}
       <div
         style={{
@@ -131,127 +131,37 @@ export default function TiltLoginPage() {
       `}</style>
 
       <div className="relative z-10 w-full max-w-sm">
-        {/* Brand header */}
-        <div className={mounted ? "rise" : "opacity-0"}>
-          <div
+        {/* Brand text header */}
+        <div className={`text-center mb-10 ${mounted ? "rise" : "opacity-0"}`}>
+          <h1
             style={{
-              background: "linear-gradient(135deg, #1a4a1f 0%, #0e2b10 100%)",
-              border: "1.5px solid rgba(200,230,60,0.2)",
-              borderRadius: "18px 18px 0 0",
-              padding: "32px 32px 28px",
-              position: "relative",
-              overflow: "hidden",
+              color: "#fff",
+              fontSize: "32px",
+              fontWeight: 900,
+              letterSpacing: "0.25em",
+              textTransform: "uppercase",
+              margin: 0,
             }}
           >
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: "50%",
-                height: "2px",
-                background:
-                  "linear-gradient(90deg, transparent, #d42b2b 20%, #d42b2b 80%, transparent)",
-                opacity: 0.5,
-              }}
-            />
-
-            <div className="flex flex-col items-center text-center gap-4 relative z-10">
-              <div
-                style={{
-                  width: "60px",
-                  height: "60px",
-                  background: "#c8e63c",
-                  borderRadius: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 0 28px rgba(200,230,60,0.35)",
-                }}
-              >
-                <span
-                  style={{
-                    color: "#0e1f10",
-                    fontWeight: 900,
-                    fontSize: "32px",
-                    lineHeight: 1,
-                  }}
-                >
-                  ~
-                </span>
-              </div>
-
-              <div>
-                <h1
-                  style={{
-                    color: "#fff",
-                    fontSize: "26px",
-                    fontWeight: 900,
-                    letterSpacing: "0.25em",
-                    textTransform: "uppercase",
-                    margin: 0,
-                  }}
-                >
-                  tilt
-                </h1>
-                <p
-                  style={{
-                    color: "rgba(200,230,60,0.65)",
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    letterSpacing: "0.3em",
-                    textTransform: "uppercase",
-                    margin: "6px 0 0",
-                  }}
-                >
-                  Sign in to continue
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Red-stripe seam */}
-          <div
+            tilt
+          </h1>
+          <p
             style={{
-              height: "8px",
-              background: "linear-gradient(135deg, #1a4a1f 0%, #0e2b10 100%)",
-              position: "relative",
+              color: "rgba(200,230,60,0.5)",
+              fontSize: "13px",
+              fontWeight: 600,
+              marginTop: "8px",
             }}
           >
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: 0,
-                right: 0,
-                height: "2px",
-                background: "#d42b2b",
-                transform: "translateY(-50%)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: "8px",
-                background: "#0e1f10",
-                borderRadius: "12px 12px 0 0",
-              }}
-            />
-          </div>
+            Sign in to your account
+          </p>
         </div>
 
         {/* Form body */}
         <div
           className={mounted ? "rise2" : "opacity-0"}
           style={{
-            background: "#0e1f10",
-            border: "1.5px solid rgba(200,230,60,0.12)",
-            borderTop: "none",
-            borderRadius: "0 0 18px 18px",
-            padding: "24px 32px 32px",
+            padding: "0",
           }}
         >
           {/* Error banner */}

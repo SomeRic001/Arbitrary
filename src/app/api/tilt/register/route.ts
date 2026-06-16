@@ -1,29 +1,29 @@
-// src/app/api/tilde/register/route.ts
-// Saves (or updates) the event registration form at /tilde.
-// Requires a valid tilde_token cookie — rejects unauthenticated requests.
+// src/app/api/tilt/register/route.ts
+// Saves (or updates) the event registration form at /tilt.
+// Requires a valid tilt_token cookie — rejects unauthenticated requests.
 // Uses upsert: one registration per user (insert or update on conflict).
 
 import { NextRequest, NextResponse } from 'next/server';
-import { tildeDb } from '@/src/db/tilt-db';
-import { tildeRegistrationsTable } from '@/src/db/tilt-schema';
+import { tiltDb } from '@/src/db/tilt-db';
+import { tiltRegistrationsTable } from '@/src/db/tilt-schema';
 import { eq } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
 
-const TILDE_JWT_SECRET = new TextEncoder().encode(
-    process.env.TILDE_JWT_SECRET ?? 'tilde-fallback-secret-change-in-production'
+const tilt_JWT_SECRET = new TextEncoder().encode(
+    process.env.tilt_JWT_SECRET ?? 'tilt-fallback-secret-change-in-production'
 );
 
 export async function POST(req: NextRequest) {
     try {
         // ── Auth check ─────────────────────────────────────────────────────
-        const token = req.cookies.get('tilde_token')?.value;
+        const token = req.cookies.get('tilt_token')?.value;
         if (!token) {
             return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
         }
 
         let payload: { id: number; email: string; name: string };
         try {
-            const { payload: p } = await jwtVerify(token, TILDE_JWT_SECRET);
+            const { payload: p } = await jwtVerify(token, tilt_JWT_SECRET);
             payload = p as typeof payload;
         } catch {
             return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
@@ -36,25 +36,25 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Upsert: check if a registration already exists for this user ───
-        const [existing] = await tildeDb
-            .select({ id: tildeRegistrationsTable.id })
-            .from(tildeRegistrationsTable)
-            .where(eq(tildeRegistrationsTable.userId, payload.id));
+        const [existing] = await tiltDb
+            .select({ id: tiltRegistrationsTable.id })
+            .from(tiltRegistrationsTable)
+            .where(eq(tiltRegistrationsTable.userId, payload.id));
 
         if (existing) {
             // Update existing registration
-            await tildeDb
-                .update(tildeRegistrationsTable)
+            await tiltDb
+                .update(tiltRegistrationsTable)
                 .set({
                     name: name.trim(),
                     email: email.trim(),
                     phone: phone.trim(),
                     address: address.trim(),
                 })
-                .where(eq(tildeRegistrationsTable.id, existing.id));
+                .where(eq(tiltRegistrationsTable.id, existing.id));
         } else {
             // Insert new registration
-            await tildeDb.insert(tildeRegistrationsTable).values({
+            await tiltDb.insert(tiltRegistrationsTable).values({
                 userId: payload.id,
                 name: name.trim(),
                 email: email.trim(),
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (err) {
-        console.error('[tilde/register]', err);
+        console.error('[tilt/register]', err);
         return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
     }
 }

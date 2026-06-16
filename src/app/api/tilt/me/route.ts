@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
         }
 
-        let payload: { id: number; email: string; name: string };
+        let payload: { id: number; email: string; name: string,role: string };
         try {
             const { payload: p } = await jwtVerify(token, TILT_JWT_SECRET);
             payload = p as typeof payload;
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
             .where(eq(tiltRegistrationsTable.userId, payload.id));
 
         return NextResponse.json({
-            user: { id: payload.id, name: payload.name, email: payload.email },
+            user: { id: payload.id, name: payload.name, email: payload.email,role:payload.role },
             registration: registration
                 ? {
                     name: registration.name,
