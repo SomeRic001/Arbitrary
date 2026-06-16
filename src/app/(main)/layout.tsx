@@ -21,13 +21,20 @@ export default function MainLayout({
     }
   }, [status, router]);
 
-  // Auto daily-login: fires once per day, only for authenticated users.
-  // userId comes from the session — undefined while loading, null when signed out.
-  const userId = (session?.user as any)?.id ?? null;
-  useDailyLogin({ userId });
-
-  // Real-time notifications (rejection/approval, points, new tasks, etc.)
+  // Real-time notifications — start SSE FIRST so the connection is open
+  // before useDailyLogin fires and the server calls NotificationService.deliver().
+  // This ensures the notification lands in the bell in real-time on the very
+  // first login of the day (including right after signup).
   useNotificationSSE({ enabled: status === "authenticated" });
+
+  // Auto daily-login: fires once per day, only for authenticated users.
+  // We wait for status === "authenticated" (not just session?.user?.id) so that
+  // the SSE connection above has already been established before the API call
+  // goes out — otherwise the server sees no live listener and can only fall
+  // back to email for the notification.
+  const userId =
+    status === "authenticated" ? ((session?.user as any)?.id ?? null) : null;
+  useDailyLogin({ userId });
 
   return <>{children}</>;
 }

@@ -102,6 +102,8 @@ export const tasksTable = pgTable("tasks", {
     isFlash: boolean("is_flash").default(false).notNull(),
     isShare: boolean("is_share").default(false).notNull(),
     shareThreshold: integer("share_threshold").default(3),
+    /** true = Daily Refresh (resets at midnight), false = Permanent (one-time only) */
+    isRecurring: boolean("is_recurring").notNull().default(false),
     createdAt: timestamp("created_at").defaultNow(),
     createdByAdminId: integer("admin_id").references(() => usersTable.id),
 })
@@ -131,6 +133,25 @@ export const userTasksTable = pgTable("user_tasks", {
     userIdIdx: index("idx_user_tasks_user_id").on(table.userId),
     taskIdIdx: index("idx_user_tasks_task_id").on(table.taskId),
     statusIdx: index("idx_user_tasks_status").on(table.status),
+}))
+
+/**
+ * Permanent history log for Daily Refresh task completions.
+ * One row is appended every time a user completes a recurring task —
+ * records are NEVER deleted so analytics always have the full picture.
+ */
+export const dailyTaskCompletionsTable = pgTable("daily_task_completions", {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    taskId: integer("task_id").notNull().references(() => tasksTable.id, { onDelete: "cascade" }),
+    /** Which calendar date (UTC) this completion belongs to */
+    completionDate: varchar("completion_date", { length: 10 }).notNull(), // YYYY-MM-DD
+    pointsAwarded: integer("points_awarded").notNull().default(0),
+    completedAt: timestamp("completed_at").defaultNow().notNull(),
+}, (table) => ({
+    userTaskIdx: index("idx_dtc_user_task").on(table.userId, table.taskId),
+    taskDateIdx: index("idx_dtc_task_date").on(table.taskId, table.completionDate),
+    userDateIdx: index("idx_dtc_user_date").on(table.userId, table.completionDate),
 }))
 
 export const userTicketsTable = pgTable("user_tickets", {
@@ -436,6 +457,7 @@ export const dailyLoginRelations = relations(dailyLoginTable, ({ one }) => ({
 
 export const tasksRelations = relations(tasksTable, ({ many, one }) => ({
     userTasks: many(userTasksTable),
+    dailyTaskCompletions: many(dailyTaskCompletionsTable),
     creator: one(usersTable, {
         fields: [tasksTable.createdByAdminId],
         references: [usersTable.id]
@@ -451,6 +473,17 @@ export const userTasksRelations = relations(userTasksTable, ({ one }) => ({
         fields: [userTasksTable.taskId],
         references: [tasksTable.id],
     })
+}));
+
+export const dailyTaskCompletionsRelations = relations(dailyTaskCompletionsTable, ({ one }) => ({
+    user: one(usersTable, {
+        fields: [dailyTaskCompletionsTable.userId],
+        references: [usersTable.id],
+    }),
+    task: one(tasksTable, {
+        fields: [dailyTaskCompletionsTable.taskId],
+        references: [tasksTable.id],
+    }),
 }));
 
 export const userTicketsRelations = relations(userTicketsTable, ({ one }) => ({

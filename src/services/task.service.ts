@@ -8,6 +8,7 @@ import {
   shareClicksTable,
   watchSessionsTable,
   dailyLoginTable,
+  dailyTaskCompletionsTable,
 } from "@/src/db/schema";
 import { eq, and, desc, sql, or, gte, lt, inArray, not, type SQL, isNotNull, ne, ilike } from "drizzle-orm";
 import { calculateStreak, getNextMilestone, toDateStr, getCycleStart } from "@/src/lib/streak-helper";
@@ -53,6 +54,8 @@ export type UserTaskItem = {
   shareClickThreshold: number;
   sharePointsAwarded: boolean;
   commentInstruction?: string | null;
+  /** true = Daily Refresh, false/null = Permanent */
+  isRecurring: boolean;
 };
 
 export type UserTasksPage = {
@@ -122,6 +125,7 @@ export type AdminTaskItem = {
   expiresAt: string | null;
   created: string;
   completedUsers: number;
+  isRecurring: boolean;
 };
 
 export type AdminTasksPage = {
@@ -562,9 +566,11 @@ export const TaskService = {
       eq(userTasksTable.userId, userId),
       inArray(userTasksTable.status, ['Completed', 'Verified']),
       or(
-        not(eq(tasksTable.taskType, 'daily')),
+        // Permanent tasks: always show in completed
+        not(eq(tasksTable.isRecurring, true)),
+        // Daily Refresh tasks: only show today's completion
         and(
-          eq(tasksTable.taskType, 'daily'),
+          eq(tasksTable.isRecurring, true),
           isNotNull(userTasksTable.assignedAt),
           gte(userTasksTable.assignedAt, todayStart),
         ),
@@ -720,12 +726,11 @@ export const TaskService = {
         );
 
       if (existingNonRejected) {
-        // Handle Daily Task Reset: Allow picking up again if previous attempt was before today
-        if (targetTask.taskType === "daily") {
+        // Handle Daily Refresh Task Reset: allow picking up again if previous attempt was before today
+        if (targetTask.isRecurring) {
           const assignedAt = existingNonRejected.assignedAt;
           if (assignedAt && assignedAt < todayStart) {
-            // It's a daily task from a previous day, so we can allow picking it up again.
-            // Clean up the old record first.
+            // It's a daily refresh task from a previous day — delete the old record and allow re-pickup
             await tx
               .delete(userTasksTable)
               .where(eq(userTasksTable.id, existingNonRejected.id));
@@ -986,7 +991,44 @@ export const TaskService = {
     const code = getVerificationCode(Number(userId), Number(taskId), '#fb');
     const codeResult = await findCodeInComments(postId, code);
 
-    if (codeResult.error) return fail(`Facebook API error: ${codeResult.error}`, 500);
+    if (codeResult.error) {
+      // Facebook's v2.4+ Graph API no longer supports the singular-status
+      // endpoint (#12 "statuses API is deprecated"). This is a configuration
+      // issue on the server side — not something the user did wrong.
+      // Return a friendly message and a 503 (service unavailable) so the
+      // client doesn't show a raw internal error.
+      const isDeprecated =
+        codeResult.error.includes("deprecated") ||
+        codeResult.error.includes("#12") ||
+        codeResult.error.includes("singular statuses");
+
+      if (isDeprecated) {
+        return fail(
+          "Our Facebook verification service is temporarily unavailable. Please try again later or contact support.",
+          503,
+        );
+      }
+
+      // Other Facebook API errors (bad token, post not found, rate limit, etc.)
+      const isAuthError =
+        codeResult.error.toLowerCase().includes("token") ||
+        codeResult.error.toLowerCase().includes("permission") ||
+        codeResult.error.toLowerCase().includes("oauth");
+
+      if (isAuthError) {
+        return fail(
+          "Facebook verification is temporarily unavailable. Please try again in a few minutes.",
+          503,
+        );
+      }
+
+      // Generic fallback — log internally but show a clean message to the user
+      console.error("[Facebook verification] API error:", codeResult.error);
+      return fail(
+        "Could not reach Facebook to verify your comment. Please check your internet connection and try again.",
+        503,
+      );
+    }
 
     if (codeResult.liked) {
       if (!codeResult.hasQualityComment) {
@@ -1241,11 +1283,14 @@ export const TaskService = {
         return fail("Task has already been completed or cancelled", 400);
       }
 
+      const now = new Date();
+      const completionDate = now.toISOString().split("T")[0];
+
       await tx
         .update(userTasksTable)
         .set({
           status: "Completed",
-          completedAt: new Date(),
+          completedAt: now,
           submissionFingerprint: fingerprint ?? null,
           completionDurationSeconds: completionDurationSeconds ?? null,
         })
@@ -1279,6 +1324,17 @@ export const TaskService = {
           points: taskPoints,
           reason,
         });
+
+        // Write permanent history record for recurring tasks
+        if (task.isRecurring) {
+          await tx.insert(dailyTaskCompletionsTable).values({
+            userId,
+            taskId: task.id,
+            completionDate,
+            pointsAwarded: taskPoints,
+            completedAt: now,
+          });
+        }
       }
 
       await ReferralService.awardReferralBonusIfEligible(userId, tx);
@@ -1563,6 +1619,7 @@ export const TaskService = {
       expiresAt: t.expiresAt ? t.expiresAt.toISOString() : null,
       created: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "N/A",
       completedUsers: countsMap.get(t.id) || 0,
+      isRecurring: t.isRecurring ?? false,
     }));
 
     return ok({ tasks: mappedTasks, totalCount, totalPages, currentPage: page });
@@ -1651,6 +1708,7 @@ export const TaskService = {
         ? new Date(t.createdAt).toLocaleDateString()
         : "N/A",
       completedUsers: countsMap.get(t.id) || 0,
+      isRecurring: t.isRecurring ?? false,
     }));
 
     return { tasks, totalCount, totalPages, currentPage: page };
@@ -1674,6 +1732,7 @@ export const TaskService = {
     isShare?: boolean;
     shareThreshold?: number;
     expiresAt?: string | null;
+    isRecurring?: boolean;
   }): Promise<ServiceResult<Task>> {
     const resolvedTaskType =
       input.platform === "youtube" && input.watchDuration
@@ -1699,6 +1758,7 @@ export const TaskService = {
         isShare: input.isShare || false,
         shareThreshold: input.shareThreshold ?? 3,
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+        isRecurring: input.isRecurring ?? false,
       })
       .returning();
     return ok(newTask);
@@ -1724,6 +1784,7 @@ export const TaskService = {
       isShare?: boolean;
       shareThreshold?: number;
       expiresAt?: string | null;
+      isRecurring?: boolean;
     },
   ): Promise<ServiceResult<Task>> {
     const resolvedTaskType =
@@ -1750,6 +1811,7 @@ export const TaskService = {
         isShare: input.isShare || false,
         shareThreshold: input.shareThreshold ?? 3,
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+        isRecurring: input.isRecurring ?? false,
       })
       .where(eq(tasksTable.id, taskId))
       .returning();
@@ -1778,6 +1840,7 @@ export const TaskService = {
       isShare?: boolean;
       shareThreshold?: number;
       expiresAt?: string | null;
+      isRecurring?: boolean;
     }>,
   ): Promise<ServiceResult<{ count: number }>> {
     const values = tasks.map((t) => {
@@ -1799,6 +1862,7 @@ export const TaskService = {
         isShare: t.isShare || false,
         shareThreshold: t.shareThreshold ?? 3,
         expiresAt: t.expiresAt ? new Date(t.expiresAt) : null,
+        isRecurring: t.isRecurring ?? false,
       };
     });
 
@@ -1919,6 +1983,19 @@ export const TaskService = {
 
       if (newStatus === "Verified" && currentStatus !== "Verified") {
         await ReferralService.awardReferralBonusIfEligible(userTaskInfo.user.id, tx);
+
+        // Write permanent history record for recurring (daily refresh) tasks
+        if (userTaskInfo.task.isRecurring) {
+          const now = new Date();
+          const completionDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
+          await tx.insert(dailyTaskCompletionsTable).values({
+            userId: userTaskInfo.user.id,
+            taskId: userTaskInfo.task.id,
+            completionDate,
+            pointsAwarded: taskPoints,
+            completedAt: now,
+          });
+        }
       }
 
       if (newStatus === "Verified" || newStatus === "Rejected") {
@@ -2066,9 +2143,11 @@ async function getValidCompletedTaskIds(
         eq(userTasksTable.userId, userId),
         inArray(userTasksTable.status, ['Completed', 'Verified']),
         or(
-          not(eq(tasksTable.taskType, 'daily')),
+          // Permanent tasks: always count as completed
+          not(eq(tasksTable.isRecurring, true)),
+          // Daily Refresh tasks: only count if completed today
           and(
-            eq(tasksTable.taskType, 'daily'),
+            eq(tasksTable.isRecurring, true),
             isNotNull(userTasksTable.assignedAt),
             gte(userTasksTable.assignedAt, todayStart),
           ),
@@ -2110,7 +2189,8 @@ function mapTasksToItems(ctx: MapTasksContext): UserTaskItem[] {
     const userTask = ctx.userTasksMap.get(task.id);
     const effectiveUserTask = (() => {
       if (!userTask?.id) return null;
-      if (task.taskType === "daily" && userTask.assignedAt && userTask.assignedAt < ctx.todayStart) return null;
+      // For recurring (daily refresh) tasks, ignore completions from previous days
+      if (task.isRecurring && userTask.assignedAt && userTask.assignedAt < ctx.todayStart) return null;
       return userTask;
     })();
 
@@ -2148,6 +2228,7 @@ function mapTasksToItems(ctx: MapTasksContext): UserTaskItem[] {
       shareClickCount: shareInfo?.clickCount || 0,
       shareClickThreshold: shareInfo?.clickThreshold || task.shareThreshold || 3,
       sharePointsAwarded: shareInfo?.pointsAwarded || false,
+      isRecurring: task.isRecurring ?? false,
     };
   });
 }
@@ -2164,13 +2245,15 @@ async function awardFacebookPoints(
     userTask.assignedAt
       ? Math.round((Date.now() - new Date(userTask.assignedAt).getTime()) / 1000)
       : null;
+  const now = new Date();
+  const completionDate = now.toISOString().split("T")[0];
 
   await db.transaction(async (tx) => {
     await tx
       .update(userTasksTable)
       .set({
         status: "Completed",
-        completedAt: new Date(),
+        completedAt: now,
         submissionFingerprint: fingerprint ?? null,
         completionDurationSeconds: completionDurationSeconds ?? null,
       })
@@ -2184,6 +2267,18 @@ async function awardFacebookPoints(
         completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
       .where(eq(usersTable.id, userId));
+
+    // Write permanent history record for recurring tasks
+    const [taskRow] = await tx.select({ isRecurring: tasksTable.isRecurring }).from(tasksTable).where(eq(tasksTable.id, task.id));
+    if (taskRow?.isRecurring) {
+      await tx.insert(dailyTaskCompletionsTable).values({
+        userId,
+        taskId: task.id,
+        completionDate,
+        pointsAwarded: taskPoints,
+        completedAt: now,
+      });
+    }
   });
 
   await ReferralService.awardReferralBonusIfEligible(userId);
@@ -2206,13 +2301,15 @@ async function awardInstagramPoints(
     userTask.assignedAt
       ? Math.round((Date.now() - new Date(userTask.assignedAt).getTime()) / 1000)
       : null;
+  const now = new Date();
+  const completionDate = now.toISOString().split("T")[0];
 
   await db.transaction(async (tx) => {
     await tx
       .update(userTasksTable)
       .set({
         status: "Completed",
-        completedAt: new Date(),
+        completedAt: now,
         submissionFingerprint: fingerprint ?? null,
         completionDurationSeconds: completionDurationSeconds ?? null,
       })
@@ -2226,6 +2323,18 @@ async function awardInstagramPoints(
         completedTasksCount: sql`${usersTable.completedTasksCount} + 1`,
       })
       .where(eq(usersTable.id, userId));
+
+    // Write permanent history record for recurring tasks
+    const [taskRow] = await tx.select({ isRecurring: tasksTable.isRecurring }).from(tasksTable).where(eq(tasksTable.id, task.id));
+    if (taskRow?.isRecurring) {
+      await tx.insert(dailyTaskCompletionsTable).values({
+        userId,
+        taskId: task.id,
+        completionDate,
+        pointsAwarded: taskPoints,
+        completedAt: now,
+      });
+    }
   });
 
   await ReferralService.awardReferralBonusIfEligible(userId);

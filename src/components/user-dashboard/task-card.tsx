@@ -425,6 +425,11 @@ export function TaskCard({
                     Share
                   </span>
                 )}
+                {task.isRecurring && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    🔄 Daily
+                  </span>
+                )}
                 {task.difficulty && (
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
@@ -490,6 +495,11 @@ export function TaskCard({
                 {task.isShare && (
                   <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
                     Share
+                  </span>
+                )}
+                {task.isRecurring && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    🔄 Daily
                   </span>
                 )}
                 {task.difficulty && (

@@ -24,16 +24,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
   }
 
-  const result = await TaskService.completeFacebookTask(auth.data.id, Number(taskId), auth.data.facebookId, fingerprint);
-  if (!result.success) {
-    const response: Record<string, unknown> = { error: result.error };
-    if (result.status === 429) {
-      response.verificationCode = await TaskService.getVerificationCode(auth.data.id, Number(taskId), '#fb');
-    }
-    return NextResponse.json(response, { status: result.status });
-  }
+  try {
+    const result = await TaskService.completeFacebookTask(
+      auth.data.id,
+      Number(taskId),
+      auth.data.facebookId,
+      fingerprint,
+    );
 
-  return NextResponse.json(result.data, { status: 200 });
+    if (!result.success) {
+      const response: Record<string, unknown> = { error: result.error };
+      if (result.status === 429) {
+        response.verificationCode = await TaskService.getVerificationCode(
+          auth.data.id,
+          Number(taskId),
+          "#fb",
+        );
+      }
+      return NextResponse.json(response, { status: result.status });
+    }
+
+    return NextResponse.json(result.data, { status: 200 });
+  } catch (err) {
+    // Unexpected error (network failure, DB timeout, etc.) — log it internally
+    // but never expose raw stack traces or API error strings to the client.
+    console.error("[facebook-complete] Unhandled error:", err);
+    return NextResponse.json(
+      {
+        error:
+          "Something went wrong while verifying your Facebook comment. Please try again in a moment.",
+      },
+      { status: 503 },
+    );
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -49,6 +72,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "taskId query param is required" }, { status: 400 });
   }
 
-  const code = await TaskService.getVerificationCode(auth.data.id, Number(taskId), '#fb');
-  return NextResponse.json({ verificationCode: code });
+  try {
+    const code = await TaskService.getVerificationCode(auth.data.id, Number(taskId), "#fb");
+    return NextResponse.json({ verificationCode: code });
+  } catch (err) {
+    console.error("[facebook-complete GET] Unhandled error:", err);
+    return NextResponse.json(
+      { error: "Could not generate verification code. Please try again." },
+      { status: 503 },
+    );
+  }
 }

@@ -18,17 +18,33 @@ interface HomePageEvent {
 
 const HomePage = () => {
   const [events, setEvents] = React.useState<HomePageEvent[]>([]);
-  const [partners, setPartners] = React.useState<{ name: string; logoUrl: string | null }[]>([]);
-  const [teamMembers, setTeamMembers] = React.useState<{ name: string; role: string; photoUrl: string | null }[]>([]);
-  const [featuredRecords, setFeaturedRecords] = React.useState<{
-    id: number; title: string; artist: string; genre: string | null;
-    coverImageUrl: string | null; labelColor: string | null;
-  }[]>([]);
+  const [partners, setPartners] = React.useState<
+    { name: string; logoUrl: string | null }[]
+  >([]);
+  const [teamMembers, setTeamMembers] = React.useState<
+    { name: string; role: string; photoUrl: string | null }[]
+  >([]);
+  const [featuredRecords, setFeaturedRecords] = React.useState<
+    {
+      id: number;
+      title: string;
+      artist: string;
+      genre: string | null;
+      coverImageUrl: string | null;
+      labelColor: string | null;
+    }[]
+  >([]);
   const [aboutContent, setAboutContent] = React.useState<{
-    tagline: string | null; heading: string | null; description: string | null;
-    heroImageUrl: string | null; projectsCount: string | null; projectsLabel: string | null;
-    awardsCount: string | null; awardsLabel: string | null;
-    motto: string | null; mottoAuthor: string | null;
+    tagline: string | null;
+    heading: string | null;
+    description: string | null;
+    heroImageUrl: string | null;
+    projectsCount: string | null;
+    projectsLabel: string | null;
+    awardsCount: string | null;
+    awardsLabel: string | null;
+    motto: string | null;
+    mottoAuthor: string | null;
   } | null>(null);
 
   React.useEffect(() => {
@@ -37,7 +53,9 @@ const HomePage = () => {
         const response = await fetch("/api/events");
         const data = await response.json();
         if (data.success) {
-          setEvents(data.events.filter((e: HomePageEvent) => e.status === "Upcoming"));
+          setEvents(
+            data.events.filter((e: HomePageEvent) => e.status === "Upcoming"),
+          );
         }
       } catch (error) {
         console.error("Error fetching events:", error);
@@ -181,7 +199,7 @@ const HomePage = () => {
 
                       <div className="relative z-20">
                         <Link
-                          href={`/eventcontent?id=${event.id}`}
+                          href={`/events/${event.id}`}
                           className="px-10 py-4 bg-black text-white rounded-xl hover:bg-[#FACC15] hover:text-black transition-all duration-500 font-black uppercase tracking-[0.2em] text-[10px] shadow-xl hover:shadow-[0_20px_50px_rgba(250,204,21,0.2)]"
                         >
                           View Event
@@ -221,7 +239,11 @@ const HomePage = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                 {featuredRecords.map((r) => (
-                  <Link key={r.id} href="/records" className="group cursor-pointer">
+                  <Link
+                    key={r.id}
+                    href="/records"
+                    className="group cursor-pointer"
+                  >
                     <div className="aspect-[16/10] bg-zinc-100 rounded-2xl overflow-hidden mb-6 relative border border-black/5">
                       {r.coverImageUrl ? (
                         <img
@@ -234,7 +256,9 @@ const HomePage = () => {
                           className="w-full h-full flex items-center justify-center"
                           style={{ backgroundColor: r.labelColor || "#e0e0e0" }}
                         >
-                          <span className="text-2xl font-black text-white/40 uppercase">{r.title[0]}</span>
+                          <span className="text-2xl font-black text-white/40 uppercase">
+                            {r.title[0]}
+                          </span>
                         </div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-white/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -278,9 +302,14 @@ const HomePage = () => {
                   Meet the Minds
                 </h2>
               </div>
-              <div className={`flex gap-6 md:gap-8 ${teamMembers.length > 4 ? "overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin" : "flex-wrap justify-center"}`}>
+              <div
+                className={`flex gap-6 md:gap-8 ${teamMembers.length > 4 ? "overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin" : "flex-wrap justify-center"}`}
+              >
                 {teamMembers.map((m) => (
-                  <div key={m.name} className={`group text-center ${teamMembers.length > 4 ? "min-w-[260px] md:min-w-[300px] snap-start" : "w-[260px] md:w-[300px]"}`}>
+                  <div
+                    key={m.name}
+                    className={`group text-center ${teamMembers.length > 4 ? "min-w-[260px] md:min-w-[300px] snap-start" : "w-[260px] md:w-[300px]"}`}
+                  >
                     <div className="aspect-square bg-zinc-200 rounded-2xl mb-6 overflow-hidden border border-black/5 transition-all duration-500 group-hover:shadow-2xl">
                       {m.photoUrl ? (
                         <img
@@ -290,7 +319,9 @@ const HomePage = () => {
                         />
                       ) : (
                         <div className="w-full h-full bg-zinc-300 flex items-center justify-center">
-                          <span className="text-4xl font-black text-zinc-400">{m.name[0]}</span>
+                          <span className="text-4xl font-black text-zinc-400">
+                            {m.name[0]}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -315,7 +346,7 @@ const HomePage = () => {
                 TRUSTED BY WORLD CLASS BRANDS
               </h3>
               <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
-                {partners.map((p) => (
+                {partners.map((p) =>
                   p.logoUrl ? (
                     <img
                       key={p.name}
@@ -330,8 +361,8 @@ const HomePage = () => {
                     >
                       {p.name}
                     </div>
-                  )
-                ))}
+                  ),
+                )}
               </div>
             </div>
           </section>
@@ -348,28 +379,36 @@ const HomePage = () => {
                       {aboutContent.tagline}
                     </h3>
                   )}
-                  {aboutContent.heading && (() => {
-                    const firstSpace = aboutContent.heading!.indexOf(" ");
-                    const firstWord = firstSpace === -1 ? aboutContent.heading! : aboutContent.heading!.slice(0, firstSpace);
-                    const rest = firstSpace === -1 ? "" : aboutContent.heading!.slice(firstSpace + 1);
-                    return (
-                      <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-tight text-black mb-6">
-                        <span className="text-black">{firstWord}</span>
-                        {rest && (
-                          <>
-                            <br />
-                            <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
-                              {rest}
-                            </span>
-                          </>
-                        )}
-                      </h2>
-                    );
-                  })()}
+                  {aboutContent.heading &&
+                    (() => {
+                      const firstSpace = aboutContent.heading!.indexOf(" ");
+                      const firstWord =
+                        firstSpace === -1
+                          ? aboutContent.heading!
+                          : aboutContent.heading!.slice(0, firstSpace);
+                      const rest =
+                        firstSpace === -1
+                          ? ""
+                          : aboutContent.heading!.slice(firstSpace + 1);
+                      return (
+                        <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-tight text-black mb-6">
+                          <span className="text-black">{firstWord}</span>
+                          {rest && (
+                            <>
+                              <br />
+                              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
+                                {rest}
+                              </span>
+                            </>
+                          )}
+                        </h2>
+                      );
+                    })()}
                   {aboutContent.description && (
                     <p className="text-base md:text-lg text-zinc-500 leading-relaxed mb-8">
                       {aboutContent.description.length > 120
-                        ? aboutContent.description.slice(0, 120).trimEnd() + "..."
+                        ? aboutContent.description.slice(0, 120).trimEnd() +
+                          "..."
                         : aboutContent.description}
                       <Link
                         href="/about"
@@ -383,7 +422,9 @@ const HomePage = () => {
                     <div className="grid grid-cols-2 gap-8 mb-10">
                       {aboutContent.projectsCount && (
                         <div>
-                          <p className="text-3xl font-black text-black">{aboutContent.projectsCount}</p>
+                          <p className="text-3xl font-black text-black">
+                            {aboutContent.projectsCount}
+                          </p>
                           <p className="text-zinc-500 text-xs uppercase tracking-widest">
                             {aboutContent.projectsLabel || "Projects Completed"}
                           </p>
@@ -391,7 +432,9 @@ const HomePage = () => {
                       )}
                       {aboutContent.awardsCount && (
                         <div>
-                          <p className="text-3xl font-black text-black">{aboutContent.awardsCount}</p>
+                          <p className="text-3xl font-black text-black">
+                            {aboutContent.awardsCount}
+                          </p>
                           <p className="text-zinc-500 text-xs uppercase tracking-widest">
                             {aboutContent.awardsLabel || "Awards Won"}
                           </p>

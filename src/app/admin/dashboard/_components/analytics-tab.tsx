@@ -6,6 +6,7 @@ type TaskAnalyticsItem = {
   taskId: number;
   title: string;
   taskType: string | null;
+  isRecurring: boolean;
   points: number;
   pickedUp: number;
   completedCount: number;
@@ -46,7 +47,8 @@ export default function AnalyticsTab() {
               Task Analytics
             </h2>
             <p className="text-xs text-zinc-400 font-medium mt-1">
-              Performance metrics for all tasks — Avg conversion: {avgConversion}%
+              Performance metrics for all tasks — Avg conversion:{" "}
+              {avgConversion}%
             </p>
           </div>
         </div>
@@ -94,9 +96,15 @@ export default function AnalyticsTab() {
                   <p className="text-sm font-bold text-black truncate">
                     {item.title}
                   </p>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 bg-zinc-100 px-2 py-1 rounded-full w-fit">
-                    {item.taskType ?? "—"}
-                  </span>
+                  {item.isRecurring ? (
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full w-fit">
+                      🔄 Daily
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-100 px-2 py-1 rounded-full w-fit">
+                      🔒 Once
+                    </span>
+                  )}
                   <span className="text-sm font-black text-amber-600 text-right">
                     {item.points}
                   </span>
@@ -141,12 +149,16 @@ export default function AnalyticsTab() {
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
-                    <span className="bg-zinc-100 px-2 py-0.5 rounded-full">
-                      {item.taskType ?? "—"}
-                    </span>
-                    <span>
-                      Picked: {item.pickedUp}
-                    </span>
+                    {item.isRecurring ? (
+                      <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        🔄 Daily
+                      </span>
+                    ) : (
+                      <span className="text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                        🔒 Once
+                      </span>
+                    )}
+                    <span>Picked: {item.pickedUp}</span>
                     <span className="text-emerald-600">
                       Done: {item.completedCount}
                     </span>

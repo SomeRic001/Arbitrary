@@ -47,9 +47,20 @@ export function TaskRow({ task, index, onDetails }: Props) {
           {task.description}
         </p>
 
-        {/* Platform */}
-        <div>
+        {/* Platform + Type */}
+        <div className="flex flex-col gap-1.5">
           <PlatformBadge platform={task.platform} />
+          {task.isRecurring ? (
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full w-fit">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Daily
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full w-fit">
+              <span className="text-[8px]">🔒</span>
+              Once
+            </span>
+          )}
         </div>
 
         {/* Created */}
@@ -110,7 +121,9 @@ export function TaskRow({ task, index, onDetails }: Props) {
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-black truncate">{task.title}</p>
+              <p className="text-sm font-bold text-black truncate">
+                {task.title}
+              </p>
               <span className="text-[10px] font-bold text-amber-600">
                 ✦ {task.rewardPoint ?? "—"} pts
               </span>
@@ -123,8 +136,19 @@ export function TaskRow({ task, index, onDetails }: Props) {
             Details →
           </button>
         </div>
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
+        <div className="flex items-center gap-2 text-xs text-zinc-400 flex-wrap">
           <PlatformBadge platform={task.platform} />
+          {task.isRecurring ? (
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Daily
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+              <span className="text-[8px]">🔒</span>
+              Once
+            </span>
+          )}
           <span className="text-zinc-300">·</span>
           <span>{task.created}</span>
           <span className="text-zinc-300">·</span>

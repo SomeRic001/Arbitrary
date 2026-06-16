@@ -17,6 +17,7 @@ interface Task {
   taskType: string | null;
   platform: string | null;
   difficulty: string;
+  isRecurring?: boolean;
 }
 
 interface TasksTabProps {
@@ -177,13 +178,20 @@ export default function TasksTab({
                           <h3 className="text-[13px] font-semibold text-slate-900 leading-snug truncate">
                             {task.title}
                           </h3>
-                          {task.difficulty && (
-                            <span
-                              className={`shrink-0 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
-                            >
-                              {task.difficulty}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {task.isRecurring && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                🔄 Daily
+                              </span>
+                            )}
+                            {task.difficulty && (
+                              <span
+                                className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}
+                              >
+                                {task.difficulty}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {task.description && (

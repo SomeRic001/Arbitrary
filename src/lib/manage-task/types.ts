@@ -26,6 +26,8 @@ export type Task = {
     shareThreshold?: number;
     expiresAt?: string;
     commentInstruction?: string;
+    /** true = Daily Refresh (resets at midnight), false = Permanent */
+    isRecurring?: boolean;
 };
 
 export type ModalMode = "add" | "edit";

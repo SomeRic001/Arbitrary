@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 
 type Props = {
-  onClose: () => void;
+  onClose?: () => void;
   title: string;
   subtitle?: string;
   headerExtras?: ReactNode;
@@ -30,7 +30,7 @@ export function ModalShell({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={onClose ?? undefined}
     >
       <motion.div
         initial={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -56,7 +56,7 @@ export function ModalShell({
               </h3>
             </div>
             <button
-              onClick={onClose}
+              onClick={onClose ?? undefined}
               className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors mt-0.5"
             >
               <svg
@@ -83,7 +83,11 @@ export function ModalShell({
 
         {/* SVG curved transition */}
         <div className="relative h-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shrink-0">
-          <svg className="absolute bottom-0 w-full h-4" viewBox="0 0 600 16" preserveAspectRatio="none">
+          <svg
+            className="absolute bottom-0 w-full h-4"
+            viewBox="0 0 600 16"
+            preserveAspectRatio="none"
+          >
             <path d="M0,16 Q300,-8 600,16" fill="white" />
           </svg>
         </div>
@@ -101,6 +105,6 @@ export function ModalShell({
         )}
       </motion.div>
     </motion.div>,
-    document.body
+    document.body,
   );
 }

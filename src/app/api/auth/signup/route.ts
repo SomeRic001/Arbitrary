@@ -24,7 +24,7 @@ const signupSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp({ headers: req.headers });
-    const rl = await rateLimit(`signup:ip:${ip}`, 5, 60 * 60_000);
+    const rl = await rateLimit(`signup:ip:${ip}`, 20, 60 * 60_000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many signups from this network. Try again later." },

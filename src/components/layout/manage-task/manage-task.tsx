@@ -139,15 +139,23 @@ export default function ManageTasks() {
     onError: (error: Error) => {
       const msg = error?.message ?? "";
       toast.error(msg || "Something went wrong. Please try again.", {
-        description: msg.includes("•") ? "Please fix the following fields:" : undefined,
+        description: msg.includes("•")
+          ? "Please fix the following fields:"
+          : undefined,
         duration: 6000,
       });
     },
   });
 
   const editMutation = useMutation({
-    mutationFn: async (payload: TaskFormPayload) => {
-      const res = await fetch(`/api/admin/tasks/${editingTask?.id}`, {
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: Task["id"];
+      payload: TaskFormPayload;
+    }) => {
+      const res = await fetch(`/api/admin/tasks/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -175,7 +183,9 @@ export default function ManageTasks() {
     onError: (error: Error) => {
       const msg = error?.message ?? "";
       toast.error(msg || "Something went wrong updating the task.", {
-        description: msg.includes("•") ? "Please fix the following fields:" : undefined,
+        description: msg.includes("•")
+          ? "Please fix the following fields:"
+          : undefined,
         duration: 6000,
       });
     },
@@ -211,7 +221,7 @@ export default function ManageTasks() {
 
   const handleFormSubmit = (payload: TaskFormPayload) => {
     if (editingTask) {
-      editMutation.mutate(payload);
+      editMutation.mutate({ id: editingTask.id, payload });
     } else {
       createMutation.mutate(payload);
     }
@@ -361,50 +371,70 @@ export default function ManageTasks() {
       {/* Pagination */}
       {!searchQuery && (
         <div className="flex items-center justify-between px-1 py-3">
-        <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-          Page {currentPage} of {totalPages}
-        </p>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage <= 1}
-            className="flex items-center gap-1 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-black/10 bg-white text-black hover:bg-zinc-50 disabled:opacity-30 disabled:pointer-events-none transition-all"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
-            </svg>
-            Prev
-          </button>
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-            const start = Math.max(1, currentPage - 2);
-            const pageNum = start + i;
-            if (pageNum > totalPages) return null;
-            return (
-              <button
-                key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
-                className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${
-                  pageNum === currentPage
-                    ? "bg-black text-[#FACC15] shadow-sm"
-                    : "bg-white border border-black/10 text-black hover:bg-zinc-50"
-                }`}
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="flex items-center gap-1 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-black/10 bg-white text-black hover:bg-zinc-50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {pageNum}
-              </button>
-            );
-          })}
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage >= totalPages}
-            className="flex items-center gap-1 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-black/10 bg-white text-black hover:bg-zinc-50 disabled:opacity-30 disabled:pointer-events-none transition-all"
-          >
-            Next
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Prev
+            </button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const start = Math.max(1, currentPage - 2);
+              const pageNum = start + i;
+              if (pageNum > totalPages) return null;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${
+                    pageNum === currentPage
+                      ? "bg-black text-[#FACC15] shadow-sm"
+                      : "bg-white border border-black/10 text-black hover:bg-zinc-50"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="flex items-center gap-1 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-black/10 bg-white text-black hover:bg-zinc-50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+            >
+              Next
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Details modal */}
@@ -413,9 +443,13 @@ export default function ManageTasks() {
           <TaskDetailsModal
             task={selectedTask}
             isDeleting={deleteMutation.isPending}
+            isSaving={editMutation.isPending}
             onClose={() => setSelectedTask(null)}
             onDelete={(id) => deleteMutation.mutate(id)}
             onEdit={openEditForm}
+            onSave={(id, payload) => {
+              editMutation.mutate({ id, payload: payload as TaskFormPayload });
+            }}
           />
         )}
       </AnimatePresence>

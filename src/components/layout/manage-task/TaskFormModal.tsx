@@ -41,6 +41,8 @@ export type TaskFormPayload = {
   shareThreshold: number;
   expiresAt: string | null;
   commentInstruction: string | null;
+  /** true = Daily Refresh (resets at midnight), false = Permanent */
+  isRecurring: boolean;
 };
 
 type Props = {
@@ -72,6 +74,9 @@ export function TaskFormModal({
   );
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [isFlash, setIsFlash] = useState<boolean>(task?.isFlash === true);
+  const [isRecurring, setIsRecurring] = useState<boolean>(
+    task?.isRecurring ?? false,
+  );
   const [rewardPoints, setRewardPoints] = useState<number | "">(
     mode === "edit" ? (task?.rewardPoint ?? "") : "",
   );
@@ -189,6 +194,7 @@ export function TaskFormModal({
           : null,
       commentInstruction:
         (formData.get("commentInstruction") as string) || null,
+      isRecurring,
     });
   };
 
@@ -813,6 +819,96 @@ export function TaskFormModal({
                   </motion.div>
                 )}
               </AnimatePresence>
+            </div>
+
+            {/* SECTION: Task Type — Daily Refresh or Permanent */}
+            <div className={sectionClass}>
+              <div className={sectionHeaderClass}>
+                <CheckCircle2 className="w-4 h-4 text-[#FACC15]" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-black">
+                  Task Type <span className="text-red-400">*</span>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Permanent */}
+                <div
+                  onClick={() => setIsRecurring(false)}
+                  className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
+                    !isRecurring
+                      ? "border-[#FACC15] bg-[#FACC15]/5 shadow-inner"
+                      : "border-black/5 bg-zinc-50 hover:border-black/10"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-2 rounded-lg ${!isRecurring ? "bg-[#FACC15] text-black" : "bg-zinc-200 text-zinc-500"}`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider text-black">
+                        Permanent
+                      </span>
+                    </div>
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        !isRecurring
+                          ? "border-[#FACC15] bg-[#FACC15]"
+                          : "border-zinc-300 bg-white"
+                      }`}
+                    >
+                      {!isRecurring && (
+                        <CheckCircle2 className="w-3 h-3 text-black" />
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 font-medium">
+                    Users can complete this task only once. After completion it
+                    remains permanently completed and cannot be repeated.
+                  </p>
+                </div>
+
+                {/* Daily Refresh */}
+                <div
+                  onClick={() => setIsRecurring(true)}
+                  className={`group cursor-pointer p-4 rounded-2xl border-2 transition-all ${
+                    isRecurring
+                      ? "border-emerald-400 bg-emerald-50/60 shadow-inner"
+                      : "border-black/5 bg-zinc-50 hover:border-black/10"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-2 rounded-lg ${isRecurring ? "bg-emerald-500 text-white" : "bg-zinc-200 text-zinc-500"}`}
+                      >
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider text-black">
+                        Daily Refresh
+                      </span>
+                    </div>
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        isRecurring
+                          ? "border-emerald-500 bg-emerald-500"
+                          : "border-zinc-300 bg-white"
+                      }`}
+                    >
+                      {isRecurring && (
+                        <CheckCircle2 className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 font-medium">
+                    Users can complete this task once per day. The task
+                    automatically resets at midnight and becomes available again
+                    the next day. All completion history is retained for
+                    analytics.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Actions */}

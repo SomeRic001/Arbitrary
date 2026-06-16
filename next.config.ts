@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['collector-reasonable-terms-sorted.trycloudflare.com', 'success-roses-exceptional-journals.trycloudflare.com'],
-  
+  allowedDevOrigins: ['hebrew-dated-instruction-ranger.trycloudflare.com', 'success-roses-exceptional-journals.trycloudflare.com'],
+
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.googleusercontent.com' },

@@ -11,7 +11,14 @@ type Props = {
   searchQuery: string;
 };
 
-const COLUMNS = ["Task", "Description", "Platform", "Created", "Users", ""];
+const COLUMNS = [
+  "Task",
+  "Description",
+  "Platform / Type",
+  "Created",
+  "Users",
+  "",
+];
 
 export function TaskTable({
   tasks,
@@ -52,7 +59,9 @@ export function TaskTable({
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <div className="w-7 h-7 border-2 border-zinc-200 border-t-slate-900 rounded-full animate-spin" />
-              <p className="text-sm text-zinc-400 font-medium">Loading tasks...</p>
+              <p className="text-sm text-zinc-400 font-medium">
+                Loading tasks...
+              </p>
             </div>
           ) : tasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-zinc-400 fade-in-up">
@@ -73,10 +82,16 @@ export function TaskTable({
               </div>
               <div className="text-center">
                 <p className="text-sm font-black uppercase tracking-wider text-zinc-500">
-                  {searchQuery ? "No matching tasks" : activeTab === "all" ? "No tasks yet" : `No ${activeTab} tasks yet`}
+                  {searchQuery
+                    ? "No matching tasks"
+                    : activeTab === "all"
+                      ? "No tasks yet"
+                      : `No ${activeTab} tasks yet`}
                 </p>
                 <p className="text-xs text-zinc-300 font-medium mt-1">
-                  {searchQuery ? "Try a different search term" : 'Click "Add Task" to create one'}
+                  {searchQuery
+                    ? "Try a different search term"
+                    : 'Click "Add Task" to create one'}
                 </p>
               </div>
             </div>
@@ -99,7 +114,8 @@ export function TaskTable({
       {tasks.length > 0 && (
         <div className="px-8 py-4 border-t border-black/5 bg-zinc-50/50 flex items-center justify-between">
           <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-            {tasks.length} {activeTab === "all" ? "" : activeTab + " "}{tasks.length === 1 ? "task" : "tasks"}
+            {tasks.length} {activeTab === "all" ? "" : activeTab + " "}
+            {tasks.length === 1 ? "task" : "tasks"}
           </p>
         </div>
       )}
