@@ -8,15 +8,29 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface UserInfo {
   name: string;
   email: string;
 }
 
+// Shared rise animation variants
+const riseVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: (delay = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay,
+      duration: 0.55,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  }),
+};
+
 export default function TiltPage() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [submitted, setSubmitted] = useState(false);
@@ -25,10 +39,8 @@ export default function TiltPage() {
   const [existing, setExisting] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     document.title = "Register | Tilt Event";
 
-    // Auth check: GET /api/tilt/me returns 200+user or 401
     fetch("/api/tilt/me")
       .then(async (r) => {
         if (r.status === 401) {
@@ -91,17 +103,17 @@ export default function TiltPage() {
   if (isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
           style={{
             width: "40px",
             height: "40px",
             borderRadius: "50%",
             border: "3px solid rgba(200,230,60,0.15)",
             borderTop: "3px solid #c8e63c",
-            animation: "spin 0.8s linear infinite",
           }}
         />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -109,8 +121,16 @@ export default function TiltPage() {
   // ── Success ───────────────────────────────────────────────────────────────
   if (submitted) {
     return (
+<<<<<<< Updated upstream
       <div className="tilt-noise min-h-screen flex items-center justify-center px-4">
         <div
+=======
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={riseVariants}
+>>>>>>> Stashed changes
           className="relative z-10 w-full max-w-sm text-center"
           style={{
             display: "flex",
@@ -119,7 +139,10 @@ export default function TiltPage() {
             gap: "24px",
           }}
         >
-          <div
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             style={{
               width: "80px",
               height: "80px",
@@ -144,8 +167,13 @@ export default function TiltPage() {
                 d="M4.5 12.75l6 6 9-13.5"
               />
             </svg>
-          </div>
-          <div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+          >
             <h1
               style={{
                 color: "#fff",
@@ -167,35 +195,47 @@ export default function TiltPage() {
             >
               We&apos;ve received your details. See you at Tilt.
             </p>
-          </div>
-          <Link
-            href="/"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "12px 28px",
-              background: "#c8e63c",
-              color: "#0e1f10",
-              fontSize: "12px",
-              fontWeight: 900,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              borderRadius: "10px",
-              textDecoration: "none",
-              transition: "transform 0.15s",
-            }}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
           >
-            Back to Arbitrary
-          </Link>
-        </div>
+            <Link
+              href="/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "12px 28px",
+                background: "#c8e63c",
+                color: "#0e1f10",
+                fontSize: "12px",
+                fontWeight: 900,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                borderRadius: "10px",
+                textDecoration: "none",
+                transition: "transform 0.15s",
+              }}
+            >
+              Back to Arbitrary
+            </Link>
+          </motion.div>
+        </motion.div>
       </div>
     );
   }
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
+<<<<<<< Updated upstream
     <div className="tilt-noise min-h-screen flex items-center justify-center px-4 py-14 relative overflow-hidden">
+=======
+    <div className="min-h-screen flex items-center justify-center px-4 py-14 relative overflow-hidden">
+      {/* Ambient glow */}
+>>>>>>> Stashed changes
       <div
         style={{
           position: "absolute",
@@ -211,13 +251,6 @@ export default function TiltPage() {
       />
 
       <style>{`
-        @keyframes riseUp {
-          from { opacity: 0; transform: translateY(28px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .rise  { animation: riseUp 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
-        .rise2 { animation: riseUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.1s forwards; opacity: 0; }
-
         .tilt-input {
           width: 100%;
           padding: 12px 16px;
@@ -229,16 +262,14 @@ export default function TiltPage() {
           outline: none;
           transition: border-color 0.2s, background 0.2s;
           font-family: inherit;
+          box-sizing: border-box;
         }
         .tilt-input::placeholder { color: rgba(255,255,255,0.28); }
         .tilt-input:focus {
           border-color: #c8e63c;
           background: rgba(200,230,60,0.06);
         }
-        .tilt-textarea {
-          resize: none;
-          min-height: 80px;
-        }
+        .tilt-textarea { resize: none; min-height: 80px; }
 
         .tilt-label {
           display: block;
@@ -264,19 +295,27 @@ export default function TiltPage() {
           color: #0e1f10;
           border: none;
           cursor: pointer;
-          transition: transform 0.15s, opacity 0.2s;
           margin-top: 8px;
           font-family: inherit;
         }
-        .tilt-btn:hover { transform: scale(1.015); }
-        .tilt-btn:active { transform: scale(0.985); }
-        .tilt-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .tilt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       `}</style>
 
       <div className="relative z-10 w-full max-w-sm">
+<<<<<<< Updated upstream
         {/* Header */}
         <div className={`text-center mb-10 ${mounted ? "rise" : "opacity-0"}`}>
           <h1
+=======
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          custom={0}
+          variants={riseVariants}
+        >
+          <div
+>>>>>>> Stashed changes
             style={{
               color: "#fff",
               fontSize: "28px",
@@ -286,6 +325,7 @@ export default function TiltPage() {
               margin: 0,
             }}
           >
+<<<<<<< Updated upstream
             tilt
           </h1>
           <p
@@ -301,6 +341,9 @@ export default function TiltPage() {
 
           {/* Logged-in user badge + logout */}
           {userInfo && (
+=======
+            {/* Red stripe accent */}
+>>>>>>> Stashed changes
             <div
               style={{
                 display: "flex",
@@ -309,14 +352,29 @@ export default function TiltPage() {
                 gap: "8px",
                 marginTop: "16px",
               }}
+<<<<<<< Updated upstream
             >
               <span
+=======
+            />
+
+            <div className="flex flex-col items-center text-center gap-3 relative z-10">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{
+                  delay: 0.15,
+                  duration: 0.4,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+>>>>>>> Stashed changes
                 style={{
                   fontSize: "11px",
                   color: "rgba(200,230,60,0.45)",
                   fontWeight: 600,
                 }}
               >
+<<<<<<< Updated upstream
                 {userInfo.name}
               </span>
               <button
@@ -343,108 +401,263 @@ export default function TiltPage() {
             </div>
           )}
         </div>
+=======
+                <span
+                  style={{
+                    color: "#0e1f10",
+                    fontWeight: 900,
+                    fontSize: "30px",
+                    lineHeight: 1,
+                  }}
+                >
+                  ~
+                </span>
+              </motion.div>
 
-        {/* Form body */}
-        <div
-          className={mounted ? "rise2" : "opacity-0"}
+              <div>
+                <h1
+                  style={{
+                    color: "#fff",
+                    fontSize: "24px",
+                    fontWeight: 900,
+                    letterSpacing: "0.25em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                  }}
+                >
+                  tilt
+                </h1>
+                <p
+                  style={{
+                    color: "rgba(200,230,60,0.65)",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    letterSpacing: "0.3em",
+                    textTransform: "uppercase",
+                    margin: "5px 0 0",
+                  }}
+                >
+                  {existing ? "Update your registration" : "Event Registration"}
+                </p>
+              </div>
+            </div>
+
+            {/* Logged-in user badge + logout */}
+            {userInfo && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "12px",
+                  right: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: "rgba(200,230,60,0.55)",
+                    fontWeight: 600,
+                    maxWidth: "100px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {userInfo.name}
+                </span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleLogout}
+                  title="Logout"
+                  style={{
+                    background: "rgba(212,43,43,0.15)",
+                    border: "1px solid rgba(212,43,43,0.3)",
+                    borderRadius: "6px",
+                    padding: "3px 7px",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    color: "#d42b2b",
+                    cursor: "pointer",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Logout
+                </motion.button>
+              </div>
+            )}
+          </div>
+
+          {/* Red-stripe seam */}
+          <div
+            style={{
+              height: "8px",
+              background: "linear-gradient(135deg, #1a4a1f 0%, #0e2b10 100%)",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: 0,
+                right: 0,
+                height: "2px",
+                background: "#d42b2b",
+                transform: "translateY(-50%)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: "8px",
+                background: "#0e1f10",
+                borderRadius: "12px 12px 0 0",
+              }}
+            />
+          </div>
+        </motion.div>
+>>>>>>> Stashed changes
+
+        {/* ── Form body ────────────────────────────────────────────────────── */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          custom={0.1}
+          variants={riseVariants}
           style={{
             padding: "0",
           }}
         >
           {/* Pre-fill notice */}
-          {existing && (
-            <div
-              style={{
-                background: "rgba(200,230,60,0.07)",
-                border: "1px solid rgba(200,230,60,0.2)",
-                borderRadius: "10px",
-                padding: "10px 14px",
-                marginBottom: "20px",
-                fontSize: "12px",
-                color: "rgba(200,230,60,0.7)",
-                fontWeight: 600,
-              }}
-            >
-              Your previous registration is pre-filled. Update and submit to
-              save changes.
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                background: "rgba(212,43,43,0.12)",
-                border: "1px solid rgba(212,43,43,0.35)",
-                borderRadius: "10px",
-                padding: "10px 14px",
-                marginBottom: "20px",
-              }}
-            >
-              <span
-                style={{ color: "#e05555", fontSize: "12px", fontWeight: 600 }}
+          <AnimatePresence>
+            {existing && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  background: "rgba(200,230,60,0.07)",
+                  border: "1px solid rgba(200,230,60,0.2)",
+                  borderRadius: "10px",
+                  padding: "10px 14px",
+                  marginBottom: "20px",
+                  fontSize: "12px",
+                  color: "rgba(200,230,60,0.7)",
+                  fontWeight: 600,
+                }}
               >
-                {error}
-              </span>
-            </div>
-          )}
+                Your previous registration is pre-filled. Update and submit to
+                save changes.
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Error banner */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                transition={{ duration: 0.25 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  background: "rgba(212,43,43,0.12)",
+                  border: "1px solid rgba(212,43,43,0.35)",
+                  borderRadius: "10px",
+                  padding: "10px 14px",
+                  marginBottom: "20px",
+                  overflow: "hidden",
+                }}
+              >
+                <span
+                  style={{
+                    color: "#e05555",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {error}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form
             onSubmit={handleSubmit}
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
-            <div>
-              <label htmlFor="name" className="tilt-label">
-                Full Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                placeholder="Your full name"
-                autoComplete="name"
-                defaultValue={existing?.name ?? userInfo?.name ?? ""}
-                className="tilt-input"
-              />
-            </div>
+            {[
+              {
+                id: "name",
+                label: "Full Name",
+                type: "text",
+                placeholder: "Your full name",
+                autoComplete: "name",
+                defaultValue: existing?.name ?? userInfo?.name ?? "",
+              },
+              {
+                id: "email",
+                label: "Email",
+                type: "email",
+                placeholder: "your@email.com",
+                autoComplete: "email",
+                defaultValue: existing?.email ?? userInfo?.email ?? "",
+              },
+              {
+                id: "phone",
+                label: "Phone Number",
+                type: "tel",
+                placeholder: "+977 98XXXXXXXX",
+                autoComplete: "tel",
+                defaultValue: existing?.phone ?? "",
+              },
+            ].map((field, i) => (
+              <motion.div
+                key={field.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.15 + i * 0.06,
+                  duration: 0.4,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <label htmlFor={field.id} className="tilt-label">
+                  {field.label}
+                </label>
+                <input
+                  id={field.id}
+                  name={field.id}
+                  type={field.type}
+                  required
+                  placeholder={field.placeholder}
+                  autoComplete={field.autoComplete}
+                  defaultValue={field.defaultValue}
+                  className="tilt-input"
+                />
+              </motion.div>
+            ))}
 
-            <div>
-              <label htmlFor="email" className="tilt-label">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="your@email.com"
-                autoComplete="email"
-                defaultValue={existing?.email ?? userInfo?.email ?? ""}
-                className="tilt-input"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="tilt-label">
-                Phone Number
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                required
-                placeholder="+977 98XXXXXXXX"
-                autoComplete="tel"
-                defaultValue={existing?.phone ?? ""}
-                className="tilt-input"
-              />
-            </div>
-
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.33,
+                duration: 0.4,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
               <label htmlFor="address" className="tilt-label">
                 Address
               </label>
@@ -457,19 +670,42 @@ export default function TiltPage() {
                 defaultValue={existing?.address ?? ""}
                 className="tilt-input tilt-textarea"
               />
-            </div>
+            </motion.div>
 
-            <button type="submit" disabled={isLoading} className="tilt-btn">
-              {isLoading
-                ? "Submitting…"
-                : existing
-                  ? "Update Registration"
-                  : "Register for tilt"}
-            </button>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.39,
+                duration: 0.4,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                className="tilt-btn"
+                whileHover={isLoading ? {} : { scale: 1.015 }}
+                whileTap={isLoading ? {} : { scale: 0.985 }}
+                transition={{ duration: 0.15 }}
+              >
+                {isLoading
+                  ? "Submitting…"
+                  : existing
+                    ? "Update Registration"
+                    : "Register for tilt"}
+              </motion.button>
+            </motion.div>
           </form>
-        </div>
+        </motion.div>
 
-        <div className="text-center mt-6">
+        {/* Back link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.4 }}
+          className="text-center mt-6"
+        >
           <Link
             href="/"
             style={{
@@ -482,11 +718,18 @@ export default function TiltPage() {
               textTransform: "uppercase",
               color: "rgba(200,230,60,0.3)",
               textDecoration: "none",
+              transition: "color 0.2s",
             }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "rgba(200,230,60,0.7)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "rgba(200,230,60,0.3)")
+            }
           >
             <span>←</span> Back to Arbitrary
           </Link>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
