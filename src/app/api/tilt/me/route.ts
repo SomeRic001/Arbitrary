@@ -1,10 +1,15 @@
 // src/app/api/tilt/me/route.ts
-// Returns the current authenticated tilt user + any existing registration.
-// Used by /tilt page to pre-fill the form and check auth without relying on httpOnly cookie directly.
+//
+// Returns the current authenticated Tilt user + any existing registration.
+// Used by /tilt page to optionally pre-fill the form.
+//
+// Returns 200 with { user: null, registration: null } for unauthenticated visitors
+// (rather than 401) because /tilt is now a public page.
+// Still returns 401 only when a token is present but invalid/expired.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tiltDb } from '@/src/db/tilt-db';
-import { tiltUsersTable, tiltRegistrationsTable } from '@/src/db/tilt-schema';
+import { tiltRegistrationsTable } from '@/src/db/tilt-schema';
 import { eq } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
 
@@ -15,15 +20,18 @@ const TILT_JWT_SECRET = new TextEncoder().encode(
 export async function GET(req: NextRequest) {
     try {
         const token = req.cookies.get('tilt_token')?.value;
+
+        // No token — guest visitor (public page, not an error)
         if (!token) {
-            return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+            return NextResponse.json({ user: null, registration: null }, { status: 200 });
         }
 
-        let payload: { id: number; email: string; name: string,role: string };
+        let payload: { id: number; email: string; name: string; role: string };
         try {
             const { payload: p } = await jwtVerify(token, TILT_JWT_SECRET);
             payload = p as typeof payload;
         } catch {
+            // Token present but invalid/expired → tell the client
             return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
         }
 
@@ -34,7 +42,7 @@ export async function GET(req: NextRequest) {
             .where(eq(tiltRegistrationsTable.userId, payload.id));
 
         return NextResponse.json({
-            user: { id: payload.id, name: payload.name, email: payload.email,role:payload.role },
+            user: { id: payload.id, name: payload.name, email: payload.email, role: payload.role },
             registration: registration
                 ? {
                     name: registration.name,
