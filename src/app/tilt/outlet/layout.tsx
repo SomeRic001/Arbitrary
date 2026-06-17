@@ -22,7 +22,11 @@ export default function TiltOutletLayout({
           return;
         }
         const data = await r.json();
-        if (data.user?.role === "SUPERADMIN") {
+        if (!data.user) {
+          router.replace("/tilt/login");
+          return;
+        }
+        if (data.user.role === "SUPERADMIN") {
           router.replace("/tilt/admin");
           return;
         }

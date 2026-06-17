@@ -51,6 +51,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(response, { status: 401 });
     }
 
+    if (payload.role !== "outlet") {
+      const response: ErrorResponse = {
+        error: "Outlet session is required",
+        code: "UNAUTHORIZED",
+      };
+      return NextResponse.json(response, { status: 403 });
+    }
+
     const outletId = String(payload.id ?? "").trim();
     if (!outletId) {
       const response: ErrorResponse = {
