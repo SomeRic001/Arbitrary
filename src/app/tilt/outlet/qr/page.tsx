@@ -1,17 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
+
+type QrStatus = "active" | "used" | "expired" | null;
 
 export default function TiltOutletQrPage() {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrError, setQrError] = useState("");
   const [qrExpiresAt, setQrExpiresAt] = useState("");
   const [qrImageDataUrl, setQrImageDataUrl] = useState("");
+  const [qrToken, setQrToken] = useState<string | null>(null);
+  const [qrStatus, setQrStatus] = useState<QrStatus>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearPoll = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  const pollStatus = useCallback(async (token: string) => {
+    try {
+      const res = await fetch(`/api/tilt/qr/status?token=${encodeURIComponent(token)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setQrStatus(data.status);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
-    document.title = "Generate QR | Tiltyourmusic";
-  }, []);
+    document.title = "Generate QR | Tilt Your Music";
+    return () => clearPoll();
+  }, [clearPoll]);
 
   const formatDateTime = (d: string) => {
     if (!d) return "";
@@ -27,6 +51,8 @@ export default function TiltOutletQrPage() {
   const handleGenerateQr = async () => {
     setQrLoading(true);
     setQrError("");
+    clearPoll();
+    setQrStatus(null);
 
     try {
       const res = await fetch("/api/tilt/qr", {
@@ -58,6 +84,7 @@ export default function TiltOutletQrPage() {
         return;
       }
 
+      const token = typeof json.token === "string" ? json.token : "";
       const generatedQrUrl = typeof json.qr_url === "string" ? json.qr_url : "";
       const expiresAt =
         typeof json.expires_at === "string" ? json.expires_at : "";
@@ -74,14 +101,23 @@ export default function TiltOutletQrPage() {
         color: { dark: "#0e1f10", light: "#ffffff" },
       });
 
+      setQrToken(token);
       setQrExpiresAt(expiresAt);
       setQrImageDataUrl(imageDataUrl);
+      setQrStatus("active");
+
+      if (token) {
+        pollStatus(token);
+        intervalRef.current = setInterval(() => pollStatus(token), 5000);
+      }
     } catch {
       setQrError("Network error while generating QR. Please try again.");
     } finally {
       setQrLoading(false);
     }
   };
+
+  const statusLabel = qrStatus === "used" ? "Used" : qrStatus === "expired" ? "Expired" : null;
 
   return (
     <div>
@@ -92,6 +128,14 @@ export default function TiltOutletQrPage() {
                 }
                 .rise  { animation: riseUp 0.5s cubic-bezier(0.22,1,0.36,1) forwards; }
                 .rise2 { animation: riseUp 0.5s cubic-bezier(0.22,1,0.36,1) 0.08s forwards; opacity: 0; }
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50%      { opacity: 0.5; }
+                }
+                @keyframes fadeOverlay {
+                    from { opacity: 0; }
+                    to   { opacity: 1; }
+                }
             `}</style>
 
       <div className="rise">
@@ -132,20 +176,40 @@ export default function TiltOutletQrPage() {
           </div>
         ) : null}
 
-        <button
-          type="button"
-          onClick={handleGenerateQr}
-          disabled={qrLoading}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ background: "#c8e63c", color: "#0e1f10" }}
-        >
-          {qrLoading ? "Generating…" : "Generate QR"}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={handleGenerateQr}
+            disabled={qrLoading}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: "#c8e63c", color: "#0e1f10" }}
+          >
+            {qrLoading ? "Generating…" : "Generate QR"}
+          </button>
+
+          {qrStatus === "active" && (
+            <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "rgba(200,230,60,0.6)" }}>
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  background: "#c8e63c",
+                  display: "inline-block",
+                  boxShadow: "0 0 8px rgba(200,230,60,0.6)",
+                  animation: "pulse 1.5s ease-in-out infinite",
+                }}
+              />
+              Active
+            </span>
+          )}
+        </div>
 
         {qrImageDataUrl ? (
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 items-start">
             <div
-              className="rounded-xl p-3 border"
+              className="relative rounded-xl p-3 border overflow-hidden"
               style={{
                 background: "#fff",
                 borderColor: "rgba(200,230,60,0.2)",
@@ -159,6 +223,35 @@ export default function TiltOutletQrPage() {
                 unoptimized
                 className="w-full h-auto rounded"
               />
+
+              {statusLabel && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: statusLabel === "Used"
+                      ? "#2a1a1a"
+                      : "#1a1a1a",
+                    animation: "fadeOverlay 0.3s ease forwards",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "28px",
+                      fontWeight: 900,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      color: statusLabel === "Used" ? "#d42b2b" : "rgba(255,255,255,0.7)",
+                      textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    {statusLabel}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -176,6 +269,17 @@ export default function TiltOutletQrPage() {
                   {formatDateTime(qrExpiresAt)}
                 </p>
               </div>
+
+              {qrStatus === "used" && (
+                <div className="text-xs font-semibold" style={{ color: "#d42b2b" }}>
+                  This QR has been scanned and is no longer valid.
+                </div>
+              )}
+              {qrStatus === "expired" && (
+                <div className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  This QR has expired. Generate a new one.
+                </div>
+              )}
             </div>
           </div>
         ) : null}

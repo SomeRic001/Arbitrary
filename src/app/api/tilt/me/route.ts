@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tiltDb } from '@/src/db/tilt-db';
-import { tiltRegistrationsTable } from '@/src/db/tilt-schema';
+import { tiltRegistrationsTable, tiltUsersTable } from '@/src/db/tilt-schema';
 import { eq } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
 
@@ -35,6 +35,17 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
         }
 
+        const [dbUser] = await tiltDb
+            .select({
+                id: tiltUsersTable.id,
+                name: tiltUsersTable.name,
+                email: tiltUsersTable.email,
+                role: tiltUsersTable.role,
+                address: tiltUsersTable.address,
+            })
+            .from(tiltUsersTable)
+            .where(eq(tiltUsersTable.id, payload.id));
+
         // Fetch existing registration if any
         const [registration] = await tiltDb
             .select()
@@ -42,7 +53,7 @@ export async function GET(req: NextRequest) {
             .where(eq(tiltRegistrationsTable.userId, payload.id));
 
         return NextResponse.json({
-            user: { id: payload.id, name: payload.name, email: payload.email, role: payload.role },
+            user: dbUser ?? { id: payload.id, name: payload.name, email: payload.email, role: payload.role, address: null },
             registration: registration
                 ? {
                     name: registration.name,

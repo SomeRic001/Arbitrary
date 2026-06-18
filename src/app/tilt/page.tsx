@@ -221,6 +221,8 @@ export default function TiltPage() {
         const messageByCode: Record<string, string> = {
           SESSION_REQUIRED:
             "Your session is missing or expired. Please scan the QR again.",
+          SESSION_EXPIRED:
+            "Your session has expired. Please scan the QR again.",
           INVALID_FULL_NAME: "Please enter your full name.",
           INVALID_EMAIL: "Please enter a valid email address.",
           DISPOSABLE_EMAIL: "Disposable email addresses are not allowed.",
@@ -403,7 +405,7 @@ export default function TiltPage() {
                   lineHeight: 1,
                 }}
               >
-                ~
+                T
               </span>
             </motion.div>
 
@@ -418,7 +420,7 @@ export default function TiltPage() {
                   margin: 0,
                 }}
               >
-                tilt
+                Tilt Your Music
               </h1>
               <p
                 style={{

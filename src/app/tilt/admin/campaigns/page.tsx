@@ -91,7 +91,7 @@ export default function TiltAdminCampaignsPage() {
   };
 
   useEffect(() => {
-    document.title = "Campaigns | Tilt Admin";
+    document.title = "Campaigns | Tilt Your Music";
 
     fetch("/api/tilt/admin/campaigns")
       .then(async (res) => {
@@ -200,6 +200,54 @@ export default function TiltAdminCampaignsPage() {
     setEditName("");
     setEditEndsAt("");
     setRowError("");
+  };
+
+  const durationPreview = useMemo(() => {
+    if (!createStartsAt || !createEndsAt) return null;
+    const start = new Date(createStartsAt);
+    const end = new Date(createEndsAt);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    const diffMs = end.getTime() - start.getTime();
+    if (diffMs <= 0) return { text: "End must be after start", isError: true };
+    const total = Math.round(diffMs / 60000);
+    const days = Math.floor(total / 1440);
+    const hours = Math.floor((total % 1440) / 60);
+    const mins = total % 60;
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
+    return { text: `Duration: ${parts.join(" ")}`, isError: false };
+  }, [createStartsAt, createEndsAt]);
+
+  const handleQuickEnd = (mode: string) => {
+    if (!createStartsAt) return;
+    const start = new Date(createStartsAt);
+    let end: Date;
+    switch (mode) {
+      case "1h":
+        end = new Date(start.getTime() + 60 * 60000);
+        break;
+      case "2h":
+        end = new Date(start.getTime() + 120 * 60000);
+        break;
+      case "4h":
+        end = new Date(start.getTime() + 240 * 60000);
+        break;
+      case "1d":
+        end = new Date(start.getTime() + 1440 * 60000);
+        break;
+      case "1w":
+        end = new Date(start.getTime() + 7 * 1440 * 60000);
+        break;
+      case "1mo":
+        end = new Date(start);
+        end.setMonth(end.getMonth() + 1);
+        break;
+      default:
+        return;
+    }
+    setCreateEndsAt(toLocalInputValue(end.toISOString()));
   };
 
   const handleSave = async (campaign: Campaign) => {
@@ -321,7 +369,7 @@ export default function TiltAdminCampaignsPage() {
 
         <form
           onSubmit={handleCreateCampaign}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"
         >
           <Field label="Name">
             <input
@@ -354,7 +402,46 @@ export default function TiltAdminCampaignsPage() {
             />
           </Field>
 
-          <div className="md:col-span-3 flex items-center gap-3">
+          {durationPreview ? (
+            <p
+              className="text-[10px] font-medium mt-1"
+              style={
+                durationPreview.isError
+                  ? { color: "#fca5a5" }
+                  : { color: "rgba(200,230,60,0.55)" }
+              }
+            >
+              {durationPreview.text}
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {[
+              { label: "+1h", mode: "1h" },
+              { label: "+2h", mode: "2h" },
+              { label: "+4h", mode: "4h" },
+              { label: "+1d", mode: "1d" },
+              { label: "+1w", mode: "1w" },
+              { label: "+1mo", mode: "1mo" },
+            ].map((btn) => (
+              <button
+                key={btn.mode}
+                type="button"
+                onClick={() => handleQuickEnd(btn.mode)}
+                disabled={!createStartsAt}
+                className="px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all duration-150 hover:scale-[1.03] disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  background: "rgba(200,230,60,0.1)",
+                  border: "1px solid rgba(200,230,60,0.2)",
+                  color: "rgba(200,230,60,0.7)",
+                }}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="md:col-span-3 flex items-center gap-3 self-end">
             <button
               type="submit"
               disabled={isCreating}
@@ -380,10 +467,10 @@ export default function TiltAdminCampaignsPage() {
       ) : null}
 
       <div
-        className="overflow-hidden rounded-2xl border"
+        className="overflow-x-auto rounded-2xl border"
         style={{ borderColor: "rgba(200,230,60,0.08)" }}
       >
-        <table className="w-full text-left">
+        <table className="w-full text-left" style={{ minWidth: "650px" }}>
           <thead>
             <tr style={{ background: "rgba(200,230,60,0.03)" }}>
               <Th>Name</Th>

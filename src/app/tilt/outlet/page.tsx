@@ -1,24 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-
-interface Registration {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  submittedAt?: string;
-}
 
 export default function TiltOutletPage() {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
-  const [registration, setRegistration] = useState<Registration | null>(null);
-  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
+  const [userAddress, setUserAddress] = useState("");
+  const [scans, setScans] = useState(0);
+  const [submissions, setSubmissions] = useState(0);
 
   useEffect(() => {
-    document.title = "Dashboard | Tiltyourmusic";
+    document.title = "Dashboard | Tilt Your Music";
 
     fetch("/api/tilt/me")
       .then(async (r) => {
@@ -27,23 +19,20 @@ export default function TiltOutletPage() {
         if (data.user) {
           setUserName(data.user.name ?? "");
           setUserEmail(data.user.email ?? "");
-        }
-        if (data.registration) {
-          setRegistration(data.registration);
-          setSubmittedAt(data.registration.submittedAt ?? null);
+          setUserAddress(data.user.address ?? "");
         }
       })
       .catch(() => {});
-  }, []);
 
-  const formatDate = (d: string | null) => {
-    if (!d) return "";
-    return new Date(d).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+    fetch("/api/tilt/outlet/stats")
+      .then(async (r) => {
+        if (!r.ok) return;
+        const data = await r.json();
+        setScans(data.scans ?? 0);
+        setSubmissions(data.submissions ?? 0);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div>
@@ -73,6 +62,27 @@ export default function TiltOutletPage() {
         }}
       />
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 rise2">
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{ borderColor: "rgba(200,230,60,0.1)", background: "rgba(255,255,255,0.02)" }}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "rgba(200,230,60,0.45)" }}>
+            Scans
+          </p>
+          <p className="text-2xl font-black text-white mt-1">{scans}</p>
+        </div>
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{ borderColor: "rgba(200,230,60,0.1)", background: "rgba(255,255,255,0.02)" }}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "rgba(200,230,60,0.45)" }}>
+            Submissions
+          </p>
+          <p className="text-2xl font-black text-white mt-1">{submissions}</p>
+        </div>
+      </div>
+
       <div className="rise2">
         <div
           className="rounded-2xl border p-6"
@@ -101,99 +111,60 @@ export default function TiltOutletPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-white">Registration</p>
+              <p className="text-sm font-bold text-white">Business</p>
               <p
                 className="text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: "rgba(200,230,60,0.4)" }}
               >
-                {registration ? "Completed" : "Not yet submitted"}
+                Outlet profile
               </p>
             </div>
           </div>
 
-          {registration ? (
-            <>
-              <div
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-4"
-                style={{
-                  background: "rgba(200,230,60,0.08)",
-                  border: "1px solid rgba(200,230,60,0.15)",
-                  color: "#c8e63c",
-                }}
-              >
-                <span
-                  style={{
-                    width: "5px",
-                    height: "5px",
-                    borderRadius: "50%",
-                    background: "#c8e63c",
-                    display: "inline-block",
-                    boxShadow: "0 0 6px rgba(200,230,60,0.5)",
-                  }}
-                />
-                Registered — {formatDate(submittedAt)}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                <div>
-                  <p
-                    className="text-[9px] font-bold uppercase tracking-widest mb-1"
-                    style={{ color: "rgba(255,255,255,0.2)" }}
-                  >
-                    Phone
-                  </p>
-                  <p
-                    className="text-sm"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
-                  >
-                    {registration.phone}
-                  </p>
-                </div>
-                <div>
-                  <p
-                    className="text-[9px] font-bold uppercase tracking-widest mb-1"
-                    style={{ color: "rgba(255,255,255,0.2)" }}
-                  >
-                    Address
-                  </p>
-                  <p
-                    className="text-sm"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
-                  >
-                    {registration.address}
-                  </p>
-                </div>
-              </div>
-
-              <Link
-                href="/tilt"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 hover:scale-[1.02]"
-                style={{
-                  background: "rgba(200,230,60,0.08)",
-                  border: "1px solid rgba(200,230,60,0.15)",
-                  color: "#c8e63c",
-                }}
-              >
-                Edit Registration →
-              </Link>
-            </>
-          ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p
-                className="text-sm mb-4"
-                style={{ color: "rgba(255,255,255,0.4)" }}
+                className="text-[9px] font-bold uppercase tracking-widest mb-1"
+                style={{ color: "rgba(255,255,255,0.2)" }}
               >
-                Complete your registration to get started.
+                Business Name
               </p>
-              <Link
-                href="/tilt"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 hover:scale-[1.02]"
-                style={{ background: "#c8e63c", color: "#0e1f10" }}
+              <p
+                className="text-sm"
+                style={{ color: "rgba(255,255,255,0.7)" }}
               >
-                Complete Registration →
-              </Link>
+                {userName || "—"}
+              </p>
             </div>
-          )}
+            <div>
+              <p
+                className="text-[9px] font-bold uppercase tracking-widest mb-1"
+                style={{ color: "rgba(255,255,255,0.2)" }}
+              >
+                Email
+              </p>
+              <p
+                className="text-sm"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
+                {userEmail || "—"}
+              </p>
+            </div>
+            <div className="sm:col-span-2">
+              <p
+                className="text-[9px] font-bold uppercase tracking-widest mb-1"
+                style={{ color: "rgba(255,255,255,0.2)" }}
+              >
+                Address
+              </p>
+              <p
+                className="text-sm"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
+                {userAddress || "—"}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

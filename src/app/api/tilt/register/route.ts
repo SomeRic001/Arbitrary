@@ -55,6 +55,13 @@ export async function POST(req: NextRequest) {
       return jsonError(403, "Invalid or missing session", "SESSION_REQUIRED");
     }
 
+    if (!session.submitted_at) {
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      if (session.created_at < thirtyMinutesAgo) {
+        return jsonError(403, "Your session has expired. Please scan the QR again.", "SESSION_EXPIRED");
+      }
+    }
+
     if (session.submitted_at) {
       const [existingEntry] = await tiltDb
         .select({ id: lotteryEntriesTable.id })

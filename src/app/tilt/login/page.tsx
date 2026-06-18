@@ -14,7 +14,7 @@ export default function TiltLoginPage() {
 
   useEffect(() => {
     setMounted(true);
-    document.title = "Sign In | Tiltyourmusic";
+    document.title = "Sign In | Tilt Your Music";
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -143,7 +143,7 @@ export default function TiltLoginPage() {
               margin: 0,
             }}
           >
-            tilt
+            Tilt Your Music
           </h1>
           <p
             style={{

@@ -260,4 +260,45 @@ Changes:
 
 ---
 
+### 9) QR status tracking + outlet stats + signup changes (2026-06-18)
+
+#### QR status endpoint
+- New: `GET /api/tilt/qr/status?token=<token>` — outlet-authenticated, read-only single-token lookup.
+- Returns `{ status: "active" }`, `{ status: "used" }`, or `{ status: "expired" }`.
+- Status derived from `qr_tokens.usedAt` (null → not scanned) and `expiresAt` (compared to server time).
+- Used by the outlet QR page to show a solid dark gray overlay with "USED" / "EXPIRED" text when the token is no longer valid, making the QR unscannable on screen.
+
+#### Outlet stats endpoint
+- New: `GET /api/tilt/outlet/stats` — outlet-authenticated, returns `{ scans, submissions }`.
+- **Scans**: count of `qr_tokens` where `outletId = <current outlet>` AND `usedAt IS NOT NULL`.
+- **Submissions**: count of `qr_tokens` joined to `lottery_sessions` where `outletId = <current outlet>` AND `submittedAt IS NOT NULL`.
+- Pure read-only `SELECT COUNT` queries — no writes, no impact on redeem security.
+
+#### Schema: address on tilt_users
+- Added `address: text("address")` to `tiltUsersTable` in `src/db/tilt-schema.ts`.
+- Nullable — existing users remain valid without a stored address.
+- Migration pushed via `drizzle-kit push --config=drizzle-tiltyoutmusic.config.ts`.
+
+#### /api/tilt/me now queries DB directly
+- Previously returned user fields directly from JWT payload.
+- Now queries `tiltUsersTable` for the full user record (`id`, `name`, `email`, `role`, `address`).
+- Always returns the latest address (and any future fields) for every user — no re-login required.
+
+#### Signup: business name + address
+- Signup form changed: "Full Name" → "Business Name", placeholder "Your business name".
+- New Address textarea field in signup form.
+- Signup API accepts `address` and stores it in `tiltUsersTable.address`.
+- Address included in JWT payload on signup (for consistency; `/api/tilt/me` is the source of truth).
+
+#### Outlet overview: registration card replaced
+- Registration card (which pulled from `tiltRegistrationsTable`) removed.
+- Replaced with a **Business** profile card showing `name`, `email`, `address` from `tiltUsersTable`.
+- "Edit Registration" and "Complete Registration" links removed.
+- Outlet stats cards (Scans / Submissions) placed above the profile card.
+
+#### Admin overview
+- No changes needed — admin table already had no edit registration button.
+
+---
+
 ## Notes

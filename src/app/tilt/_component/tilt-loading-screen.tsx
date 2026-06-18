@@ -107,7 +107,7 @@ export default function TiltLoadingScreen() {
             fontFamily: "monospace",
           }}
         >
-          ~
+          T
         </span>
       </motion.div>
 
@@ -196,7 +196,7 @@ export default function TiltLoadingScreen() {
               color: "rgba(200,230,60,0.45)",
             }}
           >
-            Tiltyourmusic · Events
+            Tilt Your Music
           </motion.p>
         )}
       </AnimatePresence>

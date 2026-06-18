@@ -17,7 +17,7 @@ import TiltLoadingWrapper from "@/src/app/tilt/_component/tilt-loading-wrapper";
 
 export const metadata = {
   title: "Tilt · Event Registration",
-  description: "Tiltyourmusic event registration portal",
+  description: "Tilt Your Music event registration portal",
 };
 
 export default function TiltLayout({

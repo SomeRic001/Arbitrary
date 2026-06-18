@@ -19,13 +19,14 @@ export default function TiltSignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [address, setAddress] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setMounted(true);
-    document.title = "Sign Up | Tiltyourmusic";
+    document.title = "Sign Up | Tilt Your Music";
   }, []);
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
@@ -42,15 +43,15 @@ export default function TiltSignupPage() {
       const res = await fetch("/api/tilt/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, address }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Something went wrong.");
         return;
       }
-      // Account created — go straight to the registration form
-      router.push("/tilt/outlet");
+      // Account created — go to login
+      router.push("/tilt/login");
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -96,11 +97,16 @@ export default function TiltSignupPage() {
           outline: none;
           transition: border-color 0.2s, background 0.2s;
           box-sizing: border-box;
+          font-family: inherit;
         }
         .tilt-input::placeholder { color: rgba(255,255,255,0.28); }
         .tilt-input:focus {
           border-color: #c8e63c;
           background: rgba(200,230,60,0.06);
+        }
+        .tilt-textarea {
+          resize: none;
+          min-height: 80px;
         }
 
         .tilt-label {
@@ -157,7 +163,7 @@ export default function TiltSignupPage() {
               margin: 0,
             }}
           >
-            tilt
+            Tilt Your Music
           </h1>
           <p
             style={{
@@ -239,7 +245,7 @@ export default function TiltSignupPage() {
           >
             <div>
               <label htmlFor="name" className="tilt-label">
-                Full Name
+                Business Name
               </label>
               <input
                 id="name"
@@ -247,7 +253,7 @@ export default function TiltSignupPage() {
                 type="text"
                 required
                 autoComplete="name"
-                placeholder="Your full name"
+                placeholder="Your business name"
                 className="tilt-input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -350,6 +356,21 @@ export default function TiltSignupPage() {
                 className="tilt-input"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="address" className="tilt-label">
+                Address
+              </label>
+              <textarea
+                id="address"
+                name="address"
+                rows={3}
+                placeholder="Your business address"
+                className="tilt-input tilt-textarea"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
               />
             </div>
 

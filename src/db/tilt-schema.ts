@@ -20,6 +20,7 @@ export const tiltUsersTable = pgTable("tilt_users", {
   emailVerified: boolean("email_verified").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   role: varchar("role", { length: 50 }).notNull().default("outlet"),
+  address: text("address"),
 });
 
 // ── Table for Tilt registrations ────────────────────────────────────────────
@@ -41,6 +42,12 @@ export const tiltRegistrationsTable = pgTable(
     uniqueIndex("tilt_registrations_phone_idx").on(table.phone),
   ],
 );
+
+export const invitedOutletsTable = pgTable("invited_outlets", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const lotteryCampaignsTable = pgTable("lottery_campaigns", {
   id: uuid("id").defaultRandom().primaryKey(),
