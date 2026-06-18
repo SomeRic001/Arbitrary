@@ -301,4 +301,96 @@ Changes:
 
 ---
 
+---
+
+### 10) Campaign date UX improvements (2026-06-18)
+
+- **Duration preview**: live text below end datetime field shows `Duration: 2d 4h` (green) or `End must be after start` (red), computed reactively from start/end values.
+- **Quick-end presets**: 6 pill buttons below end field: `+1h`, `+2h`, `+4h`, `+1d`, `+1w`, `+1mo`. Each sets the end datetime relative to start with one click. Disabled until start is set.
+- **Grid alignment fix**: form changed from `items-end` to `items-start` so field columns align at their top; submit button row gets `self-end`.
+- File: `src/app/tilt/admin/campaigns/page.tsx` only — no schema or API changes.
+
+---
+
+### 11) Invite-only signup system (2026-06-18)
+
+#### New schema
+- Added `invited_outlets` table to `src/db/tilt-schema.ts`:
+  - `id` (serial PK), `email` (varchar, unique), `createdAt` (timestamp).
+- Migration pushed via `drizzle-kit push --config=drizzle-tiltyoutmusic.config.ts`.
+
+#### Signup API gate
+- `POST /api/tilt/signup` now checks `invited_outlets` table for the email before proceeding.
+- Uninvited emails receive `403 "This email has not been invited yet."`.
+- On successful signup, the invite row is deleted (one-time use).
+- No JWT issued on signup — user must log in separately (redirect changed to `/tilt/login`).
+
+#### Admin users API overhaul
+- `GET /api/tilt/admin/users`:
+  - Three queries merged in JS: outlet users, scan counts per `outletId` (`qr_tokens`), submission counts per `outletId` (`lottery_entries` → `lottery_sessions` → `qr_tokens`).
+  - Also fetches `invited_outlets` to show pending invites.
+  - Returns merged array with `status: "active" | "invited"`, `scanCount`, `submissionCount`.
+  - No more `tiltRegistrationsTable` join.
+- `POST /api/tilt/admin/users` — accepts `{ email }`, creates invite. Checks for duplicate invites and existing accounts.
+
+#### Admin page redesign
+- Invite form at top: email input + "Invite" button.
+- Stats: Total / Active / Invited counts (instead of Total / Registered / Pending).
+- Table columns: Outlet, Email, Address, Scans, Submissions, Status, Joined.
+- Status badges: "Active" (green dot) / "Invited" (amber dot).
+- Empty state: "Invite an outlet above to get started."
+
+#### Files
+- `src/db/tilt-schema.ts` — new table
+- `src/app/api/tilt/signup/route.ts` — invite gate
+- `src/app/api/tilt/admin/users/route.ts` — GET overhaul + POST
+- `src/app/tilt/admin/page.tsx` — redesign
+- `src/app/tilt/signup/page.tsx` — redirect change
+
+---
+
+### 12) Session expiry enforcement on register (2026-06-18)
+
+- Added server-side 30-minute expiry check to `POST /api/tilt/register`.
+- Mirrors the existing check in `GET /api/tilt/session-state` but enforces it server-side even if client-side validation is bypassed.
+- A session older than 30 minutes without a submission is rejected with `SESSION_EXPIRED`.
+- Added `SESSION_EXPIRED` → "Your session has expired. Please scan the QR again." in the client error map.
+- Files: `src/app/api/tilt/register/route.ts`, `src/app/tilt/page.tsx`.
+
+---
+
+### 13) Responsive dashboards (2026-06-18)
+
+#### Sidebar collapse (both layouts)
+- Added `sidebarOpen` state + hamburger button (visible only on mobile).
+- On mobile (`< md`): sidebar becomes a fixed overlay with dark backdrop, slides in/out via `translate-x` transition.
+- On `md+`: sidebar stays as side-by-side layout.
+- All nav links close sidebar on click.
+- Main content gets `min-w-0` (prevents overflow), responsive padding (`px-4 md:px-8`).
+- Sticky top bar with hamburger + brand name on mobile.
+- Files: `src/app/tilt/admin/layout.tsx`, `src/app/tilt/outlet/layout.tsx`.
+
+#### Page-level responsive fixes
+- **Admin page**: stat row `flex` → `grid grid-cols-1 sm:grid-cols-3`; invite form `flex` → `flex flex-col sm:flex-row`; table wrapper `overflow-x-auto` with `minWidth: 700px`.
+- **Outlet page**: stat row `flex` → `grid grid-cols-1 sm:grid-cols-2`.
+- **Campaigns page**: table wrapper `overflow-x-auto` with `minWidth: 650px`.
+- **QR page**: already responsive — no changes needed.
+
+#### Scan count discrepancy fix
+- Admin scan count now filters by `isNotNull(qrTokensTable.usedAt)` to match the outlet's definition of "scans" (only actually scanned tokens, not total generated).
+- File: `src/app/api/tilt/admin/users/route.ts`.
+
+---
+
+### 14) Brand consistency pass (2026-06-18)
+
+- `~` replaced with `T` in loading screen green badge and lottery form badge.
+- All standalone `tilt` headings replaced with `Tilt Your Music` (login, signup, lottery form pages).
+- All `document.title` values changed from `Tiltyourmusic` to `Tilt Your Music`.
+- Admin sidebar brand changed from "Tilt Admin" to "Tilt Your Music" with subtitle "Superadmin".
+- Mobile header brand changed to "Tilt Your Music" (both admin and outlet layouts).
+- Metadata description changed from `"Tiltyourmusic event registration portal"` to `"Tilt Your Music event registration portal"`.
+- Loading screen subtext changed from `"Tiltyourmusic · Events"` to `"Tilt Your Music"`.
+- Loading screen letter reveal animation kept as `"TILT"` (stylistic, not a heading).
+
 ## Notes

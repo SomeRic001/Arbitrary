@@ -1,4 +1,4 @@
-### Tilt Your Music Lottery Flow
+# Tilt Your Music Lottery QR Flow
 
 ## Step 1 
  Phone opens the link. The browser sends GET /tilt/redeem to your server — no token included, since fragments don't travel over the network, as covered earlier. The server responds with the redeem page's HTML and JavaScript, having no idea any token was even involved.
