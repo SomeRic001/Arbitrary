@@ -1,11 +1,21 @@
 import crypto from "crypto";
 import { db } from "@/src/db";
 import { usersTable, referralsTable, userTasksTable, pointsLogTable } from "@/src/db/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { eq, and, isNull, sql, ilike } from "drizzle-orm";
 import { ServiceResult, ok, fail } from "./result";
 import { rateLimit } from "@/src/lib/rate-limit";
 
 export const REFERRAL_BONUS = 100;
+
+// Sentinel used to distinguish expected business-rule rejections
+// (which get a 400 + user-facing message) from unexpected DB/runtime
+// errors (which get a 500 and should not leak internals to the client).
+class ReferralRuleError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReferralRuleError";
+  }
+}
 
 export const ReferralService = {
   async assignReferralCode(userId: number): Promise<ServiceResult<{ code: string }>> {
@@ -45,26 +55,27 @@ export const ReferralService = {
 
     try {
       const result = await db.transaction(async (tx) => {
-        await tx.execute(sql`SELECT id FROM ${usersTable} WHERE id = ${userId} FOR UPDATE`);
-
+        // Lock the user row with Drizzle ORM (not raw sql`...FOR UPDATE`)
+        // to prevent concurrent bind attempts on the same account.
         const [user] = await tx
           .select()
           .from(usersTable)
-          .where(eq(usersTable.id, userId));
+          .where(eq(usersTable.id, userId))
+          .for("update");
 
-        if (!user) throw new Error("User not found");
-        if (user.referredBy) throw new Error("Already referred by someone");
+        if (!user) throw new ReferralRuleError("User not found");
+        if (user.referredBy) throw new ReferralRuleError("You have already used a referral code");
 
         const [referrer] = await tx
           .select()
           .from(usersTable)
-          .where(eq(usersTable.referralCode, normalized));
+          .where(sql`UPPER(${usersTable.referralCode}) = ${normalized}`);
 
-        if (!referrer) throw new Error("Invalid referral code");
-        if (referrer.id === userId) throw new Error("Cannot refer yourself");
+        if (!referrer) throw new ReferralRuleError("Invalid referral code — please check and try again");
+        if (referrer.id === userId) throw new ReferralRuleError("You cannot use your own referral code");
 
         if (referrer.createdAt && user.createdAt && referrer.createdAt > user.createdAt) {
-          throw new Error("Cannot link to an account younger than yours");
+          throw new ReferralRuleError("Cannot link to an account younger than yours");
         }
 
         const [completedResult] = await tx
@@ -91,10 +102,6 @@ export const ReferralService = {
         });
 
         if (hasCompletedRequiredTasks) {
-          const [refUser] = await tx
-            .select({ lifetimePoints: usersTable.monthlyPoints })
-            .from(usersTable)
-            .where(eq(usersTable.id, referrer.id));
           await tx
             .update(usersTable)
             .set({
@@ -109,7 +116,13 @@ export const ReferralService = {
 
       return ok(result);
     } catch (err: any) {
-      return fail(err.message, 400);
+      if (err instanceof ReferralRuleError) {
+        // Known business rule violation — safe to show to the user
+        return fail(err.message, 400);
+      }
+      // Unexpected DB/runtime error — log internally, don't leak details
+      console.error("[ReferralService.bindReferralCode] Unexpected error:", err);
+      return fail("Something went wrong. Please try again.", 500);
     }
   },
 
@@ -128,7 +141,18 @@ export const ReferralService = {
       .select({ code: usersTable.referralCode })
       .from(usersTable)
       .where(eq(usersTable.id, userId));
-    if (!user?.code) return fail("No referral code", 404);
+
+    if (!user) return fail("User not found", 404);
+
+    // Auto-assign a referral code if the user doesn't have one yet.
+    // This handles accounts created before code assignment was added,
+    // or OAuth signups where assignReferralCode failed silently.
+    let code = user.code;
+    if (!code) {
+      const assigned = await ReferralService.assignReferralCode(userId);
+      if (!assigned.success) return fail("Could not generate referral code", 500);
+      code = assigned.data.code;
+    }
 
     const referrals = await db
       .select()
@@ -136,8 +160,8 @@ export const ReferralService = {
       .where(eq(referralsTable.referrerId, userId));
 
     return ok({
-      code: user.code,
-      link: `${process.env.NEXTAUTH_URL}/signup?ref=${user.code}`,
+      code: code,
+      link: `${process.env.NEXTAUTH_URL}/signup?ref=${code}`,
       totalReferred: referrals.length,
       converted: referrals.filter((r) => (r.pointsAwarded ?? 0) > 0).length,
       pointsEarned: referrals.reduce((sum, r) => sum + (r.pointsAwarded ?? 0), 0),
@@ -155,7 +179,7 @@ export const ReferralService = {
       const referredBy = user?.referredBy;
       if (!referredBy || user?.referralRewarded) return;
 
-      const [completedResult] = await tx
+      const [completedResult] = await transactionContext
         .select({ count: sql<number>`COUNT(*)` })
         .from(userTasksTable)
         .where(
@@ -167,8 +191,7 @@ export const ReferralService = {
 
       if ((completedResult?.count ?? 0) < 3) return;
 
-      const [referrer] = await tx
-
+      const [referrer] = await transactionContext
         .select()
         .from(usersTable)
         .where(eq(usersTable.id, referredBy));

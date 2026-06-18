@@ -73,8 +73,6 @@ const EventContentPage = () => {
 
   return (
     <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
-      <Header />
-
       <main>
         {/* Full-Page Hero Image */}
         <section className="relative w-full h-[90vh] overflow-hidden bg-black">
@@ -180,8 +178,6 @@ const EventContentPage = () => {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };

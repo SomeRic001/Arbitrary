@@ -3,7 +3,7 @@ import { usersTable, referralsTable, userTasksTable, tasksTable, pointsLogTable 
 import { eq, and, desc, sql, aliasedTable, gte } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { toDateStr } from "@/src/lib/streak-helper";
-import { getStreakMultiplier, getUserTier } from "@/src/lib/gamification";
+import { getStreakMultiplier, getCurrentMonthlyTier, getTierKey } from "@/src/lib/gamification";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { ReferralService, REFERRAL_BONUS } from "./referral.service";
 import { ServiceResult, ok, fail } from "./result";
@@ -50,7 +50,7 @@ export const UserService = {
       longestStreak: user.longestStreak || 0,
       claimedToday: dailyLoginStr === today,
       monthlyPoints: user.monthlyPoints ?? 0,
-      tier: getUserTier(user.completedTasksCount || 0),
+      tier: getTierKey(getCurrentMonthlyTier(user.monthlyPoints ?? 0)),
     });
   },
 

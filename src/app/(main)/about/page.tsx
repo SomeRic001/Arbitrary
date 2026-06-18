@@ -32,8 +32,6 @@ export default function AboutPage() {
 
   return (
     <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
-      <Header />
-
       <main className="pt-32 pb-20 overflow-hidden">
         {/* Hero + Story side by side */}
         <section className="container mx-auto px-6 mb-32 animate-fade-in">
@@ -44,24 +42,31 @@ export default function AboutPage() {
                   {about.tagline}
                 </span>
               )}
-              {about?.heading && (() => {
-                const firstSpace = about.heading!.indexOf(" ");
-                const firstWord = firstSpace === -1 ? about.heading! : about.heading!.slice(0, firstSpace);
-                const rest = firstSpace === -1 ? "" : about.heading!.slice(firstSpace + 1);
-                return (
-                  <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-16">
-                    <span className="text-black">{firstWord}</span>
-                    {rest && (
-                      <>
-                        {" "}
-                        <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
-                          {rest}
-                        </span>
-                      </>
-                    )}
-                  </h1>
-                );
-              })()}
+              {about?.heading &&
+                (() => {
+                  const firstSpace = about.heading!.indexOf(" ");
+                  const firstWord =
+                    firstSpace === -1
+                      ? about.heading!
+                      : about.heading!.slice(0, firstSpace);
+                  const rest =
+                    firstSpace === -1
+                      ? ""
+                      : about.heading!.slice(firstSpace + 1);
+                  return (
+                    <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-16">
+                      <span className="text-black">{firstWord}</span>
+                      {rest && (
+                        <>
+                          {" "}
+                          <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
+                            {rest}
+                          </span>
+                        </>
+                      )}
+                    </h1>
+                  );
+                })()}
               {about?.description && (
                 <p className="text-xl md:text-2xl text-zinc-500 max-w-2xl leading-relaxed italic">
                   {about.description}

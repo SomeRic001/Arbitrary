@@ -84,9 +84,14 @@ const Header = () => {
       className={`fixed z-[9999] transition-all duration-[1200ms] ease-[cubic-bezier(0.23,1,0.32,1)] left-1/2 -translate-x-1/2
         ${
           scrolled
-            ? "top-6 w-[95%] max-w-7xl rounded-[40px] bg-white/20 backdrop-blur-2xl border border-white/20 shadow-[0_30px_100px_rgba(0,0,0,0.12),0_10px_40px_rgba(0,0,0,0.08)] h-16"
-            : "top-0 w-full rounded-none bg-white border-b border-black/5 h-20 shadow-none"
+            ? "w-[95%] max-w-7xl rounded-[40px] bg-white/20 backdrop-blur-2xl border border-white/20 shadow-[0_30px_100px_rgba(0,0,0,0.12),0_10px_40px_rgba(0,0,0,0.08)] h-16"
+            : "w-full rounded-none bg-white border-b border-black/5 h-20 shadow-none"
         }`}
+      style={{
+        top: scrolled
+          ? "calc(var(--banner-h, 0px) + 1.5rem)"
+          : "var(--banner-h, 0px)",
+      }}
     >
       <div
         className={`container mx-auto h-full flex items-center justify-between transition-all duration-[1200ms] ease-[cubic-bezier(0.23,1,0.32,1)]

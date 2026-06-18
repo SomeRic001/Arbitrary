@@ -117,7 +117,11 @@ export default function ReferralTab() {
       import("qrcode").then((QRCode) => {
         QRCode.toDataURL(
           refData.link,
-          { width: 200, margin: 1, color: { dark: "#0f172a", light: "#ffffff" } },
+          {
+            width: 200,
+            margin: 1,
+            color: { dark: "#0f172a", light: "#ffffff" },
+          },
           (err, url) => {
             if (!err) setQrDataUrl(url);
           },
@@ -169,21 +173,28 @@ export default function ReferralTab() {
           </p>
           {isBound ? (
             <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-              <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg
+                className="w-4 h-4 text-emerald-600 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               <span className="text-sm font-semibold text-emerald-800">
-                Referred by {profile?.referredByName || `User #${profile?.referredBy}`}
+                Referred by{" "}
+                {profile?.referredByName || `User #${profile?.referredBy}`}
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <input
                 value={bindCode}
-                onChange={(e) => setBindCode(e.target.value.toUpperCase())}
+                onChange={(e) => setBindCode(e.target.value)}
                 placeholder="Enter referral code"
                 maxLength={20}
-                className="flex-1 text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/8 transition-all uppercase"
+                className="flex-1 text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/8 transition-all"
               />
               <button
                 onClick={() => bindMutation.mutate(bindCode)}
@@ -204,9 +215,16 @@ export default function ReferralTab() {
               { label: "Converted", value: refData.converted },
               { label: "Points Earned", value: refData.pointsEarned },
             ].map((s) => (
-              <div key={s.label} className="bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{s.label}</p>
-                <p className="text-xl font-black text-slate-900 mt-0.5">{s.value}</p>
+              <div
+                key={s.label}
+                className="bg-slate-50 rounded-xl px-4 py-3 border border-slate-100"
+              >
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  {s.label}
+                </p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">
+                  {s.value}
+                </p>
               </div>
             ))}
           </div>
@@ -222,7 +240,8 @@ export default function ReferralTab() {
               ref={cardRef}
               className="relative overflow-hidden rounded-2xl p-6"
               style={{
-                background: "linear-gradient(135deg, #0f172a, #1e293b, #0f172a)",
+                background:
+                  "linear-gradient(135deg, #0f172a, #1e293b, #0f172a)",
                 border: "1px solid rgba(255,255,255,0.1)",
               }}
             >
@@ -242,34 +261,66 @@ export default function ReferralTab() {
                     className="w-8 h-8 rounded-lg flex items-center justify-center"
                     style={{ background: "#FACC15" }}
                   >
-                    <span className="font-black text-sm" style={{ color: "#000000" }}>A</span>
+                    <span
+                      className="font-black text-sm"
+                      style={{ color: "#000000" }}
+                    >
+                      A
+                    </span>
                   </div>
-                  <span className="font-black text-sm tracking-[0.15em]" style={{ color: "#ffffff" }}>ARBITRARY</span>
+                  <span
+                    className="font-black text-sm tracking-[0.15em]"
+                    style={{ color: "#ffffff" }}
+                  >
+                    ARBITRARY
+                  </span>
                 </div>
 
-                <p className="text-xs text-center leading-relaxed max-w-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
-                  Join the platform and start earning rewards through tasks, streaks, and referrals.
+                <p
+                  className="text-xs text-center leading-relaxed max-w-xs"
+                  style={{ color: "rgba(255,255,255,0.6)" }}
+                >
+                  Join the platform and start earning rewards through tasks,
+                  streaks, and referrals.
                 </p>
 
                 {/* QR Code */}
                 {qrDataUrl && (
                   <div
                     className="rounded-xl p-2"
-                    style={{ background: "#ffffff", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)" }}
+                    style={{
+                      background: "#ffffff",
+                      boxShadow:
+                        "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
+                    }}
                   >
-                    <img src={qrDataUrl} alt="Referral QR" crossOrigin="anonymous" className="w-24 h-24" />
+                    <img
+                      src={qrDataUrl}
+                      alt="Referral QR"
+                      crossOrigin="anonymous"
+                      className="w-24 h-24"
+                    />
                   </div>
                 )}
 
                 {/* Referral Code */}
                 <div
                   className="rounded-xl px-5 py-2.5"
-                  style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
                 >
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-center mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider text-center mb-1"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
                     Referral Code
                   </p>
-                  <p className="font-mono font-black text-xl tracking-[0.3em] text-center select-all" style={{ color: "#ffffff" }}>
+                  <p
+                    className="font-mono font-black text-xl tracking-[0.3em] text-center select-all"
+                    style={{ color: "#ffffff" }}
+                  >
                     {refData.code}
                   </p>
                 </div>
@@ -280,8 +331,18 @@ export default function ReferralTab() {
               onClick={handleDownload}
               className="self-start px-5 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors flex items-center gap-2"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
               </svg>
               Download PNG
             </button>

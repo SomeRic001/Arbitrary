@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['hebrew-dated-instruction-ranger.trycloudflare.com', 'success-roses-exceptional-journals.trycloudflare.com'],
+  allowedDevOrigins: ['ciao-publishing-seal-result.trycloudflare.com', 'success-roses-exceptional-journals.trycloudflare.com'],
 
   images: {
     remotePatterns: [

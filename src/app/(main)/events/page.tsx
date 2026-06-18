@@ -15,7 +15,11 @@ const containerVariants = {
 
 const cardVariants = {
   hidden: { opacity: 0, y: 40 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" as const },
+  },
 };
 
 export default function EventPage() {
@@ -54,8 +58,6 @@ export default function EventPage() {
 
   return (
     <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
-      <Header />
-
       <main className="pt-32 pb-20 overflow-hidden">
         {/* Page Header */}
         <section className="container mx-auto px-6 mb-32 animate-fade-in">
@@ -153,12 +155,12 @@ export default function EventPage() {
                   {/* Action Area */}
                   <div className="flex flex-col items-center justify-center min-w-[180px] h-full pt-4 md:pt-0">
                     <div className="flex flex-col items-center gap-2 w-full">
-                        <Link
-                          href={`/events/${event.id}`}
-                          className="w-full px-8 py-5 bg-black text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#FACC15] hover:text-black hover:scale-[1.02] active:scale-95 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:shadow-[0_20px_50px_rgba(250,204,21,0.2)] text-sm text-center"
-                        >
-                          View Details
-                        </Link>
+                      <Link
+                        href={`/events/${event.id}`}
+                        className="w-full px-8 py-5 bg-black text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#FACC15] hover:text-black hover:scale-[1.02] active:scale-95 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:shadow-[0_20px_50px_rgba(250,204,21,0.2)] text-sm text-center"
+                      >
+                        View Details
+                      </Link>
                       <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
                         Limited spots
                       </p>
@@ -187,9 +189,9 @@ export default function EventPage() {
                       </svg>
                     </Link>
                   </div>
-                  </motion.div>
-                );
-              })}
+                </motion.div>
+              );
+            })}
           </motion.div>
         </section>
 
@@ -267,8 +269,6 @@ export default function EventPage() {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

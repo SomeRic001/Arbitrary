@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { User, Settings, LogOut } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 
 const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
   const { data: session, status } = useSession();
@@ -14,10 +14,10 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  const isAdmin =
+    session?.user?.role === "ADMIN" || session?.user?.role === "admin";
+
   // ── Points via react-query ──────────────────────────────────────────────
-  // Enabled only when the user is authenticated.
-  // The query key matches what you invalidate after youtube-complete / task
-  // completion, so the badge auto-refreshes the moment points change.
   const { data: pointsData } = useQuery({
     queryKey: ["user-points"],
     queryFn: async () => {
@@ -26,13 +26,26 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
       return res.json() as Promise<{ points: number }>;
     },
     enabled: status === "authenticated",
-    // Refetch every 30 s in the background so it stays fresh
-    // even without an explicit invalidation.
     refetchInterval: 30_000,
     staleTime: 10_000,
   });
 
+  // ── Rank via react-query (only for non-admin users) ─────────────────────
+  const { data: rankData } = useQuery({
+    queryKey: ["user-rank"],
+    queryFn: async () => {
+      const res = await fetch("/api/user/rank");
+      if (!res.ok) throw new Error("Failed to fetch rank");
+      return res.json() as Promise<{ rank: number | null }>;
+    },
+    enabled: status === "authenticated" && !isAdmin,
+    // Rank changes less often than points — refresh every 2 minutes
+    refetchInterval: 120_000,
+    staleTime: 60_000,
+  });
+
   const points = pointsData?.points ?? null;
+  const rank = rankData?.rank ?? null;
   // ───────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -59,7 +72,7 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
 
   const handleProfileClick = () => {
     setIsOpen(false);
-    if (session?.user?.role === "ADMIN" || session?.user?.role === "admin") {
+    if (isAdmin) {
       router.push("/admin/profile");
     } else {
       router.push("/profile");
@@ -133,7 +146,7 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
         </button>
 
         {/* Points badge on avatar */}
-        {points !== null && session?.user?.role !== "ADMIN" && (
+        {points !== null && !isAdmin && (
           <span className="absolute -top-2 -right-3 text-[10px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-full shadow-sm shadow-blue-500/30 whitespace-nowrap">
             {points} pts
           </span>
@@ -180,13 +193,19 @@ const ProfileDropdown = ({ redirectUrl }: { redirectUrl: string }) => {
                 </div>
               </div>
 
-              <div className="relative z-10 mt-3">
-                {session?.user?.role !== "ADMIN" && (
+              {/* Points + rank row — only for regular users */}
+              {!isAdmin && (
+                <div className="relative z-10 mt-3 flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-bold text-white/70 bg-white/10 px-2.5 py-1 rounded-full">
-                    ✦ {points ?? 0} Total Points
+                    ✦ {points ?? 0} pts
                   </span>
-                )}
-              </div>
+                  {rank !== null && (
+                    <span className="text-[10px] font-bold text-[#FACC15] bg-[#FACC15]/10 border border-[#FACC15]/20 px-2.5 py-1 rounded-full">
+                      #{rank} ranked
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Curved connector */}

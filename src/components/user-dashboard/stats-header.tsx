@@ -1,5 +1,10 @@
 // stats-header.tsx — cleaner, more refined dark header with milestone tracker
 import { AnimatedCounter } from "@/src/components/rewards/animated-counter";
+import {
+  getCurrentMonthlyTier,
+  getNextTier,
+  getPrevThreshold,
+} from "@/src/lib/gamification";
 
 type StatsHeaderProps = {
   activeTab: string;
@@ -10,36 +15,6 @@ type StatsHeaderProps = {
   monthlyPoints: number;
   tier: string;
 };
-
-// Monthly point thresholds to reach each tier this month
-const TIER_THRESHOLDS: Record<string, number> = {
-  Bronze: 0,
-  Silver: 100,
-  Gold: 300,
-  "Arbitrary Elite": 600,
-};
-
-const TIER_ORDER = ["Bronze", "Silver", "Gold", "Arbitrary Elite"];
-
-function getCurrentMonthlyTier(pts: number): string {
-  if (pts >= 600) return "Arbitrary Elite";
-  if (pts >= 300) return "Gold";
-  if (pts >= 100) return "Silver";
-  return "Bronze";
-}
-
-function getNextTier(pts: number): { name: string; threshold: number } | null {
-  const currentTier = getCurrentMonthlyTier(pts);
-  const idx = TIER_ORDER.indexOf(currentTier);
-  if (idx === -1 || idx >= TIER_ORDER.length - 1) return null;
-  const name = TIER_ORDER[idx + 1];
-  return { name, threshold: TIER_THRESHOLDS[name] };
-}
-
-function getPrevThreshold(pts: number): number {
-  const currentTier = getCurrentMonthlyTier(pts);
-  return TIER_THRESHOLDS[currentTier] ?? 0;
-}
 
 export function StatsHeader({
   activeTab,

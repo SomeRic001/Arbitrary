@@ -50,7 +50,9 @@ export default function DealsPage() {
     },
   });
 
-  const { data: redemptions = [], isLoading: historyLoading } = useQuery<Redemption[]>({
+  const { data: redemptions = [], isLoading: historyLoading } = useQuery<
+    Redemption[]
+  >({
     queryKey: ["redemptions"],
     queryFn: async () => {
       const res = await fetch("/api/redemptions");
@@ -86,21 +88,31 @@ export default function DealsPage() {
 
   return (
     <div className="bg-[#F5F5F0] pt-24 text-black min-h-screen flex flex-col selection:bg-[#FACC15] selection:text-black">
-      <Header />
       <main className="flex-1 flex items-center justify-center px-6">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-amber-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            <svg
+              className="w-8 h-8 text-amber-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+              />
             </svg>
           </div>
-          <h1 className="text-2xl font-black uppercase tracking-tight mb-3">Rewards</h1>
+          <h1 className="text-2xl font-black uppercase tracking-tight mb-3">
+            Rewards
+          </h1>
           <p className="text-sm text-zinc-500 leading-relaxed">
             This feature is temporarily unavailable. Please check back later.
           </p>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

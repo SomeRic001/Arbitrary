@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect } from "react";
+import HeroSection from "../components/sections/hero-section";
 import Header from "../components/ui/header";
 import Footer from "../components/ui/footer";
-import HeroSection from "../components/sections/hero-section";
+import PromoBanner from "../components/ui/promo-banner";
 import Link from "next/link";
 
 interface HomePageEvent {
@@ -126,6 +127,9 @@ const HomePage = () => {
   });
   return (
     <div className="bg-white text-black selection:bg-[#FACC15] selection:text-black">
+      {/* Tilt your music*/}
+      <PromoBanner />
+
       {/* 1. Header Section */}
       <Header />
 
@@ -221,102 +225,6 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* ── Tilt Your Music Banner ─────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-black py-20">
-          {/* Tuborg bottle-green glow */}
-          <div
-            className="pointer-events-none absolute -left-40 top-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-20"
-            style={{
-              background:
-                "radial-gradient(circle, #1a4a1f 0%, transparent 70%)",
-            }}
-          />
-          {/* Background tilt watermark */}
-          <div
-            className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[22vw] font-black leading-none select-none"
-            style={{ color: "rgba(200,230,60,0.04)" }}
-          >
-            ~
-          </div>
-
-          <div className="container mx-auto px-6 relative z-10">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-10">
-              {/* Left — branding */}
-              <div className="flex items-center gap-6">
-                {/* tilt logo mark */}
-                <div
-                  className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-4xl font-black"
-                  style={{
-                    background: "#c8e63c",
-                    color: "#0e1f10",
-                    boxShadow: "0 0 32px rgba(200,230,60,0.25)",
-                  }}
-                >
-                  ~
-                </div>
-                <div>
-                  {/* Red stripe label, like the Tuborg bottle */}
-                  <div className="flex items-center gap-2 mb-1">
-                    <div
-                      className="h-px w-6"
-                      style={{ background: "#d42b2b" }}
-                    />
-                    <span
-                      className="text-[9px] font-black uppercase tracking-[0.35em]"
-                      style={{ color: "#d42b2b" }}
-                    >
-                      Now Open
-                    </span>
-                    <div
-                      className="h-px w-6"
-                      style={{ background: "#d42b2b" }}
-                    />
-                  </div>
-                  <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-white leading-none">
-                    Tilt Your <span style={{ color: "#c8e63c" }}>Music</span>
-                  </h2>
-                  <p className="text-zinc-400 text-sm mt-1 uppercase tracking-widest font-medium">
-                    Register now — limited spots
-                  </p>
-                </div>
-              </div>
-
-              {/* Right — CTA */}
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <Link
-                  href="/tilt/signup"
-                  className="px-10 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:scale-105"
-                  style={{
-                    background: "#c8e63c",
-                    color: "#0e1f10",
-                    boxShadow: "0 8px 32px rgba(200,230,60,0.2)",
-                  }}
-                >
-                  Register
-                </Link>
-                <Link
-                  href="/tilt/login"
-                  className="px-10 py-4 rounded-xl font-black text-sm uppercase tracking-widest border transition-all duration-300 hover:bg-white/5"
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    borderColor: "rgba(255,255,255,0.1)",
-                  }}
-                >
-                  Already registered? Sign in →
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom red stripe — Tuborg label detail */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-1"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent, #d42b2b 30%, #d42b2b 70%, transparent)",
-            }}
-          />
-        </section>
         {/* ── End Tilt Your Music Banner ─────────────────────────────────── */}
 
         {/* 4. Featured Work Section */}

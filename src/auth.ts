@@ -11,7 +11,7 @@ import { usersTable } from "@/src/db/schema";
 import FacebookProvider from "next-auth/providers/facebook";
 import { ReferralService } from "@/src/services/referral.service";
 import { encryptToken, decryptToken } from "@/src/lib/token-crypto";
-import { getBaseUrl } from "./lib/get-base-url";
+import { cookies } from "next/headers";
 
 export const authOptions: import("next-auth").NextAuthOptions = {
     providers: [
@@ -108,7 +108,7 @@ export const authOptions: import("next-auth").NextAuthOptions = {
     },
 
     callbacks: {
-        async signIn({ user, account }) {
+        async signIn({ user, account, profile, email, credentials }) {
             if (account?.provider === "google") {
                 try {
                     const existingByGoogleId = await db.query.usersTable.findFirst({
@@ -168,6 +168,20 @@ export const authOptions: import("next-auth").NextAuthOptions = {
 
                         if (newUser) {
                             await ReferralService.assignReferralCode(newUser.id);
+
+                            // Read the referral code from the httpOnly cookie set by
+                            // POST /api/auth/pre-oauth just before the OAuth redirect.
+                            // Using a cookie (not callbackUrl) keeps the ref code out of
+                            // the URL and prevents injection into non-signup login flows.
+                            const cookieStore = await cookies();
+                            const refParam = cookieStore.get("pending_ref_code")?.value ?? null;
+                            if (refParam) {
+                                // Clear it immediately — one-time use
+                                cookieStore.delete("pending_ref_code");
+                                await ReferralService.bindReferralCode(newUser.id, refParam).catch(
+                                    (err) => console.error("Failed to bind referral code on OAuth signup:", err),
+                                );
+                            }
                         }
                     }
                 } catch (error) {

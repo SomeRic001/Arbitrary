@@ -18,7 +18,7 @@ export default function ContactPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const mailtoLink = `mailto:hello@arbitrary.com?subject=${encodeURIComponent(subject || "Collaboration Inquiry")}&body=${encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\n\n${message}`
+      `Name: ${name}\nEmail: ${email}\n\n${message}`,
     )}`;
     window.location.href = mailtoLink;
   };
@@ -42,13 +42,13 @@ export default function ContactPage() {
     },
   ];
 
-  const inputClass = "w-full px-5 py-4 bg-white border border-black/10 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FACC15]/40 focus:border-[#FACC15]/50 transition-all";
-  const labelClass = "text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 block";
+  const inputClass =
+    "w-full px-5 py-4 bg-white border border-black/10 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FACC15]/40 focus:border-[#FACC15]/50 transition-all";
+  const labelClass =
+    "text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 block";
 
   return (
     <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
-      <Header />
-
       <main className="pt-32 pb-20 overflow-hidden">
         {/* Hero */}
         <section className="container mx-auto px-6 mb-24 md:mb-32 animate-fade-in">
@@ -63,8 +63,8 @@ export default function ContactPage() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-zinc-500 max-w-2xl leading-relaxed italic">
-              &ldquo;Have a project, idea, or collaboration in mind?
-              We&rsquo;d love to hear from you.&rdquo;
+              &ldquo;Have a project, idea, or collaboration in mind? We&rsquo;d
+              love to hear from you.&rdquo;
             </p>
           </div>
         </section>
@@ -113,7 +113,10 @@ export default function ContactPage() {
                 <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-8 relative z-10">
                   Send a Message
                 </h3>
-                <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+                <form
+                  onSubmit={handleSubmit}
+                  className="space-y-5 relative z-10"
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <label className={labelClass}>Name</label>

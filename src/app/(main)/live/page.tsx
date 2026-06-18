@@ -125,7 +125,9 @@ export default function LivePage() {
 
     intervalRef.current = setInterval(() => {
       if (watchStartRef.current) {
-        setWatchSeconds(Math.floor((Date.now() - watchStartRef.current) / 1000));
+        setWatchSeconds(
+          Math.floor((Date.now() - watchStartRef.current) / 1000),
+        );
       }
     }, 1000);
 
@@ -143,7 +145,11 @@ export default function LivePage() {
       ? Math.floor((now - lastHb) / 1000)
       : Math.floor((now - watchStartRef.current) / 1000);
     if (typeof delta !== "number" || !Number.isFinite(delta) || delta < 10) {
-      console.warn("[live] heartbeat skipped:", { delta, lastHb, watchStart: watchStartRef.current });
+      console.warn("[live] heartbeat skipped:", {
+        delta,
+        lastHb,
+        watchStart: watchStartRef.current,
+      });
       return;
     }
 
@@ -222,7 +228,6 @@ export default function LivePage() {
 
   return (
     <>
-      <Header />
       <main className="bg-white text-black min-h-screen pt-32 pb-20 overflow-hidden selection:bg-[#FACC15] selection:text-black">
         <div className="container mx-auto px-6">
           {/* Hero */}
@@ -238,7 +243,11 @@ export default function LivePage() {
                 </span>
               </h1>
               <p className="text-xl md:text-2xl text-zinc-500 max-w-2xl leading-relaxed italic">
-                &ldquo;{youtubeId ? "Tune in live and join the conversation" : "No broadcast at the moment — check back soon"}&rdquo;
+                &ldquo;
+                {youtubeId
+                  ? "Tune in live and join the conversation"
+                  : "No broadcast at the moment — check back soon"}
+                &rdquo;
               </p>
             </div>
             <div className="absolute -top-32 -right-32 w-96 h-96 bg-[#FACC15]/5 rounded-full blur-[120px] pointer-events-none" />
@@ -251,8 +260,18 @@ export default function LivePage() {
           ) : !youtubeId ? (
             <div className="flex flex-col items-center justify-center py-32 text-center relative">
               <div className="w-24 h-24 rounded-full bg-zinc-50 border border-black/5 flex items-center justify-center mb-8">
-                <svg className="w-12 h-12 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                <svg
+                  className="w-12 h-12 text-zinc-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
+                  />
                 </svg>
               </div>
               <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-4">
@@ -262,7 +281,8 @@ export default function LivePage() {
                 </span>
               </h2>
               <p className="text-zinc-500 max-w-md">
-                There is no live stream currently active. Check back later for upcoming broadcasts.
+                There is no live stream currently active. Check back later for
+                upcoming broadcasts.
               </p>
             </div>
           ) : (
@@ -275,12 +295,24 @@ export default function LivePage() {
                 {session && (
                   <div className="mt-4">
                     <div className="flex items-center gap-4 text-xs font-medium text-zinc-500">
-                      <span>Watched: <span className="text-black font-bold">{formatTime(watchSeconds)}</span></span>
+                      <span>
+                        Watched:{" "}
+                        <span className="text-black font-bold">
+                          {formatTime(watchSeconds)}
+                        </span>
+                      </span>
                       <span className="w-px h-4 bg-black/10" />
-                      <span>Points earned: <span className="text-[#FACC15] font-black">{pointsEarned}</span></span>
+                      <span>
+                        Points earned:{" "}
+                        <span className="text-[#FACC15] font-black">
+                          {pointsEarned}
+                        </span>
+                      </span>
                     </div>
                     {heartbeatError && (
-                      <p className="mt-1 text-[10px] font-medium text-red-500">{heartbeatError}</p>
+                      <p className="mt-1 text-[10px] font-medium text-red-500">
+                        {heartbeatError}
+                      </p>
                     )}
                   </div>
                 )}
@@ -292,7 +324,9 @@ export default function LivePage() {
                   <div className="absolute -top-16 -right-16 w-40 h-40 bg-[#FACC15]/5 rounded-full blur-[60px] pointer-events-none" />
                   <div className="p-5 border-b border-black/5 flex items-center gap-3 relative z-10">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-wider">Live Chat</span>
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      Live Chat
+                    </span>
                   </div>
                   <div className="flex-1 min-h-[350px] relative z-10">
                     <iframe
@@ -314,7 +348,9 @@ export default function LivePage() {
                     {chatAvailable === null ? (
                       <div className="flex items-center justify-center gap-2 py-2">
                         <div className="w-3 h-3 border-2 border-black/10 border-t-black rounded-full animate-spin" />
-                        <span className="text-xs font-medium text-zinc-400">Checking chat...</span>
+                        <span className="text-xs font-medium text-zinc-400">
+                          Checking chat...
+                        </span>
                       </div>
                     ) : !chatAvailable ? (
                       <p className="text-xs font-medium text-zinc-400 text-center py-2">
@@ -355,10 +391,14 @@ export default function LivePage() {
                       </form>
                     )}
                     {chatError && (
-                      <p className="mt-2 text-xs font-medium text-red-500">{chatError}</p>
+                      <p className="mt-2 text-xs font-medium text-red-500">
+                        {chatError}
+                      </p>
                     )}
                     {chatSent && (
-                      <p className="mt-2 text-xs font-medium text-green-600">Message sent!</p>
+                      <p className="mt-2 text-xs font-medium text-green-600">
+                        Message sent!
+                      </p>
                     )}
                   </div>
                 </div>
@@ -367,7 +407,6 @@ export default function LivePage() {
           )}
         </div>
       </main>
-      <Footer />
     </>
   );
 }

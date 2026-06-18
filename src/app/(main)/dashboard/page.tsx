@@ -514,7 +514,6 @@ function DashboardInner() {
         .fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
       `}</style>
 
-      <Header />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 mb-20">
         {/* grid ref — used to measure task card's offsetTop inside the grid */}
         <div ref={gridRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -692,7 +691,6 @@ function DashboardInner() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

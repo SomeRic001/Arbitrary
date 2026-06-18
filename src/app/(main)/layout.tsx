@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useDailyLogin } from "@/src/hooks/useDailyLogin";
 import { useNotificationSSE } from "@/src/hooks/use-notification-sse";
+import Header from "@/src/components/ui/header";
+import Footer from "@/src/components/ui/footer";
+import PromoBanner from "@/src/components/ui/promo-banner";
+import { usePathname } from "next/navigation";
+
+/** Routes inside (main) that render their own Footer (or none at all). */
+const NO_FOOTER_ROUTES = ["/profile", "/dashboard", "/records"];
 
 export default function MainLayout({
   children,
@@ -13,6 +20,7 @@ export default function MainLayout({
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -36,5 +44,20 @@ export default function MainLayout({
     status === "authenticated" ? ((session?.user as any)?.id ?? null) : null;
   useDailyLogin({ userId });
 
-  return <>{children}</>;
+  const showFooter = !NO_FOOTER_ROUTES.some((route) =>
+    pathname.startsWith(route),
+  );
+
+  return (
+    <>
+      <PromoBanner />
+      <Header />
+      {/* Spacer pushes content below fixed banner + fixed header.
+          --banner-h is set by PromoBanner (0px when dismissed).
+          Header is h-20 (80px) unscrolled. */}
+      <div style={{ paddingTop: "calc(var(--banner-h, 0px) + 80px)" }} />
+      {children}
+      {showFooter && <Footer />}
+    </>
+  );
 }

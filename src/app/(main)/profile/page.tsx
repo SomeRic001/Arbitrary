@@ -207,7 +207,6 @@ export default function ProfilePage() {
         .fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
       `}</style>
 
-      <Header />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
           {/* ── Left sidebar ── */}

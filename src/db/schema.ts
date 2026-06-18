@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp, serial, boolean, index, AnyPgColumn, jsonb } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, serial, boolean, index, unique, AnyPgColumn, jsonb } from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
 
 // --- Events Tables ---
@@ -152,6 +152,8 @@ export const dailyTaskCompletionsTable = pgTable("daily_task_completions", {
     userTaskIdx: index("idx_dtc_user_task").on(table.userId, table.taskId),
     taskDateIdx: index("idx_dtc_task_date").on(table.taskId, table.completionDate),
     userDateIdx: index("idx_dtc_user_date").on(table.userId, table.completionDate),
+    // Prevents duplicate point awards for the same recurring task on the same calendar day
+    uniqueCompletion: unique("uq_dtc_user_task_date").on(table.userId, table.taskId, table.completionDate),
 }))
 
 export const userTicketsTable = pgTable("user_tickets", {

@@ -24,12 +24,12 @@ import { and, eq, inArray } from "drizzle-orm";
  */
 export async function POST(req: NextRequest) {
     // ── Auth: verify cron secret ──
+    // Fail-closed: if CRON_SECRET is not set, reject all requests.
+    // An unset secret would otherwise leave this endpoint wide open,
+    // allowing anyone to wipe all recurring task completions for every user.
     const secret = process.env.CRON_SECRET;
-    if (secret) {
-        const authHeader = req.headers.get("authorization");
-        if (authHeader !== `Bearer ${secret}`) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+    if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {

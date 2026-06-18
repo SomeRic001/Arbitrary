@@ -4,12 +4,14 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { TopUser } from "@/src/db/user-queries";
+import type { TopUser, UserRankInfo } from "@/src/db/user-queries";
 import Image from "next/image";
 
 interface LeaderboardListProps {
   users: TopUser[];
   currentUserId?: number;
+  /** Populated by the server only when the current user is NOT in the top-100 list */
+  currentUserRankInfo?: UserRankInfo | null;
 }
 
 const TIER_META: Record<
@@ -263,7 +265,15 @@ function LeaderboardRow({
   );
 }
 
-function CurrentUserStickyRow({ user, rank }: { user: TopUser; rank: number }) {
+function CurrentUserStickyRow({
+  user,
+  rank,
+  outsideTop100 = false,
+}: {
+  user: TopUser;
+  rank: number;
+  outsideTop100?: boolean;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
@@ -272,6 +282,13 @@ function CurrentUserStickyRow({ user, rank }: { user: TopUser; rank: number }) {
       transition={{ duration: 0.45, ease: EASE_OUT_QUART }}
       className="sticky bottom-0 bg-[#FFFBEB] border-t border-[#FACC15]/50 shadow-[0_-4px_20px_rgba(250,204,21,0.1)]"
     >
+      {outsideTop100 && (
+        <div className="px-4 pt-2 pb-0">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+            Your ranking
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-[44px_40px_1fr_auto] gap-3 px-4 py-3 items-center border-l-2 border-l-[#FACC15]">
         <div className="flex items-center justify-center w-11">
           {rank <= 3 ? (
@@ -314,6 +331,7 @@ function CurrentUserStickyRow({ user, rank }: { user: TopUser; rank: number }) {
 export default function LeaderboardList({
   users,
   currentUserId,
+  currentUserRankInfo,
 }: LeaderboardListProps) {
   const [search, setSearch] = useState("");
 
@@ -454,12 +472,21 @@ export default function LeaderboardList({
         )}
       </AnimatePresence>
 
-      {/* Sticky current user */}
+      {/* Sticky current user — two cases:
+          1. User IS in the top-100 but has scrolled out of view → show without "Your ranking" label
+          2. User is NOT in the top-100 at all → show with "Your ranking" label using server-fetched rank */}
       <AnimatePresence>
         {currentUserData && !currentUserVisible && (
           <CurrentUserStickyRow
             user={currentUserData}
             rank={currentUserData.rank}
+          />
+        )}
+        {!currentUserData && currentUserRankInfo && (
+          <CurrentUserStickyRow
+            user={currentUserRankInfo}
+            rank={currentUserRankInfo.rank}
+            outsideTop100
           />
         )}
       </AnimatePresence>

@@ -27,9 +27,10 @@ function groupPartners(partners: Partner[]): Group[] {
     if (!map.has(cat)) map.set(cat, []);
     map.get(cat)!.push(p);
   }
-  return CATEGORY_ORDER
-    .filter((c) => map.has(c))
-    .map((c) => ({ category: c, items: map.get(c)! }));
+  return CATEGORY_ORDER.filter((c) => map.has(c)).map((c) => ({
+    category: c,
+    items: map.get(c)!,
+  }));
 }
 
 const containerVariants = {
@@ -87,8 +88,6 @@ export default function WorkPage() {
 
   return (
     <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
-      <Header />
-
       <main className="pt-32 pb-20 overflow-hidden">
         {/* Page Header */}
         <section className="container mx-auto px-6 mb-20 md:mb-24 animate-fade-in">
@@ -103,7 +102,8 @@ export default function WorkPage() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-zinc-500 max-w-2xl leading-relaxed italic">
-              &ldquo;Brands and partners we&rsquo;ve had the privilege of working with.&rdquo;
+              &ldquo;Brands and partners we&rsquo;ve had the privilege of
+              working with.&rdquo;
             </p>
           </div>
         </section>
@@ -113,7 +113,9 @@ export default function WorkPage() {
           <section className="container mx-auto px-6 mb-24 md:mb-32">
             <div
               className="grid gap-px bg-black/5 rounded-3xl overflow-hidden border border-black/5"
-              style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, 1fr)` }}
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, 1fr)`,
+              }}
             >
               {stats.map((s) => (
                 <div key={s.label} className="bg-white p-8 md:p-10">
@@ -152,7 +154,10 @@ export default function WorkPage() {
           </section>
         ) : (
           groups.map(({ category, items }) => (
-            <section key={category} className="container mx-auto px-6 mb-24 md:mb-32 relative">
+            <section
+              key={category}
+              className="container mx-auto px-6 mb-24 md:mb-32 relative"
+            >
               <AmbientBlob
                 color="#FACC15"
                 className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-[40rem] h-[40rem] -z-10 hidden md:block"
@@ -179,7 +184,9 @@ export default function WorkPage() {
                     key={p.id}
                     variants={itemVariants}
                     className="flex-shrink-0"
-                    style={{ transform: `rotate(${rotationsMap[p.id] ?? 0}deg)` }}
+                    style={{
+                      transform: `rotate(${rotationsMap[p.id] ?? 0}deg)`,
+                    }}
                   >
                     <div className="group flex items-center gap-4 md:gap-6 px-4 md:px-6 py-4 rounded-2xl border border-transparent hover:border-black/10 hover:bg-zinc-50 hover:scale-105 transition-all duration-500 cursor-default hover:shadow-[0_8px_32px_rgba(250,204,21,0.15)]">
                       {/* Logo */}
@@ -218,8 +225,6 @@ export default function WorkPage() {
           ))
         )}
       </main>
-
-      <Footer />
     </div>
   );
 }

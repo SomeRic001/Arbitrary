@@ -644,7 +644,7 @@ export const TaskService = {
         userAssignedAt: r.userTask.assignedAt,
         completedAt: r.userTask.completedAt,
         shareLink: shareInfo?.shareUrl || null,
-        shareClickCount: shareInfo?.clickCount || 0,
+        shareClickCount: shareInfo?.uniqueClicks || 0,
         shareClickThreshold: shareInfo?.clickThreshold || task.shareThreshold || 3,
         sharePointsAwarded: shareInfo?.pointsAwarded || false,
       });
@@ -1327,13 +1327,15 @@ export const TaskService = {
 
         // Write permanent history record for recurring tasks
         if (task.isRecurring) {
-          await tx.insert(dailyTaskCompletionsTable).values({
-            userId,
-            taskId: task.id,
-            completionDate,
-            pointsAwarded: taskPoints,
-            completedAt: now,
-          });
+          await tx.insert(dailyTaskCompletionsTable)
+            .values({
+              userId,
+              taskId: task.id,
+              completionDate,
+              pointsAwarded: taskPoints,
+              completedAt: now,
+            })
+            .onConflictDoNothing();
         }
       }
 
@@ -1988,13 +1990,15 @@ export const TaskService = {
         if (userTaskInfo.task.isRecurring) {
           const now = new Date();
           const completionDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
-          await tx.insert(dailyTaskCompletionsTable).values({
-            userId: userTaskInfo.user.id,
-            taskId: userTaskInfo.task.id,
-            completionDate,
-            pointsAwarded: taskPoints,
-            completedAt: now,
-          });
+          await tx.insert(dailyTaskCompletionsTable)
+            .values({
+              userId: userTaskInfo.user.id,
+              taskId: userTaskInfo.task.id,
+              completionDate,
+              pointsAwarded: taskPoints,
+              completedAt: now,
+            })
+            .onConflictDoNothing();
         }
       }
 
@@ -2173,6 +2177,7 @@ type MapTasksContext = {
   shareTaskMap: Map<number | null, {
     shareUrl: string | null;
     clickCount: number;
+    uniqueClicks: number;
     clickThreshold: number;
     pointsAwarded: boolean;
   }>;
@@ -2189,7 +2194,7 @@ function mapTasksToItems(ctx: MapTasksContext): UserTaskItem[] {
     const userTask = ctx.userTasksMap.get(task.id);
     const effectiveUserTask = (() => {
       if (!userTask?.id) return null;
-      // For recurring (daily refresh) tasks, ignore completions from previous days
+
       if (task.isRecurring && userTask.assignedAt && userTask.assignedAt < ctx.todayStart) return null;
       return userTask;
     })();
@@ -2225,7 +2230,7 @@ function mapTasksToItems(ctx: MapTasksContext): UserTaskItem[] {
       userAssignedAt: isDailyLogin ? null : effectiveUserTask?.assignedAt || null,
       completedAt: isDailyLogin ? null : effectiveUserTask?.completedAt || null,
       shareLink: shareInfo?.shareUrl || null,
-      shareClickCount: shareInfo?.clickCount || 0,
+      shareClickCount: shareInfo?.uniqueClicks || 0,
       shareClickThreshold: shareInfo?.clickThreshold || task.shareThreshold || 3,
       sharePointsAwarded: shareInfo?.pointsAwarded || false,
       isRecurring: task.isRecurring ?? false,
@@ -2249,6 +2254,16 @@ async function awardFacebookPoints(
   const completionDate = now.toISOString().split("T")[0];
 
   await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select()
+      .from(userTasksTable)
+      .where(eq(userTasksTable.id, userTask.id))
+      .for("update");
+
+    if (!locked || ['completed', 'verified', 'cancelled'].includes(locked.status?.toLowerCase() ?? '')) {
+      return;
+    }
+
     await tx
       .update(userTasksTable)
       .set({
@@ -2268,16 +2283,18 @@ async function awardFacebookPoints(
       })
       .where(eq(usersTable.id, userId));
 
-    // Write permanent history record for recurring tasks
+
     const [taskRow] = await tx.select({ isRecurring: tasksTable.isRecurring }).from(tasksTable).where(eq(tasksTable.id, task.id));
     if (taskRow?.isRecurring) {
-      await tx.insert(dailyTaskCompletionsTable).values({
-        userId,
-        taskId: task.id,
-        completionDate,
-        pointsAwarded: taskPoints,
-        completedAt: now,
-      });
+      await tx.insert(dailyTaskCompletionsTable)
+        .values({
+          userId,
+          taskId: task.id,
+          completionDate,
+          pointsAwarded: taskPoints,
+          completedAt: now,
+        })
+        .onConflictDoNothing();
     }
   });
 
@@ -2305,6 +2322,17 @@ async function awardInstagramPoints(
   const completionDate = now.toISOString().split("T")[0];
 
   await db.transaction(async (tx) => {
+
+    const [locked] = await tx
+      .select()
+      .from(userTasksTable)
+      .where(eq(userTasksTable.id, userTask.id))
+      .for("update");
+
+    if (!locked || ['completed', 'verified', 'cancelled'].includes(locked.status?.toLowerCase() ?? '')) {
+      return;
+    }
+
     await tx
       .update(userTasksTable)
       .set({
@@ -2327,13 +2355,15 @@ async function awardInstagramPoints(
     // Write permanent history record for recurring tasks
     const [taskRow] = await tx.select({ isRecurring: tasksTable.isRecurring }).from(tasksTable).where(eq(tasksTable.id, task.id));
     if (taskRow?.isRecurring) {
-      await tx.insert(dailyTaskCompletionsTable).values({
-        userId,
-        taskId: task.id,
-        completionDate,
-        pointsAwarded: taskPoints,
-        completedAt: now,
-      });
+      await tx.insert(dailyTaskCompletionsTable)
+        .values({
+          userId,
+          taskId: task.id,
+          completionDate,
+          pointsAwarded: taskPoints,
+          completedAt: now,
+        })
+        .onConflictDoNothing();
     }
   });
 

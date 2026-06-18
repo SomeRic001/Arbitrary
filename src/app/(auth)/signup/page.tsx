@@ -44,8 +44,18 @@ const UserSignupPage = () => {
   const handleGoogleSignup = async () => {
     setIsLoading(true);
     setError("");
-    if (refCode) sessionStorage.setItem("pendingRefCode", refCode);
     try {
+      // Store the ref code server-side in a short-lived httpOnly cookie
+      // before the OAuth redirect. This is safer than encoding it in
+      // callbackUrl (which is user-editable) or sessionStorage (which
+      // doesn't survive cross-browser links).
+      if (refCode) {
+        await fetch("/api/auth/pre-oauth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refCode }),
+        });
+      }
       const result = await signIn("google", {
         redirect: true,
         callbackUrl: "/dashboard",
@@ -65,8 +75,14 @@ const UserSignupPage = () => {
   const handleFacebookSignup = async () => {
     setIsLoading(true);
     setError("");
-    if (refCode) sessionStorage.setItem("pendingRefCode", refCode);
     try {
+      if (refCode) {
+        await fetch("/api/auth/pre-oauth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refCode }),
+        });
+      }
       const result = await signIn("facebook", {
         redirect: true,
         callbackUrl: "/dashboard",
