@@ -5,6 +5,7 @@ import Script from "next/script";
 import {
   Tv,
   ChevronDown,
+  X,
   SkipBack,
   SkipForward,
   Play,
@@ -335,14 +336,31 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
   };
 
   // Collapsed tile → expand + play. Cover of the playing record → pause/resume.
+  // Also: collapse button hides card while keeping playback; clicking collapsed
+  // playing tile pauses; clicking collapsed paused tile re-expands.
   const handleTileClick = (song: Song) => {
     const s = S.current;
     if (playingId === song.id && s.mode === "audio") {
-      const next = !isPlaying;
-      setIsPlaying(next);
-      if (s.ytApiReady && s.ytAudioPlayer) {
-        if (next) s.ytAudioPlayer.playVideo();
-        else s.ytAudioPlayer.pauseVideo();
+      if (expandedId === song.id) {
+        // Expanded — toggle play/pause
+        const next = !isPlaying;
+        setIsPlaying(next);
+        if (s.ytApiReady && s.ytAudioPlayer) {
+          if (next) s.ytAudioPlayer.playVideo();
+          else s.ytAudioPlayer.pauseVideo();
+        }
+      } else {
+        // Collapsed tile for the playing song
+        if (isPlaying) {
+          // Currently playing → pause, stay collapsed
+          setIsPlaying(false);
+          if (s.ytApiReady && s.ytAudioPlayer) {
+            s.ytAudioPlayer.pauseVideo();
+          }
+        } else {
+          // Currently paused → expand, stay paused
+          setExpandedId(song.id);
+        }
       }
       return;
     }
@@ -355,6 +373,22 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
     if (idx < 0) return;
     playAudio(songs[(idx + dir + songs.length) % songs.length]);
   };
+
+  /* ── progress polling for collapsed tile ── */
+  const playingProgressRef = useRef(0);
+  useEffect(() => {
+    if (!isPlaying || playingId === null || S.current.mode !== "audio") return;
+    let raf: number;
+    const tick = () => {
+      const p = getProgress();
+      playingProgressRef.current = p;
+      const bar = document.querySelector('[data-role="tile-progress"]') as HTMLElement | null;
+      if (bar) bar.style.width = `${p * 100}%`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isPlaying, playingId, getProgress]);
 
   /* ── watch (video monitor) ── */
   const doWatch = (song: Song) => {
@@ -707,6 +741,22 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
                         <span className="rc-tile-fallback-artist">{song.artist}</span>
                       </span>
                     )}
+                    {playingId === song.id && expandedId !== song.id && (
+                      <>
+                        {isPlaying && (
+                          <span className="rc-tile-play-overlay">
+                            <Pause size={28} />
+                          </span>
+                        )}
+                        <span className="rc-tile-progress-track">
+                          <span
+                            data-role="tile-progress"
+                            className="rc-tile-progress-fill"
+                            style={{ width: `${playingProgressRef.current * 100}%` }}
+                          />
+                        </span>
+                      </>
+                    )}
                   </button>
                 );
               }
@@ -717,6 +767,14 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
                   style={cover ? { backgroundImage: `url(${cover})` } : undefined}
                 >
                   <div className="rc-card-wash" />
+                  <button
+                    type="button"
+                    className="rc-collapse-btn"
+                    onClick={(e) => { e.stopPropagation(); setExpandedId(null); }}
+                    aria-label="Collapse"
+                  >
+                    <X size={16} />
+                  </button>
                   <button
                     type="button"
                     className={`rc-card-cover${playing ? " rc-playing" : ""}`}
