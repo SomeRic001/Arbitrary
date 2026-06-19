@@ -262,11 +262,52 @@ function SubmissionRow({
     setLoading(false);
   }
 
+  const dateStr = new Date(s.createdAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const actionButtons = loading ? (
+    <svg
+      className="animate-spin w-4 h-4 text-black/30"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  ) : (
+    <div className="flex gap-2">
+      {s.status !== "approved" && (
+        <button
+          onClick={() => handle("approved")}
+          className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-green-600 transition-colors"
+        >
+          ✓ Approve
+        </button>
+      )}
+      {s.status !== "rejected" && (
+        <button
+          onClick={() => setShowReject(true)}
+          className="px-3 py-1.5 rounded-lg bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-wider hover:bg-red-500 hover:text-white transition-colors"
+        >
+          ✕ Reject
+        </button>
+      )}
+      {s.status !== "pending" && (
+        <button
+          onClick={() => handle("approved")}
+          className="px-3 py-1.5 rounded-lg bg-black/5 text-black/50 text-[10px] font-black uppercase tracking-wider hover:bg-black/10 transition-colors"
+        >
+          Reset
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <>
-      {/* Modal is rendered via portal (see RejectModal) so it mounts at
-          document.body — never as a sibling of <tr> inside <tbody>.
-          AnimatePresence here controls enter/exit animations. */}
       <AnimatePresence>
         {showReject && (
           <RejectModal
@@ -279,38 +320,33 @@ function SubmissionRow({
         )}
       </AnimatePresence>
 
-      <motion.tr
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="border-b border-black/5 hover:bg-black/[0.015] transition-colors group"
-      >
-        {/* Category badge */}
-        <td className="px-4 py-3.5">
-          <span
-            className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
-              s.category === "dance"
-                ? "bg-indigo-100 text-indigo-700"
-                : "bg-black/8 text-black/60"
-            }`}
-          >
-            {s.category === "dance" ? "💃" : "🎵"} {s.category}
-          </span>
-        </td>
+      {/* Desktop row */}
+      <div className="hidden sm:grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-3.5 items-center hover:bg-black/[0.015] transition-colors group">
+        {/* Category */}
+        <span
+          className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full w-fit ${
+            s.category === "dance"
+              ? "bg-indigo-100 text-indigo-700"
+              : "bg-black/8 text-black/60"
+          }`}
+        >
+          {s.category === "dance" ? "💃" : "🎵"} {s.category}
+        </span>
 
         {/* Name + email */}
-        <td className="px-4 py-3.5">
+        <div>
           <p className="text-sm font-bold text-black">{s.name}</p>
           <p className="text-[11px] text-black/40">{s.email}</p>
           {s.phone && <p className="text-[11px] text-black/30">{s.phone}</p>}
-        </td>
+        </div>
 
         {/* Media */}
-        <td className="px-4 py-3.5">
+        <div>
           <MediaPreview url={s.mediaUrl} category={s.category} name={s.name} />
-        </td>
+        </div>
 
         {/* Status */}
-        <td className="px-4 py-3.5">
+        <div>
           <span
             className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${colors.bg} ${colors.text}`}
           >
@@ -325,69 +361,52 @@ function SubmissionRow({
               {s.rejectedReason}
             </p>
           )}
-        </td>
+        </div>
 
         {/* Date */}
-        <td className="px-4 py-3.5 text-[11px] text-black/35">
-          {new Date(s.createdAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </td>
+        <span className="text-[11px] text-black/35">{dateStr}</span>
 
         {/* Actions */}
-        <td className="px-4 py-3.5">
-          {loading ? (
-            <svg
-              className="animate-spin w-4 h-4 text-black/30"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-          ) : (
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              {s.status !== "approved" && (
-                <button
-                  onClick={() => handle("approved")}
-                  className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-green-600 transition-colors"
-                >
-                  ✓ Approve
-                </button>
-              )}
-              {s.status !== "rejected" && (
-                <button
-                  onClick={() => setShowReject(true)}
-                  className="px-3 py-1.5 rounded-lg bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-wider hover:bg-red-500 hover:text-white transition-colors"
-                >
-                  ✕ Reject
-                </button>
-              )}
-              {s.status !== "pending" && (
-                <button
-                  onClick={() => handle("approved")}
-                  className="px-3 py-1.5 rounded-lg bg-black/5 text-black/50 text-[10px] font-black uppercase tracking-wider hover:bg-black/10 transition-colors"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
+        <div className="flex justify-end opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+          {actionButtons}
+        </div>
+      </div>
+
+      {/* Mobile card */}
+      <div className="sm:hidden p-4 border-b border-black/5 hover:bg-black/[0.015] transition-colors">
+        <div className="flex items-start justify-between mb-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-black truncate">{s.name}</p>
+            <p className="text-[11px] text-black/40 truncate">{s.email}</p>
+            {s.phone && <p className="text-[11px] text-black/30">{s.phone}</p>}
+          </div>
+          <div className="shrink-0 ml-2">{actionButtons}</div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-black/40 flex-wrap">
+          <span
+            className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              s.category === "dance"
+                ? "bg-indigo-100 text-indigo-700"
+                : "bg-black/8 text-black/60"
+            }`}
+          >
+            {s.category === "dance" ? "💃" : "🎵"} {s.category}
+          </span>
+          <span className="text-zinc-300">·</span>
+          <MediaPreview url={s.mediaUrl} category={s.category} name={s.name} />
+          <span className="text-zinc-300">·</span>
+          <span
+            className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+            {s.status}
+          </span>
+          {s.rejectedReason && (
+            <span className="text-[9px] text-red-400">· {s.rejectedReason}</span>
           )}
-        </td>
-      </motion.tr>
+        </div>
+        <p className="text-[10px] text-black/30 mt-1.5">{dateStr}</p>
+      </div>
     </>
   );
 }
@@ -481,7 +500,7 @@ export default function AdminParticipantsPage() {
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/35 mb-1">
             Admin
@@ -517,7 +536,7 @@ export default function AdminParticipantsPage() {
       </div>
 
       {/* Stat pills */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
             label: "Total",
@@ -569,7 +588,7 @@ export default function AdminParticipantsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name…"
-            className="pl-8 pr-4 py-2 text-sm rounded-xl border border-black/10 bg-white outline-none focus:border-black/30 w-52"
+            className="pl-8 pr-4 py-2 text-sm rounded-xl border border-black/10 bg-white outline-none focus:border-black/30 w-full sm:w-52"
           />
         </div>
 
@@ -647,27 +666,20 @@ export default function AdminParticipantsPage() {
             </p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-black/8 bg-black/[0.015]">
-                {[
-                  "Category",
-                  "Participant",
-                  "Media",
-                  "Status",
-                  "Date",
-                  "Actions",
-                ].map((h) => (
-                  <th
+          <>
+            <div className="hidden sm:grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-3 bg-black/[0.015] border-b border-black/8">
+              {["Category", "Participant", "Media", "Status", "Date", ""].map(
+                (h, i) => (
+                  <span
                     key={h}
-                    className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-black/35"
+                    className={`text-[10px] font-black uppercase tracking-wider text-black/35 ${i === 5 ? "text-right" : ""}`}
                   >
                     {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+                  </span>
+                ),
+              )}
+            </div>
+            <div className="divide-y divide-black/5">
               {submissions.map((s) => (
                 <SubmissionRow
                   key={s.id}
@@ -675,8 +687,8 @@ export default function AdminParticipantsPage() {
                   onStatusChange={handleStatusChange}
                 />
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
 

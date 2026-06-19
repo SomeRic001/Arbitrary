@@ -176,6 +176,7 @@ export default function AdminRecords() {
 
   return (
     <div className="animate-fade-in space-y-8">
+      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.fade-in-up{animation:fadeInUp .25s ease-out forwards}`}</style>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 md:p-8 rounded-[2rem] border border-black/5 shadow-sm">
         <div>
           <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter">
@@ -203,86 +204,130 @@ export default function AdminRecords() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-[2.5rem] border border-black/5 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[600px]">
-              <thead>
-                <tr className="bg-zinc-50 border-b border-black/5">
-                  <th className="hidden md:table-cell px-4 md:px-8 py-4 md:py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Cover</th>
-                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Title</th>
-                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Artist</th>
-                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Year</th>
-                  <th className="hidden md:table-cell px-4 md:px-8 py-4 md:py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Genre</th>
-                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5">
-                {records.map((record) => (
-                  <tr key={record.id} className="hover:bg-zinc-50/50 transition-colors group">
-                    <td className="hidden md:table-cell px-4 md:px-8 py-3 md:py-4">
+        <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-sm overflow-hidden">
+          {/* Desktop header */}
+          <div className="hidden sm:grid grid-cols-[80px_2fr_1.5fr_1fr_1fr_1fr] gap-4 px-4 md:px-8 py-4 md:py-6 bg-zinc-50 border-b border-black/5">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Cover</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Title</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Artist</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Year</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Genre</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 text-right">Actions</span>
+          </div>
+
+          {/* Body */}
+          <div className="divide-y divide-black/5">
+            {records.map((record) => (
+              <div key={record.id} className="fade-in-up">
+                {/* Desktop row */}
+                <div className="hidden sm:grid grid-cols-[80px_2fr_1.5fr_1fr_1fr_1fr] gap-4 px-4 md:px-8 py-3 md:py-4 items-center hover:bg-zinc-50/50 transition-colors group">
+                  <div>
+                    {record.coverImageUrl ? (
+                      <img
+                        src={record.coverImageUrl}
+                        alt={record.title}
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-xl object-cover border border-black/5"
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-black/5 flex items-center justify-center"
+                        style={{ backgroundColor: record.labelColor || "#e0e0e0" }}
+                      >
+                        <span className="text-[8px] font-black text-white/70 uppercase">N/A</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-bold text-xs md:text-sm uppercase tracking-tight">{record.title}</p>
+                  <p className="text-[11px] md:text-xs font-bold text-zinc-500">{record.artist}</p>
+                  <p className="text-[11px] md:text-xs font-bold text-zinc-500">{record.releaseYear || "—"}</p>
+                  <div>
+                    {record.genre ? (
+                      <span className="text-[9px] font-black uppercase tracking-widest border border-black/5 px-2 md:px-3 py-1 rounded-full bg-zinc-50">
+                        {record.genre}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-zinc-300">—</span>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 md:gap-3">
+                    <button
+                      onClick={() => openEdit(record)}
+                      disabled={loadingId === String(record.id)}
+                      className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition-all text-[11px] md:text-xs font-black whitespace-nowrap ${
+                        loadingId === String(record.id)
+                          ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                          : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
+                      }`}
+                    >
+                      {loadingId === String(record.id) ? "..." : "Edit"}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(record.id, record.title)}
+                      disabled={loadingId === String(record.id)}
+                      className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition-all text-[11px] md:text-xs font-black whitespace-nowrap ${
+                        loadingId === String(record.id)
+                          ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                          : "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white"
+                      }`}
+                    >
+                      {loadingId === String(record.id) ? "..." : "Delete"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mobile card */}
+                <div className="sm:hidden p-4 border-b border-black/5 hover:bg-zinc-50/50 transition-colors">
+                  <div className="flex items-start gap-3 mb-2">
+                    <div className="shrink-0">
                       {record.coverImageUrl ? (
                         <img
                           src={record.coverImageUrl}
                           alt={record.title}
-                          className="w-10 h-10 md:w-12 md:h-12 rounded-xl object-cover border border-black/5"
+                          className="w-10 h-10 rounded-xl object-cover border border-black/5"
                         />
                       ) : (
                         <div
-                          className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-black/5 flex items-center justify-center"
+                          className="w-10 h-10 rounded-xl border border-black/5 flex items-center justify-center"
                           style={{ backgroundColor: record.labelColor || "#e0e0e0" }}
                         >
-                          <span className="text-[8px] font-black text-white/70 uppercase">N/A</span>
+                          <span className="text-[7px] font-black text-white/70 uppercase">N/A</span>
                         </div>
                       )}
-                    </td>
-                    <td className="px-4 md:px-8 py-3 md:py-4">
-                      <p className="font-bold text-xs md:text-sm uppercase tracking-tight">{record.title}</p>
-                    </td>
-                    <td className="px-4 md:px-8 py-3 md:py-4">
-                      <p className="text-[11px] md:text-xs font-bold text-zinc-500">{record.artist}</p>
-                    </td>
-                    <td className="px-4 md:px-8 py-3 md:py-4">
-                      <p className="text-[11px] md:text-xs font-bold text-zinc-500">{record.releaseYear || "—"}</p>
-                    </td>
-                    <td className="hidden md:table-cell px-4 md:px-8 py-3 md:py-4">
-                      {record.genre ? (
-                        <span className="text-[9px] font-black uppercase tracking-widest border border-black/5 px-2 md:px-3 py-1 rounded-full bg-zinc-50">
-                          {record.genre}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-zinc-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 md:px-8 py-3 md:py-4 text-right">
-                      <div className="flex justify-end gap-2 md:gap-3">
-                        <button
-                          onClick={() => openEdit(record)}
-                          disabled={loadingId === String(record.id)}
-                          className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition-all text-[11px] md:text-xs font-black whitespace-nowrap ${
-                            loadingId === String(record.id)
-                              ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                              : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
-                          }`}
-                        >
-                          {loadingId === String(record.id) ? "..." : "Edit"}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(record.id, record.title)}
-                          disabled={loadingId === String(record.id)}
-                          className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition-all text-[11px] md:text-xs font-black whitespace-nowrap ${
-                            loadingId === String(record.id)
-                              ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                              : "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white"
-                          }`}
-                        >
-                          {loadingId === String(record.id) ? "..." : "Delete"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-black uppercase tracking-tight truncate">
+                        {record.title}
+                      </p>
+                      <p className="text-[11px] font-bold text-zinc-500">
+                        {record.artist}
+                        {record.releaseYear && <span> · {record.releaseYear}</span>}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0 ml-2">
+                      <button
+                        onClick={() => openEdit(record)}
+                        disabled={loadingId === String(record.id)}
+                        className="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all disabled:opacity-40"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(record.id, record.title)}
+                        disabled={loadingId === String(record.id)}
+                        className="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all disabled:opacity-40"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  {record.genre && (
+                    <span className="text-[9px] font-black uppercase tracking-widest border border-black/5 px-2 py-0.5 rounded-full bg-zinc-50">
+                      {record.genre}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
