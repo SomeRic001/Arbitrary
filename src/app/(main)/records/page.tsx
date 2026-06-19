@@ -21,7 +21,7 @@ export default function RecordsPage() {
   }, []);
 
   return (
-    <div className="pt-35">
+    <div>
       <RecordsCatalog songs={songs} />
     </div>
   );

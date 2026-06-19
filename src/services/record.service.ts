@@ -62,6 +62,10 @@ export const RecordService = {
 
     if (!data.title?.trim()) return fail("Title is required", 400);
     if (!data.artist?.trim()) return fail("Artist is required", 400);
+    if (!data.youtubeUrl?.trim()) return fail("YouTube link is required", 400);
+    if (!/(?:youtube\.com|youtu\.be)/i.test(data.youtubeUrl.trim())) {
+      return fail("A valid YouTube link is required", 400);
+    }
 
     const updateData = {
       title: data.title,

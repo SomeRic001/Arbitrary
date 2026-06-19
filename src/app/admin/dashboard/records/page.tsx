@@ -112,6 +112,11 @@ export default function AdminRecords() {
   const handleSave = async () => {
     if (!form.title.trim()) { toast.error("Title is required"); return; }
     if (!form.artist.trim()) { toast.error("Artist is required"); return; }
+    if (!form.youtubeUrl.trim()) { toast.error("YouTube link is required"); return; }
+    if (!/(?:youtube\.com|youtu\.be)/i.test(form.youtubeUrl.trim())) {
+      toast.error("Please enter a valid YouTube link");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -128,7 +133,7 @@ export default function AdminRecords() {
         genre: form.genre || null,
         coverImageUrl: removeCover ? null : (coverUrl || null),
         labelColor: form.labelColor || null,
-        youtubeUrl: form.youtubeUrl || null,
+        youtubeUrl: form.youtubeUrl.trim(),
         removeCover: removeCover || undefined,
       };
       if (editingId) payload.id = editingId;
@@ -468,12 +473,13 @@ export default function AdminRecords() {
               </div>
 
               <div>
-                <label className={labelClass}>YouTube URL</label>
+                <label className={labelClass}>YouTube URL <span className="text-[#FACC15]">*</span></label>
                 <input
                   className={inputClass}
                   placeholder="https://youtube.com/watch?v=..."
                   value={form.youtubeUrl}
                   onChange={(e) => setForm({ ...form, youtubeUrl: e.target.value })}
+                  required
                 />
               </div>
             </div>

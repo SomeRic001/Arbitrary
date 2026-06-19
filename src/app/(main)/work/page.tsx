@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import AmbientBlob from "@/src/components/ui/ambient-blob";
 
 type Partner = {
   id: number;
@@ -31,19 +29,33 @@ function groupPartners(partners: Partner[]): Group[] {
   }));
 }
 
-const containerVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.05 } },
-};
+const STYLES = `
+@keyframes tickerLoop {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: tickerLoop 30s linear infinite;
+}
+`;
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
-  },
-};
+function LockIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#bbb"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0110 0v4" />
+    </svg>
+  );
+}
 
 export default function WorkPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -62,40 +74,31 @@ export default function WorkPage() {
 
   const groups = useMemo(() => groupPartners(partners), [partners]);
 
-  const [rotationsMap, setRotationsMap] = useState<Record<number, number>>({});
-  useEffect(() => {
-    setRotationsMap((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const p of partners) {
-        if (!(p.id in next)) {
-          next[p.id] = (Math.random() - 0.5) * 3;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [partners]);
-
   const stats = useMemo(
     () => groups.map((g) => ({ label: g.category, n: g.items.length })),
     [groups],
   );
 
   const hasContent = partners.length > 0;
+  const allNames = useMemo(() => partners.map((p) => p.name), [partners]);
+
+  const isConfidential = (p: Partner) => !p.logoUrl;
 
   return (
-    <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
-      <main className="pt-32 pb-20 overflow-hidden">
-        {/* Page Header */}
-        <section className="container mx-auto px-6 mb-20 md:mb-24 animate-fade-in">
-          <div className="max-w-4xl">
-            <span className="inline-block text-[#FACC15] font-bold uppercase tracking-[0.4em] text-xs mb-6 px-4 py-2 bg-zinc-50 rounded-full border border-black/5">
+    <div className="min-h-screen bg-white text-black selection:bg-[#c9a84c] selection:text-white">
+      <style>{STYLES}</style>
+
+      <main className="pt-32 pb-20">
+        <div className="container mx-auto px-6 animate-fade-in relative">
+          {/* Page Header */}
+          <div className="max-w-4xl mb-16">
+            <span className="inline-block text-[#c9a84c] font-bold uppercase tracking-[0.4em] text-xs mb-6 px-4 py-2 bg-zinc-50 rounded-full border border-black/5">
               Collaborations
             </span>
-            <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-10">
-              Our <br />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
+            <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-8">
+              Our{" "}
+              <br />
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#c9a84c] to-zinc-800">
                 WORK
               </span>
             </h1>
@@ -104,34 +107,82 @@ export default function WorkPage() {
               working with.&rdquo;
             </p>
           </div>
-        </section>
 
-        {/* Stats Strip */}
-        {hasContent && (
-          <section className="container mx-auto px-6 mb-24 md:mb-32">
-            <div
-              className="grid gap-px bg-black/5 rounded-3xl overflow-hidden border border-black/5"
-              style={{
-                gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, 1fr)`,
-              }}
-            >
-              {stats.map((s) => (
-                <div key={s.label} className="bg-white p-8 md:p-10">
-                  <p className="text-5xl md:text-6xl font-black tracking-tighter leading-none">
-                    {s.n}
-                  </p>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mt-3">
-                    {s.label}
-                  </p>
-                </div>
-              ))}
+          {/* Stats bar — dark scoreboard */}
+          {hasContent && (
+            <div className="bg-[#111] rounded-xl mb-12 overflow-hidden">
+              <div className="grid grid-cols-4">
+                {stats.map((s, i) => (
+                  <div
+                    key={s.label}
+                    className="flex flex-col py-5 px-6"
+                    style={{
+                      padding: "20px 24px",
+                      borderRight:
+                        i < stats.length - 1 ? "0.5px solid #2a2a2a" : "none",
+                    }}
+                  >
+                    <span
+                      className="text-white font-black tracking-tighter leading-none"
+                      style={{ fontSize: "32px" }}
+                    >
+                      {String(s.n).padStart(2, "0")}
+                    </span>
+                    <span
+                      className="uppercase mt-1"
+                      style={{
+                        fontSize: "10px",
+                        letterSpacing: "0.12em",
+                        color: "#666",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </section>
-        )}
+          )}
 
-        {/* Category Sections */}
+          {/* Dark ticker */}
+          {hasContent && (
+            <div className="w-full bg-[#111] rounded-lg py-3.5 mb-16 overflow-hidden">
+              <div className="ticker-track flex w-max hover:[animation-play-state:paused]">
+                <div className="flex shrink-0 items-center px-4" style={{ gap: "24px" }}>
+                  {allNames.map((name, i) => (
+                    <span key={i} className="flex items-center shrink-0" style={{ gap: "24px" }}>
+                      {i > 0 && <span className="text-[#c9a84c]/40 shrink-0">✦</span>}
+                      <span
+                        className="text-[#c9a84c] uppercase text-[11px] font-semibold shrink-0"
+                        style={{ letterSpacing: "0.14em" }}
+                      >
+                        {name}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex shrink-0 items-center px-4" aria-hidden="true" style={{ gap: "24px" }}>
+                  {allNames.map((name, i) => (
+                    <span key={i} className="flex items-center shrink-0" style={{ gap: "24px" }}>
+                      {i > 0 && <span className="text-[#c9a84c]/40 shrink-0">✦</span>}
+                      <span
+                        className="text-[#c9a84c] uppercase text-[11px] font-semibold shrink-0"
+                        style={{ letterSpacing: "0.14em" }}
+                      >
+                        {name}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Category sections */}
         {isLoading ? (
-          <section className="container mx-auto px-6">
+          <div className="container mx-auto px-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
@@ -140,89 +191,244 @@ export default function WorkPage() {
                 />
               ))}
             </div>
-          </section>
+          </div>
         ) : groups.length === 0 ? (
-          <section className="container mx-auto px-6">
+          <div className="container mx-auto px-6">
             <div className="text-center py-32">
               <p className="text-6xl font-black text-black/5 mb-6">&mdash;</p>
               <p className="text-zinc-400 font-bold uppercase tracking-widest text-sm">
                 No partners listed yet
               </p>
             </div>
-          </section>
+          </div>
         ) : (
-          groups.map(({ category, items }) => (
-            <section
-              key={category}
-              className="container mx-auto px-6 mb-24 md:mb-32 relative"
-            >
-              <AmbientBlob
-                color="#FACC15"
-                className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-[40rem] h-[40rem] -z-10 hidden md:block"
-              />
-              <div className="flex items-center gap-8 mb-12 md:mb-16">
-                <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter whitespace-nowrap">
-                  {category}
-                </h2>
-                <div className="h-0.5 flex-1 bg-black/5" />
-                <span className="text-zinc-400 font-bold uppercase tracking-widest text-xs whitespace-nowrap">
-                  {items.length} partner{items.length > 1 ? "s" : ""}
-                </span>
-              </div>
-
-              <motion.div
-                className="flex flex-wrap justify-start gap-5 md:gap-8"
-                variants={containerVariants}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: "-80px" }}
-              >
-                {items.map((p) => (
-                  <motion.div
-                    key={p.id}
-                    variants={itemVariants}
-                    className="flex-shrink-0"
+          <div className="container mx-auto px-6">
+            {groups.map(({ category, items }) => (
+              <div key={category} className="mb-16">
+                {/* Setlist divider */}
+                <div
+                  className="flex items-center gap-3.5 mb-6"
+                  style={{ gap: "14px" }}
+                >
+                  <span
+                    className="uppercase shrink-0"
                     style={{
-                      transform: `rotate(${rotationsMap[p.id] ?? 0}deg)`,
+                      fontSize: "12px",
+                      letterSpacing: "0.16em",
+                      fontWeight: 700,
+                      color: "#111",
                     }}
                   >
-                    <div className="group flex items-center gap-4 md:gap-6 px-4 md:px-6 py-4 rounded-2xl border border-transparent hover:border-black/10 hover:bg-zinc-50 hover:scale-105 transition-all duration-500 cursor-default hover:shadow-[0_8px_32px_rgba(250,204,21,0.15)]">
-                      {/* Logo */}
-                      <div className="w-20 h-20 md:w-28 md:h-28 flex-shrink-0 flex items-center justify-center">
-                        {p.logoUrl ? (
-                          <img
-                            src={p.logoUrl}
-                            alt={p.name}
-                            className="max-w-full max-h-full object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
-                          />
-                        ) : (
-                          <span className="text-2xl md:text-3xl font-black text-zinc-300 group-hover:text-zinc-500 transition-colors">
-                            {p.name[0]}
-                          </span>
-                        )}
-                      </div>
+                    {category}
+                  </span>
+                  <div
+                    className="flex-1"
+                    style={{ borderTop: "1px dashed #ddd" }}
+                  />
+                  <span
+                    className="uppercase shrink-0"
+                    style={{
+                      fontSize: "11px",
+                      letterSpacing: "0.1em",
+                      color: "#aaa",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {String(items.length).padStart(2, "0")}{" "}
+                    {items.length === 1 ? "PARTNER" : "PARTNERS"}
+                  </span>
+                </div>
 
-                      {/* Expandable content */}
-                      <div className="overflow-hidden max-w-0 group-hover:max-w-[400px] transition-all duration-500 ease-in-out">
-                        <div className="whitespace-nowrap">
-                          <h3 className="text-sm md:text-base font-black uppercase tracking-tight">
-                            {p.name}
-                          </h3>
-                          {p.description && (
-                            <p className="text-xs md:text-sm text-zinc-500 mt-0.5">
-                              {p.description}
-                            </p>
-                          )}
+                {/* Partner tiles */}
+                <div className="partner-grid">
+                  {items.map((p) => {
+                    const confidential = isConfidential(p);
+
+                    return (
+                      <div key={p.id} className="partner-tile">
+                        <div className="partner-tile-inner">
+                          <div className="partner-logo">
+                            {confidential ? (
+                              <LockIcon />
+                            ) : p.logoUrl ? (
+                              <img
+                                src={p.logoUrl}
+                                alt={p.name}
+                                className="partner-logo-img"
+                              />
+                            ) : (
+                              <LockIcon />
+                            )}
+                          </div>
+
+                          <div className="partner-info">
+                            <span
+                              className={`partner-name ${confidential ? "partner-name-conf" : ""}`}
+                            >
+                              {confidential
+                                ? "Confidential Partner"
+                                : p.name}
+                            </span>
+                            {!confidential && p.category && (
+                              <span className="partner-type-badge">
+                                {p.category}
+                              </span>
+                            )}
+                            <div className="partner-desc">
+                              {confidential ? (
+                                <span className="flex items-center gap-2" style={{flexWrap: 'wrap'}}>
+                                  <span className="partner-nda-text">
+                                    Details available under NDA
+                                  </span>
+                                  <span className="partner-conf-badge">
+                                    CONFIDENTIAL
+                                  </span>
+                                </span>
+                              ) : (
+                                <span>{p.description ?? ""}</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </section>
-          ))
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </main>
+
+      <style>{`
+.partner-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.partner-tile {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: width 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  flex-shrink: 0;
+}
+.partner-tile:hover {
+  width: 460px;
+  height: 220px;
+}
+
+.partner-tile-inner {
+  display: flex;
+  height: 100%;
+  width: 460px;
+  align-items: flex-start;
+}
+
+.partner-logo {
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f5f5f5;
+  border-radius: 8px;
+  transition: width 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.partner-tile:hover .partner-logo {
+  width: 220px;
+  height: 220px;
+}
+.partner-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1);
+  transition: filter 0.3s ease, transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.partner-tile:hover .partner-logo-img {
+  filter: grayscale(0);
+  transform: scale(1.25);
+}
+
+.partner-info {
+  width: 240px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.partner-tile:hover .partner-info {
+  opacity: 1;
+  transition-delay: 0.1s;
+}
+
+.partner-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #111;
+  margin-bottom: 4px;
+}
+.partner-name.partner-name-conf {
+  font-style: italic;
+  color: #bbb;
+}
+
+.partner-type-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c9a84c;
+  border: 1px solid #c9a84c;
+  padding: 2px 8px;
+  border-radius: 20px;
+  line-height: 1.4;
+  white-space: nowrap;
+  margin-bottom: 6px;
+  align-self: flex-start;
+}
+
+.partner-desc {
+  font-size: 13px;
+  color: #888;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.partner-nda-text {
+  font-size: 13px;
+  color: #888;
+}
+
+.partner-conf-badge {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: #c9a84c;
+  border: 0.5px solid rgba(201,168,76,0.4);
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+`}</style>
     </div>
+
   );
 }
