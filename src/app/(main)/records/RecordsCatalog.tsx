@@ -277,6 +277,28 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
   });
   const initRef = useRef(false);
   const actionsRef = useRef<{ onAudioEnded: () => void }>({ onAudioEnded: () => {} });
+  const bgRef = useRef<HTMLDivElement>(null);
+
+  // Parallax scroll for hero background
+  useEffect(() => {
+    const el = bgRef.current;
+    if (!el) return;
+    let rafId: number;
+    const onScroll = () => {
+      rafId = requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        const heroBottom = el.parentElement?.getBoundingClientRect().bottom ?? 0;
+        if (heroBottom > 0) {
+          el.style.transform = `translateY(${scrollY * 0.35}px)`;
+        }
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   const getProgress = useCallback(() => {
     const p = S.current.ytAudioPlayer;
@@ -607,17 +629,14 @@ export default function RecordsCatalog({ songs }: { songs: Song[] }) {
       </div>
 
       {/* Catalog hero — vinyl record background from home page hero */}
-      <section
-        className="relative min-h-[55vh] flex items-center overflow-hidden mb-14 pt-20"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=2070&auto=format&fit=crop')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
+      <section className="relative h-screen flex items-center overflow-hidden mb-14 pt-20">
+        <div ref={bgRef} className="rc-hero-bg" />
+
         <div className="absolute inset-0 bg-black/60" />
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
+
+        {/* Spinning vinyl overlay */}
+        <div className="rc-vinyl-overlay" aria-hidden="true" />
 
         <div className="relative z-10 w-full animate-fade-in">
           <div className="container mx-auto px-6">
