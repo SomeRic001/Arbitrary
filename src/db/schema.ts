@@ -12,6 +12,7 @@ export const eventsTable = pgTable("events", {
     venue: varchar("venue", { length: 255 }),
     description: text("description"),
     heroImageUrl: text("hero_image_url"),
+    youtubeUrl: text("youtube_url"),
     createdAt: timestamp("created_at").defaultNow(),
 });
 

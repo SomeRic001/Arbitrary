@@ -1,49 +1,310 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import { MapPin, ArrowRight } from "lucide-react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useInView,
+  AnimatePresence,
+} from "framer-motion";
+import { MapPin, ArrowRight, Music2, Calendar, Clock } from "lucide-react";
 import Link from "next/link";
 import type { Event } from "@/src/types/db";
 
-const containerVariants = {
+// ─── Animation Variants ───────────────────────────────────────────────────────
+
+const heroContainerVariants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.1 } },
+  show: { transition: { staggerChildren: 0.15, delayChildren: 0.1 } },
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 40 },
+const heroItemVariants = {
+  hidden: { opacity: 0, y: 28 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: "easeOut" as const },
+    transition: { duration: 0.8, ease: [0.23, 1, 0.32, 1] as const },
   },
 };
 
-export default function EventPage() {
-  const [events, setEvents] = React.useState<Event[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+// ─── Soundwave Graphic ────────────────────────────────────────────────────────
+// Each bar: first does the X-expand "wake up" burst, then loops Y pulse forever.
+// Heights and durations are hand-tuned so the wave looks like real audio levels.
 
+const BARS = [
+  { h: 12, expandDelay: 0.08, pulseDur: 0.65, pulseDelay: 0.0 },
+  { h: 22, expandDelay: 0.05, pulseDur: 0.5, pulseDelay: 0.12 },
+  { h: 32, expandDelay: 0.02, pulseDur: 0.8, pulseDelay: 0.05 },
+  { h: 40, expandDelay: 0.0, pulseDur: 0.45, pulseDelay: 0.2 },
+  { h: 28, expandDelay: 0.03, pulseDur: 0.7, pulseDelay: 0.08 },
+  { h: 36, expandDelay: 0.06, pulseDur: 0.55, pulseDelay: 0.15 },
+  { h: 18, expandDelay: 0.09, pulseDur: 0.6, pulseDelay: 0.03 },
+  { h: 30, expandDelay: 0.04, pulseDur: 0.75, pulseDelay: 0.18 },
+  { h: 24, expandDelay: 0.07, pulseDur: 0.48, pulseDelay: 0.1 },
+  { h: 14, expandDelay: 0.1, pulseDur: 0.85, pulseDelay: 0.22 },
+];
+
+// Two-phase animation per bar:
+//   Phase 1 — X expand: scaleX 0->1 fast with staggered delay (wake-up burst)
+//   Phase 2 — Y pulse:  scaleY loops 0.2<->1 at its own unique rhythm forever
+function SoundwaveBars({ className = "" }: { className?: string }) {
+  const [pulsing, setPulsing] = React.useState(false);
+
+  // Switch to pulse phase after the slowest X-expand finishes (~700ms)
   React.useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("/api/events");
-        const data = await res.json();
-        if (data.success) {
-          setEvents(data.events);
-        }
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchEvents();
+    const t = setTimeout(() => setPulsing(true), 700);
+    return () => clearTimeout(t);
   }, []);
 
-  const upcomingEvents = events.filter((e) => e.status === "Upcoming");
-  const pastEvents = events.filter((e) => e.status !== "Upcoming");
+  return (
+    <div
+      className={`flex items-end gap-[3px] sm:gap-1 ${className}`}
+      aria-hidden="true"
+    >
+      {BARS.map((bar, i) => (
+        <motion.div
+          key={i}
+          className="bg-[#FACC15] rounded-sm flex-shrink-0"
+          style={{
+            width: "clamp(3px, 0.35vw, 5px)",
+            height: bar.h,
+            transformOrigin: "bottom center",
+          }}
+          initial={{ scaleX: 0, scaleY: 1 }}
+          animate={
+            pulsing
+              ? { scaleX: 1, scaleY: [0.2, 1, 0.35, 0.85, 0.2] }
+              : { scaleX: 1, scaleY: 1 }
+          }
+          transition={
+            pulsing
+              ? {
+                  scaleX: { duration: 0 },
+                  scaleY: {
+                    duration: bar.pulseDur,
+                    delay: bar.pulseDelay,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  },
+                }
+              : {
+                  scaleX: {
+                    duration: 0.28,
+                    delay: bar.expandDelay,
+                    ease: [0.23, 1, 0.32, 1] as const,
+                  },
+                  scaleY: { duration: 0 },
+                }
+          }
+        />
+      ))}
+    </div>
+  );
+}
 
+// Stagger container for card lists
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12 } },
+};
+
+// Upcoming event card — slides up from below
+const cardVariants = {
+  hidden: { opacity: 0, y: 48 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.23, 1, 0.32, 1] as const },
+  },
+};
+
+// Past event card — fades in with slight scale
+const pastCardVariants = {
+  hidden: { opacity: 0, scale: 0.96, y: 24 },
+  show: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.23, 1, 0.32, 1] as const },
+  },
+};
+
+// Section heading reveal
+const headingVariants = {
+  hidden: { opacity: 0, x: -24 },
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.6, ease: [0.23, 1, 0.32, 1] as const },
+  },
+};
+
+// Divider line expands from left
+const dividerVariants = {
+  hidden: { scaleX: 0, opacity: 0 },
+  show: {
+    scaleX: 1,
+    opacity: 1,
+    transition: {
+      duration: 0.8,
+      ease: [0.23, 1, 0.32, 1] as const,
+      delay: 0.2,
+    },
+  },
+};
+
+// ─── Floating Music Note ──────────────────────────────────────────────────────
+
+function FloatingNote({
+  className,
+  delay = 0,
+}: {
+  className: string;
+  delay?: number;
+}) {
+  return (
+    <motion.span
+      aria-hidden="true"
+      className={`absolute text-[#FACC15] pointer-events-none select-none ${className}`}
+      initial={{ opacity: 0, y: 0 }}
+      animate={{ opacity: [0, 0.55, 0.55, 0], y: [-8, 6, -2, -8] }}
+      transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay }}
+    >
+      <Music2 className="w-4 h-4 sm:w-5 sm:h-5" />
+    </motion.span>
+  );
+}
+
+// ─── Equalizer Bars ───────────────────────────────────────────────────────────
+
+function EqualizerBars({ className = "" }: { className?: string }) {
+  const bars = Array.from({ length: 14 });
+  return (
+    <div className={`flex items-end gap-[3px] ${className}`}>
+      {bars.map((_, i) => (
+        <motion.span
+          key={i}
+          className="w-[3px] sm:w-1 bg-[#FACC15] rounded-full"
+          style={{ height: "100%", transformOrigin: "bottom" }}
+          animate={{ scaleY: [0.25, 1, 0.45, 0.85, 0.25] }}
+          transition={{
+            duration: 1.1 + (i % 4) * 0.15,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: i * 0.06,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Scroll-triggered section wrapper ────────────────────────────────────────
+// Fires once when the section enters the viewport — mirrors the hero stagger
+// but is triggered by scroll, not page load.
+
+function RevealSection({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial="hidden"
+      animate={inView ? "show" : "hidden"}
+      variants={containerVariants}
+      transition={{ delayChildren: delay }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// ─── Parallax hero image ──────────────────────────────────────────────────────
+
+function ParallaxHero({ children }: { children: React.ReactNode }) {
+  const ref = React.useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  // Background moves at 40% the scroll speed → subtle parallax
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
+  // Fade out the whole hero as user scrolls away
+  const opacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+
+  return (
+    <section
+      ref={ref}
+      className="relative min-h-[70vh] sm:min-h-[75vh] flex items-center overflow-hidden pb-14 sm:pb-20 lg:pb-32 -mt-20 sm:-mt-28 lg:-mt-32 pt-28 sm:pt-36 lg:pt-44"
+    >
+      {/* Parallax background */}
+      <motion.div
+        className="absolute inset-0 bg-cover bg-center scale-110"
+        style={{
+          y,
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=2070&auto=format&fit=crop')",
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
+      <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
+
+      {/* Content fades as user scrolls */}
+      <motion.div className="relative z-10 w-full" style={{ opacity }}>
+        {children}
+      </motion.div>
+    </section>
+  );
+}
+
+// ─── Animated count badge ─────────────────────────────────────────────────────
+// Counts up from 0 to target when it enters viewport
+
+function CountBadge({ count, label }: { count: number; label: string }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true });
+  const [displayed, setDisplayed] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!inView) return;
+    let start = 0;
+    const step = Math.ceil(count / 24);
+    const id = setInterval(() => {
+      start += step;
+      if (start >= count) {
+        setDisplayed(count);
+        clearInterval(id);
+      } else setDisplayed(start);
+    }, 40);
+    return () => clearInterval(id);
+  }, [inView, count]);
+
+  return (
+    <div ref={ref} className="flex flex-col items-center">
+      <span className="text-4xl sm:text-5xl font-black text-[#FACC15] tabular-nums leading-none">
+        {displayed}
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-400 mt-1">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ─── Upcoming Event Card ──────────────────────────────────────────────────────
+
+function UpcomingCard({ event }: { event: Event }) {
   const formatDate = (dateStr: Date | string) => {
     if (!dateStr) return { day: "--", month: "---", year: "----" };
     const d = new Date(dateStr);
@@ -54,281 +315,518 @@ export default function EventPage() {
     };
   };
 
+  const dateInfo = formatDate(event.eventDate);
+
+  return (
+    <motion.div
+      variants={cardVariants}
+      whileHover={{ y: -4, transition: { duration: 0.3 } }}
+      className="group relative overflow-hidden border border-black/5 lg:border-0 rounded-2xl lg:rounded-[2.5rem] hover:border-black/10 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+    >
+      {/* ── MOBILE CARD ── */}
+      <div className="lg:hidden">
+        <div className="relative h-44 sm:h-52 w-full overflow-hidden">
+          <motion.img
+            src={
+              event.heroImageUrl ||
+              "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop"
+            }
+            alt={event.title}
+            className="w-full h-full object-cover"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+          {/* Animated date badge */}
+          <motion.div
+            className="absolute bottom-3 left-4 flex items-end gap-1"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+          >
+            <span className="text-5xl font-black text-white leading-none tracking-tighter">
+              {dateInfo.day}
+            </span>
+            <div className="flex flex-col mb-1">
+              <span className="text-[11px] font-black uppercase tracking-widest text-[#FACC15] leading-tight">
+                {dateInfo.month}
+              </span>
+              <span className="text-[10px] font-bold text-white/50 leading-tight">
+                {dateInfo.year}
+              </span>
+            </div>
+          </motion.div>
+
+          <span className="absolute top-3 right-3 bg-white text-black text-[9px] font-black px-3 py-1 rounded-full tracking-[0.2em] uppercase shadow-lg">
+            {event.eventType}
+          </span>
+        </div>
+
+        <div className="p-4 sm:p-5 bg-white">
+          <span className="text-zinc-400 text-[11px] flex items-center gap-1.5 uppercase font-bold tracking-widest mb-2">
+            <MapPin className="w-3 h-3 text-[#FACC15] flex-shrink-0" />
+            {event.venue}
+          </span>
+          <h3 className="text-xl sm:text-2xl font-black tracking-tighter uppercase leading-tight mb-2">
+            {event.title}
+          </h3>
+          {event.description && (
+            <p className="text-zinc-400 text-sm leading-relaxed line-clamp-2 mb-4">
+              {event.description}
+            </p>
+          )}
+          <Link
+            href={`/events/${event.id}`}
+            className="flex items-center justify-between w-full px-5 py-3.5 bg-black text-white font-black uppercase tracking-[0.15em] rounded-xl hover:bg-[#FACC15] hover:text-black active:scale-95 transition-all duration-300 text-xs group/btn"
+          >
+            View Details
+            <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+      </div>
+
+      {/* ── DESKTOP CARD ── */}
+      <div className="hidden lg:block relative h-[320px] xl:h-[360px] rounded-[2.5rem] overflow-hidden">
+        {/* Image with zoom on hover */}
+        <motion.img
+          src={
+            event.heroImageUrl ||
+            "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop"
+          }
+          alt={event.title}
+          className="absolute inset-0 w-full h-full object-cover"
+          whileHover={{ scale: 1.06 }}
+          transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/70" />
+
+        {/* Gold left-edge accent that grows on hover */}
+        <motion.div
+          className="absolute left-0 top-0 bottom-0 w-1 bg-[#FACC15] origin-top"
+          initial={{ scaleY: 0 }}
+          whileInView={{ scaleY: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2, ease: [0.23, 1, 0.32, 1] }}
+        />
+
+        <div className="relative z-10 h-full flex items-center justify-between gap-8 px-10 xl:px-16 py-10">
+          {/* Date — slides in from left */}
+          <motion.div
+            className="flex flex-col items-start flex-shrink-0"
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{
+              duration: 0.6,
+              delay: 0.15,
+              ease: [0.23, 1, 0.32, 1],
+            }}
+          >
+            <span className="text-6xl xl:text-7xl font-black text-white leading-none tracking-tighter">
+              {dateInfo.day}
+            </span>
+            <span className="text-sm font-bold text-[#FACC15] uppercase tracking-widest mt-3">
+              {dateInfo.month} {dateInfo.year}
+            </span>
+          </motion.div>
+
+          {/* Center title — fades up */}
+          <motion.div
+            className="flex-1 flex flex-col items-center text-center min-w-0"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{
+              duration: 0.6,
+              delay: 0.25,
+              ease: [0.23, 1, 0.32, 1],
+            }}
+          >
+            <span className="inline-block border border-[#FACC15] text-[#FACC15] text-xs font-bold uppercase tracking-[0.2em] px-5 py-1.5 rounded-full mb-4">
+              {event.eventType}
+            </span>
+            <h3 className="text-4xl xl:text-6xl font-black text-white tracking-tight truncate max-w-full group-hover:text-[#FACC15] transition-colors duration-500">
+              {event.title}
+            </h3>
+          </motion.div>
+
+          {/* Right — slides in from right */}
+          <motion.div
+            className="flex flex-col items-end gap-3 flex-shrink-0"
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{
+              duration: 0.6,
+              delay: 0.35,
+              ease: [0.23, 1, 0.32, 1],
+            }}
+          >
+            <span className="flex items-center gap-2 text-white font-bold text-lg">
+              <MapPin className="w-5 h-5 text-[#FACC15] flex-shrink-0" />
+              {event.venue}
+            </span>
+            <Link
+              href={`/events/${event.id}`}
+              className="text-[#FACC15] font-bold text-sm flex items-center gap-1.5 hover:gap-3 transition-all duration-300"
+            >
+              View Details
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </motion.div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Past Event Card ──────────────────────────────────────────────────────────
+
+function PastCard({ event }: { event: Event }) {
+  const formatDate = (dateStr: Date | string) => {
+    if (!dateStr) return { day: "--", month: "---", year: "----" };
+    const d = new Date(dateStr);
+    return {
+      day: d.toLocaleDateString("en-US", { day: "2-digit" }),
+      month: d.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
+      year: d.getFullYear().toString(),
+    };
+  };
+
+  const dateInfo = formatDate(event.eventDate);
+
+  return (
+    <motion.div
+      variants={pastCardVariants}
+      whileHover={{ y: -8, transition: { duration: 0.3 } }}
+      className="relative group p-6 sm:p-8 lg:p-10 bg-white border border-black/5 rounded-[1.5rem] sm:rounded-[2rem] transition-all duration-700 hover:shadow-2xl flex flex-col justify-between min-h-[200px] sm:min-h-[260px] lg:min-h-[280px] overflow-hidden"
+    >
+      {/* Giant background initial — animates colour on hover */}
+      <div className="absolute -bottom-10 -right-10 text-[8rem] sm:text-[13rem] lg:text-[15rem] font-black text-black/[0.02] select-none group-hover:text-[#FACC15]/5 transition-colors duration-500 pointer-events-none">
+        {event.title[0]}
+      </div>
+
+      {/* Gold bottom bar that grows on hover */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#FACC15] origin-left"
+        initial={{ scaleX: 0 }}
+        whileHover={{ scaleX: 1 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+      />
+
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-5 sm:mb-8 lg:mb-10">
+          <div className="bg-zinc-50 p-3 sm:p-4 rounded-2xl border border-black/5 text-center min-w-[64px] sm:min-w-[80px]">
+            <p className="text-2xl sm:text-3xl font-black text-black leading-none">
+              {dateInfo.day}
+            </p>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
+              {dateInfo.month}
+            </p>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 border border-black/5 rounded-full text-zinc-500 bg-white group-hover:bg-black group-hover:text-white transition-all duration-300">
+            {event.status}
+          </span>
+        </div>
+
+        <h4 className="text-xl sm:text-3xl font-black tracking-tight uppercase group-hover:text-[#FACC15] transition-colors duration-300 mb-1 sm:mb-2">
+          {event.title}
+        </h4>
+        <p className="text-zinc-400 text-xs uppercase tracking-[0.2em] font-bold">
+          {event.venue}
+        </p>
+      </div>
+
+      <div className="relative z-10 pt-5 sm:pt-8 lg:pt-10">
+        <Link
+          href={`/events/${event.id}`}
+          className="text-black font-black uppercase tracking-widest text-xs flex items-center gap-3 group/btn"
+        >
+          View Recap
+          <motion.span
+            className="h-[2px] bg-black group-hover/btn:bg-[#FACC15] transition-colors duration-300"
+            initial={{ width: 32 }}
+            whileHover={{ width: 48 }}
+            transition={{ duration: 0.3 }}
+          />
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="flex flex-col items-center justify-center py-24 text-center"
+    >
+      <EqualizerBars className="h-12 mb-6 opacity-30" />
+      <p className="text-zinc-400 font-bold uppercase tracking-widest text-sm">
+        {message}
+      </p>
+    </motion.div>
+  );
+}
+
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+
+function Skeleton() {
+  return (
+    <div className="space-y-4">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="h-[200px] rounded-[2rem] bg-zinc-100"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Section Heading ─────────────────────────────────────────────────────────
+
+function SectionHeading({
+  eyebrow,
+  title,
+}: {
+  eyebrow: string;
+  title: string;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+
+  return (
+    <div
+      ref={ref}
+      className="flex items-center gap-6 sm:gap-8 mb-8 sm:mb-12 lg:mb-16"
+    >
+      <motion.div
+        initial="hidden"
+        animate={inView ? "show" : "hidden"}
+        variants={headingVariants}
+      >
+        <span className="block text-[#FACC15] font-black uppercase tracking-[0.3em] text-xs sm:text-sm mb-2">
+          {eyebrow}
+        </span>
+        <h2 className="relative inline-block text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tighter whitespace-nowrap">
+          {title}
+          {/* Underline bar grows in */}
+          <motion.span
+            className="absolute -bottom-2 left-0 h-1 bg-[#FACC15] rounded-full"
+            initial={{ width: 0 }}
+            animate={inView ? { width: "5rem" } : { width: 0 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.23, 1, 0.32, 1] }}
+          />
+        </h2>
+      </motion.div>
+      <motion.div
+        className="h-px flex-1 bg-black/10 mt-6 sm:mt-8 origin-left"
+        initial="hidden"
+        animate={inView ? "show" : "hidden"}
+        variants={dividerVariants}
+      />
+    </div>
+  );
+}
+
+// ─── Stats Bar ────────────────────────────────────────────────────────────────
+
+function StatsBar({
+  upcomingCount,
+  pastCount,
+}: {
+  upcomingCount: number;
+  pastCount: number;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      className="flex items-center justify-center gap-12 sm:gap-20 py-10 sm:py-14 border-y border-black/5"
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+    >
+      <CountBadge count={upcomingCount} label="Upcoming" />
+      <div className="w-px h-10 bg-black/10" />
+      <CountBadge count={pastCount} label="Past Events" />
+      <div className="w-px h-10 bg-black/10" />
+      <CountBadge count={upcomingCount + pastCount} label="Total" />
+    </motion.div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function EventPage() {
+  const [events, setEvents] = React.useState<Event[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch("/api/events");
+        const data = await res.json();
+        if (data.success) setEvents(data.events);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  const now = new Date();
+  const upcomingEvents = events.filter((e) => new Date(e.eventDate) >= now);
+  const pastEvents = events.filter((e) => new Date(e.eventDate) < now);
+
   return (
     <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
       <main className="pt-20 sm:pt-28 lg:pt-32 pb-20 overflow-hidden">
-        {/* Page Header */}
-        <section className="container mx-auto px-4 sm:px-6 mb-14 sm:mb-20 lg:mb-32 animate-fade-in">
-          <div className="max-w-4xl">
-            <span className="inline-block text-[#FACC15] font-bold uppercase tracking-[0.4em] text-xs mb-4 sm:mb-6 px-4 py-2 bg-zinc-50 rounded-full border border-black/5">
-              Our Experiences
-            </span>
-            <h1 className="text-4xl sm:text-6xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-6 sm:mb-10">
-              Events <br />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
-                & EXPERIENCES
-              </span>
-            </h1>
-            <p className="text-base sm:text-xl lg:text-2xl text-zinc-500 max-w-2xl leading-relaxed italic">
-              &quot;Where design meets physical reality. We create moments that
-              define the arbitrary.&quot;
-            </p>
-          </div>
-        </section>
-
-        {/* Upcoming Events Section */}
-        <section className="container mx-auto px-4 sm:px-6 mb-20 sm:mb-32 lg:mb-40">
-          <div className="flex items-center gap-4 sm:gap-8 mb-8 sm:mb-12 lg:mb-16">
-            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tighter whitespace-nowrap">
-              UPCOMING <span className="text-[#FACC15]">SHOWS</span>
-            </h2>
-            <div className="h-0.5 flex-1 bg-black/5" />
-          </div>
+        {/* ── Hero with parallax ── */}
+        <ParallaxHero>
+          <FloatingNote className="top-16 left-[8%] z-20" delay={0.5} />
+          <FloatingNote className="top-24 left-[18%] z-20" delay={1.2} />
+          <FloatingNote className="top-12 right-[22%] z-20" delay={2.1} />
+          <FloatingNote className="bottom-28 right-[10%] z-20" delay={0.8} />
 
           <motion.div
-            className="grid grid-cols-1 gap-4 lg:gap-12"
-            variants={containerVariants}
+            className="container mx-auto px-4 sm:px-6 pb-12 sm:pb-16 lg:pb-20"
+            variants={heroContainerVariants}
             initial="hidden"
             animate="show"
           >
-            {upcomingEvents.map((event) => {
-              const dateInfo = formatDate(event.eventDate);
-              return (
-                <motion.div
-                  key={event.id}
-                  variants={cardVariants}
-                  whileHover={{ y: -4, transition: { duration: 0.3 } }}
-                  className="group relative overflow-hidden border border-black/5 rounded-2xl lg:rounded-[2.5rem] hover:border-black/10 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+            <div className="max-w-4xl">
+              <motion.span
+                variants={heroItemVariants}
+                className="inline-block text-[#FACC15] font-bold uppercase tracking-[0.4em] text-xs mb-4 sm:mb-5 px-5 py-2 bg-black/20 backdrop-blur-sm rounded-full border-2 border-[#FACC15]"
+              >
+                Our Experiences
+              </motion.span>
+
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter uppercase leading-[0.85] mb-5 sm:mb-7 text-white">
+                <motion.span variants={heroItemVariants} className="block">
+                  Events &amp;
+                </motion.span>
+                <motion.span
+                  variants={heroItemVariants}
+                  className="flex items-center gap-4 sm:gap-6"
                 >
-                  {/* ── MOBILE CARD (hidden on lg+) ── */}
-                  <div className="lg:hidden">
-                    {/* Hero image strip */}
-                    <div className="relative h-44 sm:h-52 w-full overflow-hidden">
-                      <img
-                        src={
-                          event.heroImageUrl ||
-                          "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop"
-                        }
-                        alt={event.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
-                      {/* dark gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <span className="text-[#FACC15]">EXPERIENCES</span>
+                  {/* Soundwave graphic — only in the empty space beside the heading, not over the image */}
+                  <span className="hidden sm:flex flex-1 items-end self-end mb-1 overflow-hidden">
+                    <SoundwaveBars className="h-10 sm:h-12 lg:h-14" />
+                  </span>
+                </motion.span>
+              </h1>
 
-                      {/* Date badge — bottom-left over image */}
-                      <div className="absolute bottom-3 left-4 flex items-end gap-1">
-                        <span className="text-5xl font-black text-white leading-none tracking-tighter">
-                          {dateInfo.day}
-                        </span>
-                        <div className="flex flex-col mb-1">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-[#FACC15] leading-tight">
-                            {dateInfo.month}
-                          </span>
-                          <span className="text-[10px] font-bold text-white/50 leading-tight">
-                            {dateInfo.year}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Type badge — top-right */}
-                      <span className="absolute top-3 right-3 bg-white text-black text-[9px] font-black px-3 py-1 rounded-full tracking-[0.2em] uppercase shadow-lg">
-                        {event.eventType}
-                      </span>
-                    </div>
-
-                    {/* Card body */}
-                    <div className="p-4 sm:p-5 bg-white">
-                      {/* Venue */}
-                      <span className="text-zinc-400 text-[11px] flex items-center gap-1.5 uppercase font-bold tracking-widest mb-2">
-                        <MapPin className="w-3 h-3 text-[#FACC15] flex-shrink-0" />
-                        {event.venue}
-                      </span>
-
-                      {/* Title */}
-                      <h3 className="text-xl sm:text-2xl font-black tracking-tighter uppercase leading-tight mb-2">
-                        {event.title}
-                      </h3>
-
-                      {/* Description */}
-                      {event.description && (
-                        <p className="text-zinc-400 text-sm leading-relaxed line-clamp-2 mb-4">
-                          {event.description}
-                        </p>
-                      )}
-
-                      {/* CTA */}
-                      <Link
-                        href={`/events/${event.id}`}
-                        className="flex items-center justify-between w-full px-5 py-3.5 bg-black text-white font-black uppercase tracking-[0.15em] rounded-xl hover:bg-[#FACC15] hover:text-black active:scale-95 transition-all duration-300 text-xs group/btn"
-                      >
-                        View Details
-                        <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* ── DESKTOP CARD (hidden below lg) ── */}
-                  <div className="hidden lg:flex items-center gap-10 p-10 hover:bg-zinc-50 transition-all duration-700">
-                    {/* Background Decorative Circle */}
-                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#FACC15]/5 rounded-full blur-[80px] group-hover:bg-[#FACC15]/10 transition-all duration-700 pointer-events-none" />
-
-                    {/* Image */}
-                    <div className="w-56 h-56 bg-zinc-100 rounded-3xl overflow-hidden border border-black/5 flex-shrink-0 relative">
-                      <img
-                        src={
-                          event.heroImageUrl ||
-                          "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop"
-                        }
-                        alt={event.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-all duration-700" />
-                    </div>
-
-                    {/* Date */}
-                    <div className="flex flex-col items-center justify-center text-center min-w-[120px] py-4 border-r border-black/5 group-hover:border-[#FACC15]/20 transition-colors pr-8">
-                      <span className="text-6xl font-black tracking-tighter leading-none group-hover:scale-110 transition-transform duration-700">
-                        {dateInfo.day}
-                      </span>
-                      <span className="text-sm font-black uppercase tracking-widest text-[#FACC15] mt-3">
-                        {dateInfo.month}
-                      </span>
-                      <span className="text-xs font-bold text-zinc-300 mt-1">
-                        {dateInfo.year}
-                      </span>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 space-y-4">
-                      <div className="flex flex-wrap items-center gap-4">
-                        <span className="bg-black text-white text-[10px] font-black px-4 py-1.5 rounded-full tracking-[0.2em] uppercase shadow-lg">
-                          {event.eventType}
-                        </span>
-                        <span className="text-zinc-400 text-xs flex items-center gap-2 uppercase font-bold tracking-widest border border-black/5 px-3 py-1.5 rounded-full bg-white">
-                          <MapPin className="w-3.5 h-3.5 text-[#FACC15]" />
-                          {event.venue}
-                        </span>
-                      </div>
-                      <h3 className="text-4xl font-black tracking-tighter uppercase leading-none">
-                        {event.title}
-                      </h3>
-                      <p className="text-zinc-500 text-base max-w-2xl leading-relaxed font-medium">
-                        {event.description}
-                      </p>
-                    </div>
-
-                    {/* Action */}
-                    <div className="flex flex-col items-center justify-center min-w-[180px]">
-                      <div className="flex flex-col items-center gap-2 w-full">
-                        <Link
-                          href={`/events/${event.id}`}
-                          className="w-full px-8 py-5 bg-black text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#FACC15] hover:text-black hover:scale-[1.02] active:scale-95 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:shadow-[0_20px_50px_rgba(250,204,21,0.2)] text-sm text-center"
-                        >
-                          View Details
-                        </Link>
-                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-                          Limited spots
-                        </p>
-                      </div>
-                      <Link
-                        href={`/events/${event.id}`}
-                        className="mt-6 self-end text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-black transition-colors flex items-center gap-2 group/details"
-                      >
-                        View Details
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="group-hover/details:translate-x-1 transition-transform"
-                        >
-                          <path d="M5 12h14" />
-                          <path d="m12 5 7 7-7 7" />
-                        </svg>
-                      </Link>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+              <motion.p
+                variants={heroItemVariants}
+                className="text-sm sm:text-base lg:text-lg text-zinc-200 max-w-2xl leading-relaxed uppercase font-bold tracking-wide"
+              >
+                &quot;Where design meets physical reality. We create moments
+                that define the arbitrary.&quot;
+              </motion.p>
+            </div>
           </motion.div>
+        </ParallaxHero>
+
+        {/* ── Stats bar — count-up on scroll ── */}
+        {!isLoading && (
+          <StatsBar
+            upcomingCount={upcomingEvents.length}
+            pastCount={pastEvents.length}
+          />
+        )}
+
+        {/* ── Upcoming Events ── */}
+        <section className="container mx-auto px-4 sm:px-6 mb-20 sm:mb-32 lg:mb-40 mt-16 sm:mt-20">
+          <SectionHeading eyebrow="Upcoming" title="Events & Shows" />
+
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div key="loading-upcoming" exit={{ opacity: 0 }}>
+                <Skeleton />
+              </motion.div>
+            ) : upcomingEvents.length === 0 ? (
+              <motion.div
+                key="empty-upcoming"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <EmptyState message="No upcoming events right now — check back soon." />
+              </motion.div>
+            ) : (
+              <RevealSection
+                key="upcoming-list"
+                className="grid grid-cols-1 gap-4 lg:gap-12"
+              >
+                {upcomingEvents.map((event) => (
+                  <UpcomingCard key={event.id} event={event} />
+                ))}
+              </RevealSection>
+            )}
+          </AnimatePresence>
         </section>
 
-        {/* Completed Events Section */}
+        {/* ── Past Events ── */}
         <section className="bg-zinc-50 py-16 sm:py-28 lg:py-40 rounded-t-[2.5rem] sm:rounded-t-[4rem] lg:rounded-t-[5rem]">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-8 mb-12 sm:mb-16 lg:mb-24">
-              <div>
-                <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black uppercase tracking-tighter leading-none mb-3 sm:mb-4">
-                  PAST <span className="text-[#FACC15]">RECAPS</span>
-                </h2>
-                <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs sm:text-sm">
-                  Archived Moments from the Arbitrary Journey
-                </p>
-              </div>
+              <SectionHeading eyebrow="Past" title="Events & Shows" />
               <div className="h-[2px] flex-1 bg-black/5 hidden lg:block" />
             </div>
 
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 lg:gap-10"
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
-            >
-              {pastEvents.map((event) => {
-                const dateInfo = formatDate(event.eventDate);
-                return (
-                  <motion.div
-                    key={event.id}
-                    variants={cardVariants}
-                    whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                    className="relative group p-6 sm:p-8 lg:p-10 bg-white border border-black/5 rounded-[1.5rem] sm:rounded-[2rem] transition-all duration-700 hover:shadow-2xl flex flex-col justify-between min-h-[200px] sm:min-h-[260px] lg:min-h-[280px] overflow-hidden"
-                  >
-                    <div className="absolute -bottom-10 -right-10 text-[8rem] sm:text-[13rem] lg:text-[15rem] font-black text-black/[0.02] select-none group-hover:text-[#FACC15]/5 transition-colors pointer-events-none">
-                      {event.title[0]}
-                    </div>
-
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-5 sm:mb-8 lg:mb-10">
-                        <div className="bg-zinc-50 p-3 sm:p-4 rounded-2xl border border-black/5 text-center min-w-[64px] sm:min-w-[80px]">
-                          <p className="text-2xl sm:text-3xl font-black text-black leading-none">
-                            {dateInfo.day}
-                          </p>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-                            {dateInfo.month}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 border border-black/5 rounded-full text-zinc-500 bg-white group-hover:bg-black group-hover:text-white transition-all">
-                          {event.status}
-                        </span>
-                      </div>
-
-                      <h4 className="text-xl sm:text-3xl font-black tracking-tight uppercase group-hover:text-[#FACC15] transition-colors mb-1 sm:mb-2">
-                        {event.title}
-                      </h4>
-                      <p className="text-zinc-400 text-xs uppercase tracking-[0.2em] font-bold">
-                        {event.venue}
-                      </p>
-                    </div>
-
-                    <div className="relative z-10 pt-5 sm:pt-8 lg:pt-10">
-                      <Link
-                        href={`/events/${event.id}`}
-                        className="text-black font-black uppercase tracking-widest text-xs flex items-center gap-3 group/btn"
-                      >
-                        View Recap
-                        <span className="w-8 h-[2px] bg-black group-hover/btn:w-12 group-hover/btn:bg-[#FACC15] transition-all" />
-                      </Link>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
+            <AnimatePresence mode="wait">
+              {isLoading ? (
+                <motion.div
+                  key="loading-past"
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 lg:gap-10"
+                  exit={{ opacity: 0 }}
+                >
+                  {[0, 1, 2, 3].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="h-[240px] rounded-[2rem] bg-white border border-black/5"
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        delay: i * 0.15,
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              ) : pastEvents.length === 0 ? (
+                <motion.div
+                  key="empty-past"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <EmptyState message="No past events yet." />
+                </motion.div>
+              ) : (
+                <RevealSection
+                  key="past-list"
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 lg:gap-10"
+                >
+                  {pastEvents.map((event) => (
+                    <PastCard key={event.id} event={event} />
+                  ))}
+                </RevealSection>
+              )}
+            </AnimatePresence>
           </div>
         </section>
       </main>

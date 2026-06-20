@@ -20,7 +20,7 @@ type EventWithRelations = Event & {
 
 export type EventListItem = Pick<
   Event,
-  "id" | "title" | "eventType" | "status" | "eventDate" | "venue" | "description" | "heroImageUrl" | "createdAt"
+  "id" | "title" | "eventType" | "status" | "eventDate" | "venue" | "description" | "heroImageUrl" | "youtubeUrl" | "createdAt"
 >;
 
 async function syncMediaItems(tx: any, sectionId: number, mediaItems: { id?: number; url: string }[]) {
@@ -66,6 +66,7 @@ export const EventService = {
         venue: eventsTable.venue,
         description: eventsTable.description,
         heroImageUrl: eventsTable.heroImageUrl,
+        youtubeUrl: eventsTable.youtubeUrl,
         createdAt: eventsTable.createdAt,
       })
       .from(eventsTable)
@@ -122,9 +123,10 @@ export const EventService = {
       );
     }
 
-    const { id, title, eventType, status, date, venue, description, heroImageUrl, contentSections, accessTypes, timelineItems } = parsed.data;
+    const { id, title, eventType, status, date, venue, description, heroImageUrl, youtubeUrl, contentSections, accessTypes, timelineItems } = parsed.data;
 
     const eventDate = date ? new Date(date) : new Date();
+    const normalizedYoutubeUrl = youtubeUrl && youtubeUrl.trim() !== "" ? youtubeUrl.trim() : null;
 
     // --- Ownership & Authorization Guards (only for updates) ---
     if (id) {
@@ -163,7 +165,7 @@ export const EventService = {
 
         const [updated] = await tx
           .update(eventsTable)
-          .set({ title, eventType, status, eventDate, venue, description, heroImageUrl })
+          .set({ title, eventType, status, eventDate, venue, description, heroImageUrl, youtubeUrl: normalizedYoutubeUrl })
           .where(eq(eventsTable.id, eventIdNum))
           .returning();
 
@@ -282,7 +284,7 @@ export const EventService = {
       } else {
         const [newEvent] = await tx
           .insert(eventsTable)
-          .values({ title, eventType, status, eventDate, venue, description, heroImageUrl })
+          .values({ title, eventType, status, eventDate, venue, description, heroImageUrl, youtubeUrl: normalizedYoutubeUrl })
           .returning();
 
         finalEvent = newEvent;

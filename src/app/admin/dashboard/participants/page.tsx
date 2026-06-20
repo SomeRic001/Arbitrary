@@ -420,9 +420,6 @@ function SubmissionRow({
         </div>
 
         {/* Media */}
-        <div>
-          <MediaPreview url={s.mediaUrl} category={s.category} name={s.name} />
-        </div>
         <td className="px-4 py-3.5">
           <MediaPreview
             url={s.mediaUrl}

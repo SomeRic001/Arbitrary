@@ -6,6 +6,7 @@ import type { ContentSection, AccessType, TimelineItem } from "./types";
 import ContentSectionEditor from "./content-section-editor";
 import AccessTypeEditor from "./access-type-editor";
 import TimelineEditor from "./timeline-editor";
+import { extractYouTubeId, youtubeEmbedUrl } from "@/src/lib/youtube-url";
 
 interface HeroImage {
   url: string;
@@ -37,6 +38,8 @@ interface EventFormModalProps {
 
   heroImage: HeroImage;
   setHeroImage: (v: HeroImage) => void;
+  youtubeUrl: string;
+  setYoutubeUrl: (v: string) => void;
 
   contentSections: ContentSection[];
   setContentSections: (v: ContentSection[]) => void;
@@ -70,27 +73,41 @@ const formatFieldName = (field: string): string => {
     venue: "Venue",
     description: "Description",
     heroImageUrl: "Hero Image",
+    youtubeUrl: "YouTube Video URL",
     accessTypes: "Access Types",
     contentSections: "Content Sections",
     timelineItems: "Timeline",
   };
   if (topLabels[field]) return topLabels[field];
 
-  const nestedMediaMatch = field.match(/^contentSections\.(.+)\.mediaItems\.(.+)\.(.+)$/);
+  const nestedMediaMatch = field.match(
+    /^contentSections\.(.+)\.mediaItems\.(.+)\.(.+)$/,
+  );
   if (nestedMediaMatch) {
-    const labels: Record<string, string> = { url: "Media URL", id: "Media Item" };
+    const labels: Record<string, string> = {
+      url: "Media URL",
+      id: "Media Item",
+    };
     return labels[nestedMediaMatch[3]] || `Media Item: ${nestedMediaMatch[3]}`;
   }
 
-  const nestedMatch = field.match(/^(accessTypes|contentSections|timelineItems)\.(.+)\.(.+)$/);
+  const nestedMatch = field.match(
+    /^(accessTypes|contentSections|timelineItems)\.(.+)\.(.+)$/,
+  );
   if (nestedMatch) {
     const sectionLabels: Record<string, string> = {
-      accessTypes: "Access Type", contentSections: "Content Section", timelineItems: "Timeline",
+      accessTypes: "Access Type",
+      contentSections: "Content Section",
+      timelineItems: "Timeline",
     };
     const fieldLabels: Record<string, string> = {
-      title: "Title", price: "Price", pointCost: "Points Cost",
-      type: "Section Type", content: "Content",
-      time: "Time", description: "Description",
+      title: "Title",
+      price: "Price",
+      pointCost: "Points Cost",
+      type: "Section Type",
+      content: "Content",
+      time: "Time",
+      description: "Description",
     };
     return `${sectionLabels[nestedMatch[1]] || nestedMatch[1]}: ${fieldLabels[nestedMatch[3]] || nestedMatch[3]}`;
   }
@@ -120,6 +137,8 @@ const EventFormModal = ({
   setEventDescription,
   heroImage,
   setHeroImage,
+  youtubeUrl,
+  setYoutubeUrl,
   contentSections,
   setContentSections,
   accessTypes,
@@ -292,7 +311,11 @@ const EventFormModal = ({
                 onAdd={() =>
                   setContentSections([
                     ...contentSections,
-                    { id: Math.random().toString(), type: "content", content: "" },
+                    {
+                      id: Math.random().toString(),
+                      type: "content",
+                      content: "",
+                    },
                   ])
                 }
                 onRemove={(id) =>
@@ -392,7 +415,12 @@ const EventFormModal = ({
                   onAdd={() =>
                     setAccessTypes([
                       ...accessTypes,
-                      { id: Math.random().toString(), title: "", price: "", pointCost: 0 },
+                      {
+                        id: Math.random().toString(),
+                        title: "",
+                        price: "",
+                        pointCost: 0,
+                      },
                     ])
                   }
                   onRemove={(id) =>
@@ -405,9 +433,7 @@ const EventFormModal = ({
                       ),
                     )
                   }
-                  onClearError={(key) =>
-                    clearFieldError(setFieldErrors, key)
-                  }
+                  onClearError={(key) => clearFieldError(setFieldErrors, key)}
                 />
                 <TimelineEditor
                   timelines={timelines}
@@ -415,7 +441,11 @@ const EventFormModal = ({
                   onAdd={() =>
                     setTimelines([
                       ...timelines,
-                      { id: Math.random().toString(), time: "", description: "" },
+                      {
+                        id: Math.random().toString(),
+                        time: "",
+                        description: "",
+                      },
                     ])
                   }
                   onRemove={(id) =>
@@ -428,9 +458,7 @@ const EventFormModal = ({
                       ),
                     )
                   }
-                  onClearError={(key) =>
-                    clearFieldError(setFieldErrors, key)
-                  }
+                  onClearError={(key) => clearFieldError(setFieldErrors, key)}
                 />
               </div>
             </div>
@@ -504,6 +532,56 @@ const EventFormModal = ({
                     </p>
                   )}
                 </div>
+
+                <div className="space-y-2 pt-2 border-t border-black/5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">
+                    YouTube Promo Video{" "}
+                    <span className="text-zinc-300 normal-case font-medium tracking-normal">
+                      (optional)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={youtubeUrl}
+                    onChange={(e) => {
+                      setYoutubeUrl(e.target.value);
+                      if (fieldErrors.youtubeUrl)
+                        setFieldErrors({ ...fieldErrors, youtubeUrl: "" });
+                    }}
+                    placeholder="https://youtube.com/watch?v=... or youtu.be/..."
+                    className={`w-full px-6 py-4 bg-zinc-50 border rounded-2xl focus:outline-none font-medium text-xs transition-colors ${
+                      fieldErrors.youtubeUrl
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-black/5 focus:border-[#FACC15]"
+                    }`}
+                  />
+                  {fieldErrors.youtubeUrl ? (
+                    <p className="text-xs text-red-600 font-bold ml-2">
+                      ❌ {fieldErrors.youtubeUrl}
+                    </p>
+                  ) : (
+                    <p className="text-[9px] text-zinc-300 font-bold uppercase ml-2">
+                      When set, replaces the hero image on the event page
+                    </p>
+                  )}
+
+                  {(() => {
+                    const previewId = extractYouTubeId(youtubeUrl);
+                    if (!youtubeUrl.trim() || !previewId) return null;
+                    return (
+                      <div className="rounded-2xl overflow-hidden border border-black/5 mt-3">
+                        <iframe
+                          className="w-full aspect-video"
+                          src={youtubeEmbedUrl(previewId)}
+                          title="YouTube preview"
+                          allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                          sandbox="allow-scripts allow-same-origin allow-presentation"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           </div>
@@ -561,7 +639,13 @@ interface SelectFieldProps {
   onChange: (value: string) => void;
 }
 
-const SelectField = ({ label, value, options, hasError, onChange }: SelectFieldProps) => (
+const SelectField = ({
+  label,
+  value,
+  options,
+  hasError,
+  onChange,
+}: SelectFieldProps) => (
   <div className="space-y-2 relative">
     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">
       {label}
@@ -621,9 +705,7 @@ const TextField = ({
           : "border-black/5 focus:border-[#FACC15]"
       }`}
     />
-    {error && (
-      <p className="text-xs text-red-600 font-bold ml-2">❌ {error}</p>
-    )}
+    {error && <p className="text-xs text-red-600 font-bold ml-2">❌ {error}</p>}
   </div>
 );
 

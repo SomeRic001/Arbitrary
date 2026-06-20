@@ -1,4 +1,5 @@
 import z from "zod";
+import { isValidYouTubeUrl } from "@/src/lib/youtube-url";
 
 export const eventSchema = z.object({
     id: z.number().int().positive().nullable().optional(),
@@ -11,6 +12,13 @@ export const eventSchema = z.object({
     venue: z.string().max(255).nullable().optional(),
     description: z.string().nullable().optional(),
     heroImageUrl: z.string().nullable().optional(),
+    youtubeUrl: z.string()
+        .max(2048, "URL too long")
+        .nullable()
+        .optional()
+        .refine((val) => !val || val.trim() === "" || isValidYouTubeUrl(val), {
+            message: "Must be a valid YouTube URL (e.g. youtube.com/watch?v=... or youtu.be/...)",
+        }),
     contentSections: z.array(z.object({
         id: z.number().int().positive("Invalid section ID").optional(),
         type: z.string().min(1, "Section type is required").max(50),

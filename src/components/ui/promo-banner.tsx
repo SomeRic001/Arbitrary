@@ -377,7 +377,7 @@ export default function PromoBanner() {
       </div>
 
       {/* ── Desktop (≥ 1024px): original static layout ── */}
-      <div className="hidden lg:flex relative items-center justify-between gap-2 px-6 py-5">
+      <div className="hidden lg:flex relative items-center justify-between gap-2 px-6 py-2.5">
         <div className="flex-shrink-0">
           <span
             className="text-white font-black text-[12px] tracking-widest uppercase px-3 py-1 rounded-full border border-white/40"
