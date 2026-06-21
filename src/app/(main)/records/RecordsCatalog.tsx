@@ -151,10 +151,10 @@ function WaveformCanvas({
     const barCount = heights.length;
     const gap = 4;
     const totalGap = gap * (barCount - 1);
-    const barWidth = (w - totalGap) / barCount;
+    const barWidth = Math.max(0, (w - totalGap) / barCount);
     const midY = h / 2;
     const maxH = h * 0.85;
-    const radius = Math.min(barWidth / 2, 1.5);
+    const radius = Math.max(0, Math.min(barWidth / 2, 1.5));
     const progressBarIndex = progress * barCount;
 
     ctx.clearRect(0, 0, w, h);

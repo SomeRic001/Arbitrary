@@ -35,7 +35,7 @@ const STYLES = `
   to { transform: translateX(-50%); }
 }
 .ticker-track {
-  animation: tickerLoop 30s linear infinite;
+  animation: tickerLoop 60s linear infinite;
 }
 `;
 
@@ -85,22 +85,20 @@ export default function WorkPage() {
   const isConfidential = (p: Partner) => !p.logoUrl;
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-[#c9a84c] selection:text-white">
+    <div className="min-h-screen bg-white text-black selection:bg-[#FACC15] selection:text-white">
       <style>{STYLES}</style>
 
       <main className="pt-32 pb-20">
         <div className="container mx-auto px-6 animate-fade-in relative">
           {/* Page Header */}
           <div className="max-w-4xl mb-16">
-            <span className="inline-block text-[#c9a84c] font-bold uppercase tracking-[0.4em] text-xs mb-6 px-4 py-2 bg-zinc-50 rounded-full border border-black/5">
+            <span className="inline-block text-[#FACC15] font-bold uppercase tracking-[0.4em] text-xs mb-6 px-4 py-2 bg-zinc-50 rounded-full border border-black/5">
               Collaborations
             </span>
             <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-8">
               Our{" "}
               <br />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#c9a84c] to-zinc-800">
-                WORK
-              </span>
+              <span className="text-[#FACC15]">WORK</span>
             </h1>
             <p className="text-xl md:text-2xl text-zinc-500 max-w-2xl leading-relaxed italic">
               &ldquo;Brands and partners we&rsquo;ve had the privilege of
@@ -149,32 +147,26 @@ export default function WorkPage() {
           {hasContent && (
             <div className="w-full bg-[#111] rounded-lg py-3.5 mb-16 overflow-hidden">
               <div className="ticker-track flex w-max hover:[animation-play-state:paused]">
-                <div className="flex shrink-0 items-center px-4" style={{ gap: "24px" }}>
-                  {allNames.map((name, i) => (
-                    <span key={i} className="flex items-center shrink-0" style={{ gap: "24px" }}>
-                      {i > 0 && <span className="text-[#c9a84c]/40 shrink-0">✦</span>}
-                      <span
-                        className="text-[#c9a84c] uppercase text-[11px] font-semibold shrink-0"
-                        style={{ letterSpacing: "0.14em" }}
-                      >
-                        {name}
+                {Array.from({ length: 8 }).map((_, copyIdx) => (
+                  <div
+                    key={copyIdx}
+                    className="flex shrink-0 items-center px-4"
+                    style={{ gap: "24px" }}
+                    {...(copyIdx === 0 ? {} : { "aria-hidden": true } as React.HTMLAttributes<HTMLDivElement>)}
+                  >
+                    {allNames.map((name, i) => (
+                      <span key={i} className="flex items-center shrink-0" style={{ gap: "24px" }}>
+                        {i > 0 && <span className="text-[#FACC15]/40 shrink-0">✦</span>}
+                        <span
+                          className="text-[#FACC15] uppercase text-[11px] font-semibold shrink-0"
+                          style={{ letterSpacing: "0.14em" }}
+                        >
+                          {name}
+                        </span>
                       </span>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex shrink-0 items-center px-4" aria-hidden="true" style={{ gap: "24px" }}>
-                  {allNames.map((name, i) => (
-                    <span key={i} className="flex items-center shrink-0" style={{ gap: "24px" }}>
-                      {i > 0 && <span className="text-[#c9a84c]/40 shrink-0">✦</span>}
-                      <span
-                        className="text-[#c9a84c] uppercase text-[11px] font-semibold shrink-0"
-                        style={{ letterSpacing: "0.14em" }}
-                      >
-                        {name}
-                      </span>
-                    </span>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -288,6 +280,17 @@ export default function WorkPage() {
                                 <span>{p.description ?? ""}</span>
                               )}
                             </div>
+                            {!confidential && p.websiteUrl && (
+                              <a
+                                href={p.websiteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="partner-website-link"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Visit Website →
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -390,8 +393,8 @@ export default function WorkPage() {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #c9a84c;
-  border: 1px solid #c9a84c;
+  color: #FACC15;
+  border: 1px solid #FACC15;
   padding: 2px 8px;
   border-radius: 20px;
   line-height: 1.4;
@@ -410,6 +413,22 @@ export default function WorkPage() {
   overflow: hidden;
 }
 
+.partner-website-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FACC15;
+  text-decoration: none;
+  align-self: flex-start;
+  transition: gap 0.2s ease;
+}
+.partner-website-link:hover {
+  text-decoration: underline;
+}
+
 .partner-nda-text {
   font-size: 13px;
   color: #888;
@@ -419,8 +438,8 @@ export default function WorkPage() {
   display: inline-block;
   font-size: 9px;
   letter-spacing: 0.1em;
-  color: #c9a84c;
-  border: 0.5px solid rgba(201,168,76,0.4);
+  color: #FACC15;
+  border: 0.5px solid rgba(250,204,21,0.4);
   padding: 2px 7px;
   border-radius: 20px;
   font-weight: 600;

@@ -403,7 +403,7 @@ const HomePage = () => {
                           {rest && (
                             <>
                               <br />
-                              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
+                              <span className="text-[#FACC15]">
                                 {rest}
                               </span>
                             </>

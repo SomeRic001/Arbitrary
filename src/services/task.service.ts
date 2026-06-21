@@ -668,7 +668,7 @@ export const TaskService = {
       .select({ role: usersTable.role })
       .from(usersTable)
       .where(eq(usersTable.id, userId));
-    if (currentUser?.role === "admin") {
+    if (currentUser?.role === "ADMIN") {
       return fail("Admins cannot pick up tasks", 403);
     }
 

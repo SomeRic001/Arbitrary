@@ -58,7 +58,7 @@ export default function ContactPage() {
             </span>
             <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-10">
               GET IN{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
+              <span className="text-[#FACC15]">
                 TOUCH
               </span>
             </h1>

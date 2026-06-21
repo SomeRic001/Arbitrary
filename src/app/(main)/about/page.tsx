@@ -59,7 +59,7 @@ export default function AboutPage() {
                       {rest && (
                         <>
                           {" "}
-                          <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
+                          <span className="text-[#FACC15]">
                             {rest}
                           </span>
                         </>
@@ -91,23 +91,27 @@ export default function AboutPage() {
             <div className="relative p-12 md:p-20 border border-black/5 rounded-[2.5rem] bg-white overflow-hidden">
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#FACC15]/5 rounded-full blur-[80px]" />
               <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-black/[0.02] rounded-full blur-[80px]" />
-              <div className="flex justify-center gap-16 md:gap-32 relative z-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                 {about?.projectsCount && (
-                  <div className="text-center">
-                    <p className="text-5xl md:text-7xl font-black text-black mb-2">
+                  <div className="relative bg-white rounded-2xl border border-black/5 p-8 overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md group">
+                    <div className="absolute inset-y-0 left-0 w-full bg-[#FACC15] -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-in-out" />
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#FACC15] transition-all duration-300 group-hover:w-2 z-10" />
+                    <p className="text-6xl md:text-8xl font-black text-black leading-none mb-2 relative z-10 group-hover:text-white transition-colors duration-300">
                       {about.projectsCount}
                     </p>
-                    <p className="text-zinc-500 text-xs md:text-sm uppercase tracking-widest font-bold">
+                    <p className="text-zinc-500 text-xs uppercase tracking-widest font-bold relative z-10 group-hover:text-white/80 transition-colors duration-300">
                       {about.projectsLabel || "Projects Completed"}
                     </p>
                   </div>
                 )}
                 {about?.awardsCount && (
-                  <div className="text-center">
-                    <p className="text-5xl md:text-7xl font-black text-black mb-2">
+                  <div className="relative bg-white rounded-2xl border border-black/5 p-8 overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md group">
+                    <div className="absolute inset-y-0 left-0 w-full bg-[#FACC15] -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-in-out" />
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#FACC15] transition-all duration-300 group-hover:w-2 z-10" />
+                    <p className="text-6xl md:text-8xl font-black text-black leading-none mb-2 relative z-10 group-hover:text-white transition-colors duration-300">
                       {about.awardsCount}
                     </p>
-                    <p className="text-zinc-500 text-xs md:text-sm uppercase tracking-widest font-bold">
+                    <p className="text-zinc-500 text-xs uppercase tracking-widest font-bold relative z-10 group-hover:text-white/80 transition-colors duration-300">
                       {about.awardsLabel || "Awards Won"}
                     </p>
                   </div>
@@ -121,8 +125,8 @@ export default function AboutPage() {
         {about?.motto && (
           <section className="container mx-auto px-6 mb-20">
             <div className="max-w-4xl mx-auto">
-              <div className="relative p-12 md:p-20 bg-black rounded-[2.5rem] text-white overflow-hidden">
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#FACC15]/10 rounded-full blur-[80px]" />
+              <div className="relative p-12 md:p-20 bg-black rounded-[2.5rem] text-white overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#FACC15]/10 rounded-full blur-[80px] transition-all duration-500 group-hover:scale-150" />
                 <p className="text-3xl md:text-5xl font-bold italic leading-tight mb-6 relative z-10">
                   &ldquo;{about.motto}&rdquo;
                 </p>

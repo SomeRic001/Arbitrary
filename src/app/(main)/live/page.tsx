@@ -236,9 +236,7 @@ export default function LivePage() {
               </span>
               <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase leading-[0.85] mb-10">
                 {youtubeId ? "Now" : "Off"} <br />
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
-                  Air
-                </span>
+                <span className="text-[#FACC15]">Air</span>
               </h1>
               <p className="text-xl md:text-2xl text-zinc-500 max-w-2xl leading-relaxed italic">
                 &ldquo;
@@ -274,9 +272,7 @@ export default function LivePage() {
               </div>
               <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-4">
                 Nothing <br />
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-[#FACC15] to-zinc-800">
-                  Live Right Now
-                </span>
+                <span className="text-[#FACC15]">Live Right Now</span>
               </h2>
               <p className="text-zinc-500 max-w-md">
                 There is no live stream currently active. Check back later for

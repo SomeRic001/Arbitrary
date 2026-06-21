@@ -113,6 +113,10 @@ const UserSignupPage = () => {
       setError("Password must be at least 8 characters.");
       return;
     }
+    if (!agreed) {
+      setError("You must agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
 
     setIsLoading(true);
     setError("");
