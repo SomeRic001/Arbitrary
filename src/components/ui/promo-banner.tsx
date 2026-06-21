@@ -103,7 +103,7 @@ function RegisterBtn({ className = "" }: { className?: string }) {
   return (
     <Link
       href={BANNER_CONFIG.registerHref}
-      className={`flex-shrink-0 bg-[#12122A] text-white font-black uppercase tracking-widest rounded-lg hover:bg-[#1e1e3a] transition-colors duration-150 ${className}`}
+      className={`flex-shrink-0 bg-[#001f6c] text-white font-black uppercase tracking-widest rounded-lg hover:bg-[#002a8a] transition-colors duration-150 ${className}`}
     >
       PARTICIPATE
     </Link>
