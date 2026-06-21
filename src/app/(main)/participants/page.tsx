@@ -955,7 +955,7 @@ function ParticipantForm({
         <input
           required
           type="url"
-          placeholder="Youtube/Facebook/Instagram URL"
+          placeholder="Enter youtube, facebook or instagram url"
           value={form.url}
           disabled={isSubmitting}
           onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
