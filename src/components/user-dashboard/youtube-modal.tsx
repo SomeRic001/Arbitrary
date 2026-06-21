@@ -27,23 +27,6 @@ interface YTPlayer {
   getCurrentTime(): number;
 }
 
-declare global {
-  interface Window {
-    YT?: {
-      Player: any;
-      PlayerState: {
-        OFF: number;
-        UNSTARTED: number;
-        PLAYING: number;
-        PAUSED: number;
-        BUFFERING: number;
-        CUED: number;
-      };
-    };
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
-
 export function YoutubeModal({
   url,
   taskId,
