@@ -429,6 +429,72 @@ function UpcomingCard({ event }: { event: Event }) {
   );
 }
 
+// ─── Compact Upcoming Card (low-priority events, 3-up grid) ──────────────────
+
+function CompactUpcomingCard({ event }: { event: Event }) {
+  const formatDate = (dateStr: Date | string) => {
+    if (!dateStr) return { day: "--", month: "---", year: "----" };
+    const d = new Date(dateStr);
+    return {
+      day: d.toLocaleDateString("en-US", { day: "2-digit" }),
+      month: d.toLocaleDateString("en-US", { month: "long" }),
+      year: d.getFullYear().toString(),
+    };
+  };
+
+  const dateInfo = formatDate(event.eventDate);
+
+  return (
+    <motion.div
+      variants={cardVariants}
+      whileHover={{ y: -4, transition: { duration: 0.3 } }}
+      className="group relative h-[260px] sm:h-[300px] rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-black/5"
+    >
+      <motion.img
+        src={
+          event.heroImageUrl ||
+          "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop"
+        }
+        alt={event.title}
+        className="absolute inset-0 w-full h-full object-cover"
+        whileHover={{ scale: 1.06 }}
+        transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
+
+      {/* Date badge — top left */}
+      <div className="absolute top-4 left-4 sm:top-5 sm:left-5 flex flex-col">
+        <span className="text-3xl sm:text-4xl font-black text-white leading-none tracking-tighter">
+          {dateInfo.day}
+        </span>
+        <span className="text-[10px] sm:text-xs font-bold text-[#FACC15] uppercase tracking-wide mt-0.5">
+          {dateInfo.month} {dateInfo.year}
+        </span>
+      </div>
+
+      {/* Title, location, CTA — bottom */}
+      <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="text-base sm:text-lg font-black text-white uppercase tracking-tight truncate">
+            {event.title}
+          </h4>
+          {event.venue && (
+            <span className="flex items-center gap-1 text-white/80 text-xs font-bold mt-1 truncate">
+              <MapPin className="w-3.5 h-3.5 text-[#FACC15] flex-shrink-0" />
+              {event.venue}
+            </span>
+          )}
+        </div>
+        <Link
+          href={`/events/${event.id}`}
+          className="shrink-0 px-4 py-2 bg-white text-black text-xs font-black uppercase tracking-wide rounded-xl hover:bg-[#FACC15] active:scale-95 transition-all duration-300"
+        >
+          View Details
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
 // ─── Past Event Card ──────────────────────────────────────────────────────────
 
 function PastCard({ event }: { event: Event }) {
@@ -636,8 +702,22 @@ export default function EventPage() {
   }, []);
 
   const now = new Date();
-  const upcomingEvents = events.filter((e) => new Date(e.eventDate) >= now);
+  const upcomingEvents = events
+    .filter((e) => new Date(e.eventDate) >= now)
+    // High-priority events always render above low-priority ones; the API's
+    // own ordering (most recent eventDate first) is preserved within each group
+    // since Array.sort is stable.
+    .sort((a, b) => {
+      const aHigh = a.priority === "high" ? 0 : 1;
+      const bHigh = b.priority === "high" ? 0 : 1;
+      return aHigh - bHigh;
+    });
   const pastEvents = events.filter((e) => new Date(e.eventDate) < now);
+
+  const highPriorityEvents = upcomingEvents.filter(
+    (e) => e.priority === "high",
+  );
+  const lowPriorityEvents = upcomingEvents.filter((e) => e.priority !== "high");
 
   return (
     <div className="bg-white text-black min-h-screen selection:bg-[#FACC15] selection:text-black">
@@ -717,11 +797,22 @@ export default function EventPage() {
             ) : (
               <RevealSection
                 key="upcoming-list"
-                className="grid grid-cols-1 gap-4 lg:gap-12"
+                className="flex flex-col gap-8 lg:gap-12"
               >
-                {upcomingEvents.map((event) => (
-                  <UpcomingCard key={event.id} event={event} />
-                ))}
+                {highPriorityEvents.length > 0 && (
+                  <div className="grid grid-cols-1 gap-4 lg:gap-8">
+                    {highPriorityEvents.map((event) => (
+                      <UpcomingCard key={event.id} event={event} />
+                    ))}
+                  </div>
+                )}
+                {lowPriorityEvents.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                    {lowPriorityEvents.map((event) => (
+                      <CompactUpcomingCard key={event.id} event={event} />
+                    ))}
+                  </div>
+                )}
               </RevealSection>
             )}
           </AnimatePresence>

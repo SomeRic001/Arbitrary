@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         .limit(2);
       if (duplicates.length > 1) {
         console.warn(`[Fingerprint] Duplicate signup fingerprint ${parsed.data.fingerprint} — flagging user ${userId}`);
-        await db.update(usersTable).set({ isFlagged: true }).where(eq(usersTable.id, userId));
+        await db.update(usersTable).set({ isFlagged: true, signupFingerprintFlagged: true }).where(eq(usersTable.id, userId));
       }
     }
 

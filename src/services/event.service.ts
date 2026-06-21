@@ -20,7 +20,7 @@ type EventWithRelations = Event & {
 
 export type EventListItem = Pick<
   Event,
-  "id" | "title" | "eventType" | "status" | "eventDate" | "venue" | "description" | "heroImageUrl" | "youtubeUrl" | "createdAt"
+  "id" | "title" | "eventType" | "status" | "priority" | "eventDate" | "venue" | "description" | "heroImageUrl" | "youtubeUrl" | "createdAt"
 >;
 
 async function syncMediaItems(tx: any, sectionId: number, mediaItems: { id?: number; url: string }[]) {
@@ -55,25 +55,31 @@ async function syncMediaItems(tx: any, sectionId: number, mediaItems: { id?: num
 
 export const EventService = {
   async getEvents(): Promise<ServiceResult<EventListItem[]>> {
-    const now = new Date();
-    const events = await db
-      .select({
-        id: eventsTable.id,
-        title: eventsTable.title,
-        eventType: eventsTable.eventType,
-        status: eventsTable.status,
-        eventDate: eventsTable.eventDate,
-        venue: eventsTable.venue,
-        description: eventsTable.description,
-        heroImageUrl: eventsTable.heroImageUrl,
-        youtubeUrl: eventsTable.youtubeUrl,
-        createdAt: eventsTable.createdAt,
-      })
-      .from(eventsTable)
-      .where(gte(eventsTable.eventDate, now))
-      .orderBy(desc(eventsTable.eventDate));
+    try {
+      const now = new Date();
+      const events = await db
+        .select({
+          id: eventsTable.id,
+          title: eventsTable.title,
+          eventType: eventsTable.eventType,
+          status: eventsTable.status,
+          priority: eventsTable.priority,
+          eventDate: eventsTable.eventDate,
+          venue: eventsTable.venue,
+          description: eventsTable.description,
+          heroImageUrl: eventsTable.heroImageUrl,
+          youtubeUrl: eventsTable.youtubeUrl,
+          createdAt: eventsTable.createdAt,
+        })
+        .from(eventsTable)
+        .where(gte(eventsTable.eventDate, now))
+        .orderBy(desc(eventsTable.eventDate));
 
-    return ok(events);
+      return ok(events);
+    } catch (err) {
+      console.error("EventService.getEvents failed:", err);
+      return fail("Failed to load events", 500);
+    }
   },
 
   async cleanupPastEvents(): Promise<void> {
@@ -123,7 +129,7 @@ export const EventService = {
       );
     }
 
-    const { id, title, eventType, status, date, venue, description, heroImageUrl, youtubeUrl, contentSections, accessTypes, timelineItems } = parsed.data;
+    const { id, title, eventType, status, priority, date, venue, description, heroImageUrl, youtubeUrl, contentSections, accessTypes, timelineItems } = parsed.data;
 
     const eventDate = date ? new Date(date) : new Date();
     const normalizedYoutubeUrl = youtubeUrl && youtubeUrl.trim() !== "" ? youtubeUrl.trim() : null;
@@ -165,7 +171,7 @@ export const EventService = {
 
         const [updated] = await tx
           .update(eventsTable)
-          .set({ title, eventType, status, eventDate, venue, description, heroImageUrl, youtubeUrl: normalizedYoutubeUrl })
+          .set({ title, eventType, status, priority, eventDate, venue, description, heroImageUrl, youtubeUrl: normalizedYoutubeUrl })
           .where(eq(eventsTable.id, eventIdNum))
           .returning();
 
@@ -284,7 +290,7 @@ export const EventService = {
       } else {
         const [newEvent] = await tx
           .insert(eventsTable)
-          .values({ title, eventType, status, eventDate, venue, description, heroImageUrl, youtubeUrl: normalizedYoutubeUrl })
+          .values({ title, eventType, status, priority, eventDate, venue, description, heroImageUrl, youtubeUrl: normalizedYoutubeUrl })
           .returning();
 
         finalEvent = newEvent;

@@ -75,8 +75,6 @@ export const updateTaskSchema = z.object({
         .url("proofImageUrl must be a valid URL")
         .max(2048, "URL too long")
         .optional(),
-    proofPhash: z.string().max(16).nullable().optional(),
-    proofExifFlags: z.string().max(4096).nullable().optional(),
 });
 
 

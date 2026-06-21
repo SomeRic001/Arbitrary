@@ -18,14 +18,15 @@ const EventTable = ({
   onCreate,
 }: EventTableProps) => (
   <div className="animate-fade-in space-y-8">
-      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.fade-in-up{animation:fadeInUp .25s ease-out forwards}`}</style>
+    <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.fade-in-up{animation:fadeInUp .25s ease-out forwards}`}</style>
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 md:p-8 rounded-[2rem] border border-black/5 shadow-sm">
       <div>
         <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter">
           📅 Events Database
         </h3>
         <p className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">
-          Manage {events.length} experience{events.length !== 1 ? "s" : ""} total
+          Manage {events.length} experience{events.length !== 1 ? "s" : ""}{" "}
+          total
         </p>
       </div>
       <button
@@ -49,14 +50,16 @@ const EventTable = ({
       <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-sm overflow-hidden">
         {/* Desktop header */}
         <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-4 md:px-8 py-4 md:py-6 bg-zinc-50 border-b border-black/5">
-          {["Event Title", "Date", "Category", "Venue", "Status", ""].map((h, i) => (
-            <span
-              key={h}
-              className={`text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 ${i === 5 ? "text-right" : ""}`}
-            >
-              {h}
-            </span>
-          ))}
+          {["Event Title", "Date", "Category", "Venue", "Status", ""].map(
+            (h, i) => (
+              <span
+                key={h}
+                className={`text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 ${i === 5 ? "text-right" : ""}`}
+              >
+                {h}
+              </span>
+            ),
+          )}
         </div>
 
         {/* Body */}
@@ -65,8 +68,16 @@ const EventTable = ({
             <div key={event.id} className="fade-in-up">
               {/* Desktop row */}
               <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-4 md:px-8 py-4 md:py-6 items-center hover:bg-zinc-50/50 transition-colors group">
-                <p className="font-bold text-xs md:text-sm uppercase tracking-tight">
+                <p className="font-bold text-xs md:text-sm uppercase tracking-tight flex items-center gap-2">
                   {event.title}
+                  {event.priority === "high" && (
+                    <span
+                      title="High priority — shown as the large banner on /events"
+                      className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-black text-[#FACC15] shrink-0"
+                    >
+                      ★ High
+                    </span>
+                  )}
                 </p>
                 <p className="text-[11px] md:text-xs font-bold text-zinc-500 uppercase">
                   {event.eventDate
@@ -122,16 +133,24 @@ const EventTable = ({
               <div className="sm:hidden p-4 border-b border-black/5 hover:bg-zinc-50/50 transition-colors">
                 <div className="flex items-start justify-between mb-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-black uppercase tracking-tight truncate">
+                    <p className="text-sm font-bold text-black uppercase tracking-tight truncate flex items-center gap-1.5">
                       {event.title}
+                      {event.priority === "high" && (
+                        <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-black text-[#FACC15] shrink-0">
+                          ★
+                        </span>
+                      )}
                     </p>
                     <p className="text-[11px] font-bold text-zinc-500 mt-0.5">
                       {event.eventDate
-                        ? new Date(event.eventDate).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
+                        ? new Date(event.eventDate).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )
                         : "No Date"}
                     </p>
                   </div>
@@ -159,13 +178,17 @@ const EventTable = ({
                   {event.venue && (
                     <>
                       <span className="text-zinc-300">·</span>
-                      <span className="text-[11px] font-medium">{event.venue}</span>
+                      <span className="text-[11px] font-medium">
+                        {event.venue}
+                      </span>
                     </>
                   )}
                   <span className="text-zinc-300">·</span>
                   <span
                     className={`text-[9px] font-black uppercase tracking-widest ${
-                      event.status === "Success" ? "text-green-600" : "text-black"
+                      event.status === "Success"
+                        ? "text-green-600"
+                        : "text-black"
                     }`}
                   >
                     {event.status}

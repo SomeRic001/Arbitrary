@@ -9,8 +9,10 @@ import {
   watchSessionsTable,
   dailyLoginTable,
   dailyTaskCompletionsTable,
+  uploadAnalysisTable,
 } from "@/src/db/schema";
 import { eq, and, desc, sql, or, gte, lt, inArray, not, type SQL, isNotNull, ne, ilike } from "drizzle-orm";
+import { hammingDistance, PHASH_DUPLICATE_THRESHOLD } from "@/src/lib/image-analysis";
 import { calculateStreak, getNextMilestone, toDateStr, getCycleStart } from "@/src/lib/streak-helper";
 import { getStreakMultiplier } from "@/src/lib/gamification";
 import {
@@ -152,6 +154,26 @@ export type SubmissionItem = {
   assignedAt: Date | null;
   completedAt: Date | null;
 };
+
+/**
+ * Extracts the Cloudinary public_id from a secure_url produced by /api/upload.
+ * publicId is generated there as `${userId}_${timestamp}` and ends up as the
+ * filename (sans extension) of the URL path, e.g.
+ * https://res.cloudinary.com/<cloud>/image/upload/v123/arbitrary/task-proofs/42_1718980000000.jpg
+ * Returns null for URLs that don't match the expected shape (e.g. not from
+ * our upload flow) — callers must treat that as "no server record available".
+ */
+function extractCloudinaryPublicId(url: string): string | null {
+  try {
+    const pathname = new URL(url).pathname;
+    const filename = pathname.split("/").pop();
+    if (!filename) return null;
+    const withoutExt = filename.replace(/\.[a-zA-Z0-9]+$/, "");
+    return /^\d+_\d+$/.test(withoutExt) ? withoutExt : null;
+  } catch {
+    return null;
+  }
+}
 
 export const TaskService = {
   async getUserTasks(
@@ -829,9 +851,6 @@ export const TaskService = {
     status: string,
     proofUrl?: string,
     proofImageUrl?: string,
-    proofPhash?: string,
-    proofExifFlags?: string,
-    isDuplicateProof?: boolean,
   ): Promise<ServiceResult<{ message: string }>> {
     if (status !== "Pending Verification") {
       return fail("You can only submit proof for verification", 400);
@@ -858,9 +877,65 @@ export const TaskService = {
     } else if (proofUrl) {
       updateData.proofImageUrl = proofUrl;
     }
-    if (proofPhash) updateData.proofPhash = proofPhash;
-    if (proofExifFlags) updateData.proofExifFlags = proofExifFlags;
-    if (proofPhash !== undefined) updateData.isDuplicateProof = false; // will be set correctly via isDuplicateProof param
+
+    // Only stamp submittedAt when this call actually represents a submission
+    // (a status transition or new proof) — not on a no-op idempotency check.
+    if (updateData.status !== undefined || proofUrl || proofImageUrl) {
+      updateData.submittedAt = new Date();
+    }
+
+    // ── Server-side phash/EXIF lookup ─────────────────────────────────────
+    // Never trust client-submitted phash/EXIF — look up the values the
+    // server itself computed at upload time (/api/upload), keyed by the
+    // Cloudinary publicId embedded in the URL. If no record is found
+    // (tampering, or a URL that didn't come from our upload flow), proof
+    // analysis is treated as unavailable rather than attacker-controlled.
+    const proofSourceUrl = proofImageUrl || proofUrl;
+    if (proofSourceUrl) {
+      const publicId = extractCloudinaryPublicId(proofSourceUrl);
+      const analysis = publicId
+        ? await db
+          .select()
+          .from(uploadAnalysisTable)
+          .where(
+            and(
+              eq(uploadAnalysisTable.publicId, publicId),
+              eq(uploadAnalysisTable.userId, userId), // ownership check
+            ),
+          )
+          .then((rows) => rows[0])
+        : undefined;
+
+      if (analysis) {
+        updateData.proofPhash = analysis.phash ?? null;
+        updateData.proofExifFlags = analysis.exifFlags ?? null;
+
+        let isDuplicateProof = false;
+        if (analysis.phash) {
+          const existingHashes = await db
+            .select({ id: userTasksTable.id, proofPhash: userTasksTable.proofPhash })
+            .from(userTasksTable)
+            .where(
+              and(
+                isNotNull(userTasksTable.proofPhash),
+                ne(userTasksTable.id, userTask.id), // don't flag against this same submission
+              ),
+            );
+          for (const row of existingHashes) {
+            if (row.proofPhash && hammingDistance(analysis.phash, row.proofPhash) <= PHASH_DUPLICATE_THRESHOLD) {
+              isDuplicateProof = true;
+              break;
+            }
+          }
+        }
+        updateData.isDuplicateProof = isDuplicateProof;
+      } else {
+        // No trustworthy server record — best-effort: don't claim a clean result.
+        updateData.proofPhash = null;
+        updateData.proofExifFlags = null;
+        updateData.isDuplicateProof = false;
+      }
+    }
 
     if (Object.keys(updateData).length === 0) {
       return fail("Task is already in this status", 400);

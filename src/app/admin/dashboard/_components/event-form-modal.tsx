@@ -29,6 +29,8 @@ interface EventFormModalProps {
   setEventType: (v: string) => void;
   eventStatus: string;
   setEventStatus: (v: string) => void;
+  eventPriority: string;
+  setEventPriority: (v: string) => void;
   eventDate: string;
   setEventDate: (v: string) => void;
   eventVenue: string;
@@ -69,6 +71,7 @@ const formatFieldName = (field: string): string => {
     title: "Title",
     eventType: "Event Type",
     status: "Status",
+    priority: "Priority",
     date: "Event Date",
     venue: "Venue",
     description: "Description",
@@ -129,6 +132,8 @@ const EventFormModal = ({
   setEventType,
   eventStatus,
   setEventStatus,
+  eventPriority,
+  setEventPriority,
   eventDate,
   setEventDate,
   eventVenue,
@@ -228,7 +233,7 @@ const EventFormModal = ({
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <SelectField
                     label="Event Type"
                     value={eventType}
@@ -251,6 +256,28 @@ const EventFormModal = ({
                         setFieldErrors({ ...fieldErrors, status: "" });
                     }}
                   />
+                  <div className="space-y-2">
+                    <SelectField
+                      label="Priority"
+                      value={eventPriority}
+                      options={["high", "low"]}
+                      hasError={!!fieldErrors.priority}
+                      onChange={(v) => {
+                        setEventPriority(v);
+                        if (fieldErrors.priority)
+                          setFieldErrors({ ...fieldErrors, priority: "" });
+                      }}
+                    />
+                    {fieldErrors.priority ? (
+                      <p className="text-xs text-red-600 font-bold ml-2">
+                        ❌ {fieldErrors.priority}
+                      </p>
+                    ) : (
+                      <p className="text-[9px] text-zinc-300 font-bold uppercase ml-2">
+                        High shows as the large banner on /events
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

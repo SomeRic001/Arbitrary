@@ -3,18 +3,78 @@
 import Link from "next/link";
 import { ArrowLeft, Calendar, MapPin } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import type {
   Event,
   TimelineItem,
   ContentSection,
   MediaItem,
 } from "@/src/types/db";
-import { extractYouTubeId, youtubeEmbedUrl } from "@/src/lib/youtube-url";
+import { extractYouTubeId } from "@/src/lib/youtube-url";
 
 interface EventDetail extends Event {
   timelineItems: TimelineItem[];
   contentSections: (ContentSection & { mediaItems: MediaItem[] })[];
+}
+
+// https://developers.google.com/youtube/iframe_api_reference#Playback_status
+const YT_PLAYER_STATE_PLAYING = 1;
+
+// Narrow shape of the bits of the real `window.YT` global we use. The actual
+// API surface is much bigger; we only declare what we touch.
+type YTPlayerInstance = {
+  destroy: () => void;
+};
+type YTNamespace = {
+  Player: new (
+    el: HTMLElement,
+    options: {
+      videoId: string;
+      host?: string;
+      playerVars?: Record<string, number | string>;
+      events?: {
+        onStateChange?: (e: { data: number }) => void;
+        onError?: () => void;
+      };
+    },
+  ) => YTPlayerInstance;
+  PlayerState: { PLAYING: number };
+};
+
+declare global {
+  interface Window {
+    YT?: YTNamespace;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+const YT_API_SRC = "https://www.youtube.com/iframe_api";
+
+/** Loads the YouTube IFrame Player API script at most once per page, and
+ *  resolves every caller's promise once `window.YT.Player` is ready — the
+ *  official, reliable way to get real play/pause state, unlike hand-rolled
+ *  postMessage handshakes against the embed (which can silently never fire). */
+function loadYouTubeIframeApi(): Promise<YTNamespace> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("No window"));
+  }
+  if (window.YT?.Player) {
+    return Promise.resolve(window.YT);
+  }
+
+  return new Promise((resolve) => {
+    const previousCallback = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      previousCallback?.();
+      resolve(window.YT as YTNamespace);
+    };
+
+    if (!document.querySelector(`script[src="${YT_API_SRC}"]`)) {
+      const tag = document.createElement("script");
+      tag.src = YT_API_SRC;
+      document.head.appendChild(tag);
+    }
+  });
 }
 
 const EventContentPage = () => {
@@ -23,6 +83,11 @@ const EventContentPage = () => {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [videoFailed, setVideoFailed] = useState(false);
+  // Whether the YouTube video is actively playing — drives the title/badge
+  // overlay fade so it doesn't sit on top of the video while it's running.
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const playerHostRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<YTPlayerInstance | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -47,6 +112,40 @@ const EventContentPage = () => {
 
   useEffect(() => {
     setVideoFailed(false);
+    setIsVideoPlaying(false);
+  }, [youtubeVideoId]);
+
+  // Construct a real YT.Player against the host div once we have a video ID
+  // and the player host element is mounted. This is the official, reliable
+  // way to track play/pause state — hand-rolled postMessage handshakes
+  // against a manually-written <iframe src="...embed/..."> can silently
+  // never fire onStateChange, which is why this replaced that approach.
+  useEffect(() => {
+    if (!youtubeVideoId) return;
+    let cancelled = false;
+
+    loadYouTubeIframeApi()
+      .then((YT) => {
+        if (cancelled || !playerHostRef.current) return;
+        playerRef.current = new YT.Player(playerHostRef.current, {
+          videoId: youtubeVideoId,
+          host: "https://www.youtube-nocookie.com",
+          playerVars: { rel: 0, modestbranding: 1 },
+          events: {
+            onStateChange: (e) => {
+              setIsVideoPlaying(e.data === YT_PLAYER_STATE_PLAYING);
+            },
+            onError: () => setVideoFailed(true),
+          },
+        });
+      })
+      .catch(() => setVideoFailed(true));
+
+    return () => {
+      cancelled = true;
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
   }, [youtubeVideoId]);
 
   if (isLoading) {
@@ -98,18 +197,21 @@ const EventContentPage = () => {
           {showVideo && youtubeVideoId ? (
             <div className="absolute inset-0 flex items-center justify-center bg-black">
               <div className="relative w-full h-full">
-                <iframe
+                {/* YT.Player replaces this div with its own iframe at
+                    construction time — see the player-construction effect
+                    above. Keyed on videoId so switching videos gets a clean
+                    remount instead of trying to reuse a stale player. */}
+                <div
                   key={youtubeVideoId}
-                  className="absolute inset-0 w-full h-full"
-                  src={youtubeEmbedUrl(youtubeVideoId)}
-                  title={`${event.title} — promotional video`}
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  onError={() => setVideoFailed(true)}
+                  ref={playerHostRef}
+                  className="absolute inset-0 w-full h-full [&>iframe]:w-full [&>iframe]:h-full"
                 />
               </div>
-              <div className="absolute inset-0 opacity-70 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,black_100%)]" />
+              <div
+                className={`absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,black_100%)] transition-opacity duration-500 ${
+                  isVideoPlaying ? "opacity-0" : "opacity-70"
+                }`}
+              />
             </div>
           ) : (
             <img
@@ -119,11 +221,22 @@ const EventContentPage = () => {
             />
           )}
 
-          {/* Enhanced Bottom-to-Top Fade */}
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/40 pointer-events-none" />
+          {/* Enhanced Bottom-to-Top Fade — hidden while the video plays so it
+              doesn't dim the footage; back the moment it's paused/stopped */}
+          <div
+            className={`absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/40 pointer-events-none transition-opacity duration-500 ${
+              showVideo && isVideoPlaying ? "opacity-0" : "opacity-100"
+            }`}
+          />
 
-          {/* Hero Content: Top-Center Aligned */}
-          <div className="absolute inset-0 flex flex-col items-center pt-44 pointer-events-none">
+          {/* Hero Content: Top-Center Aligned — fades out while the video is
+              playing so the title doesn't sit on top of the footage, and
+              fades back in as soon as it's paused, ends, or hasn't started */}
+          <div
+            className={`absolute inset-0 flex flex-col items-center pt-44 pointer-events-none transition-opacity duration-500 ${
+              showVideo && isVideoPlaying ? "opacity-0" : "opacity-100"
+            }`}
+          >
             <div className="container mx-auto px-6 text-center animate-fade-in">
               <span className="bg-[#FACC15] text-black text-[10px] font-black px-6 py-2 rounded-full tracking-[0.3em] uppercase mb-8 inline-block shadow-2xl">
                 {event.eventType}

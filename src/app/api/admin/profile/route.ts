@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
 import { AdminLogService, extractIpFromRequest } from "@/src/services/admin-log.service";
 import { db } from "@/src/db";
-import { usersTable, adminActivityLogsTable, eventsTable } from "@/src/db/schema";
-import { eq, sql, desc, and, gte, count } from "drizzle-orm";
+import { usersTable, adminActivityLogsTable } from "@/src/db/schema";
+import { eq, desc, and, count } from "drizzle-orm";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -31,6 +31,7 @@ export async function GET() {
         role: usersTable.role,
         createdAt: usersTable.createdAt,
         image: usersTable.image,
+        lastLoginAt: usersTable.lastLoginAt,
       })
       .from(usersTable)
       .where(
@@ -44,49 +45,69 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-    const [activeUsersResult] = await db
-      .select({ count: count() })
-      .from(usersTable)
-      .where(
-        and(
-          eq(usersTable.role, "user"),
-          gte(usersTable.createdAt, thirtyDaysAgo),
+    // Admin Impact: derived entirely from admin_activity_logs
+    const [actionCounts, [criticalResult], recentActivity] = await Promise.all([
+      db
+        .select({
+          entityType: adminActivityLogsTable.entityType,
+          action: adminActivityLogsTable.action,
+          count: count(),
+        })
+        .from(adminActivityLogsTable)
+        .where(eq(adminActivityLogsTable.adminId, auth.data.id))
+        .groupBy(adminActivityLogsTable.entityType, adminActivityLogsTable.action),
+      db
+        .select({ count: count() })
+        .from(adminActivityLogsTable)
+        .where(
+          and(
+            eq(adminActivityLogsTable.adminId, auth.data.id),
+            eq(adminActivityLogsTable.logLevel, "CRITICAL"),
+          ),
         ),
-      );
+      db
+        .select({
+          id: adminActivityLogsTable.id,
+          action: adminActivityLogsTable.action,
+          description: adminActivityLogsTable.description,
+          logLevel: adminActivityLogsTable.logLevel,
+          entityType: adminActivityLogsTable.entityType,
+          entityId: adminActivityLogsTable.entityId,
+          metadata: adminActivityLogsTable.metadata,
+          ipAddress: adminActivityLogsTable.ipAddress,
+          createdAt: adminActivityLogsTable.createdAt,
+        })
+        .from(adminActivityLogsTable)
+        .where(eq(adminActivityLogsTable.adminId, auth.data.id))
+        .orderBy(desc(adminActivityLogsTable.createdAt))
+        .limit(50),
+    ]);
 
-    const [pointsResult] = await db
-      .select({ total: sql<number>`coalesce(sum(${usersTable.points}), 0)` })
-      .from(usersTable);
+    const actionCount = (entityType: string, action: string) =>
+      actionCounts.find((r) => r.entityType === entityType && r.action === action)?.count ?? 0;
 
-    const [eventsResult] = await db
-      .select({ count: count() })
-      .from(eventsTable);
-
-    const recentActivity = await db
-      .select({
-        id: adminActivityLogsTable.id,
-        action: adminActivityLogsTable.action,
-        description: adminActivityLogsTable.description,
-        logLevel: adminActivityLogsTable.logLevel,
-        entityType: adminActivityLogsTable.entityType,
-        entityId: adminActivityLogsTable.entityId,
-        metadata: adminActivityLogsTable.metadata,
-        ipAddress: adminActivityLogsTable.ipAddress,
-        createdAt: adminActivityLogsTable.createdAt,
-      })
-      .from(adminActivityLogsTable)
-      .where(eq(adminActivityLogsTable.adminId, auth.data.id))
-      .orderBy(desc(adminActivityLogsTable.createdAt))
-      .limit(10);
+    const totalActions = actionCounts.reduce((sum, r) => sum + Number(r.count), 0);
+    const recordsModified =
+      Number(actionCount("record", "create_record")) +
+      Number(actionCount("record", "update_record")) +
+      Number(actionCount("record", "delete_record"));
 
     return NextResponse.json({
       user,
-      stats: {
-        activeUsers: Number(activeUsersResult?.count ?? 0),
-        pointsDistributed: Number(pointsResult?.total ?? 0),
-        eventsManaged: Number(eventsResult?.count ?? 0),
+      accountSecurity: {
+        lastLoginAt: user.lastLoginAt,
+        lastLoginIp: null,
+        twoFactorEnabled: null,
+        passwordLastChangedAt: null,
+      },
+      adminImpact: {
+        eventsCreated: Number(actionCount("event", "create_event")),
+        eventsUpdated: Number(actionCount("event", "update_event")),
+        eventsDeleted: Number(actionCount("event", "delete_event")),
+        recordsModified,
+        ticketsRedeemed: Number(actionCount("ticket", "redeem_ticket")),
+        totalActions,
+        criticalActions: Number(criticalResult?.count ?? 0),
       },
       recentActivity,
     });

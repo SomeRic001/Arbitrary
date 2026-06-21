@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import OverviewTab from "./_components/overview-tab";
+import OverviewTab, { type Trend } from "./_components/overview-tab";
 import type { Event } from "@/src/types/db";
 
 export interface GlobalActivityItem {
@@ -18,6 +18,17 @@ export interface GlobalActivityItem {
     name: string | null;
     email: string;
   };
+}
+
+export interface SystemStatus {
+  db: { connected: boolean; latencyMs: number | null };
+  api: { healthy: boolean; checkedAt: string };
+  deployment: {
+    version: string | null;
+    commit: string | null;
+    environment: string | null;
+  };
+  lastBackupAt: string | null;
 }
 
 interface SseLogRaw {
@@ -38,10 +49,18 @@ const AdminDashboardPage = () => {
     totalPointsDistributed: number;
     activeUsers: number;
     pendingVerifications: number;
+    tasksInProgress: number;
   } | null>(null);
+  const [trends, setTrends] = useState<Record<string, Trend | null>>({});
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [systemStatusError, setSystemStatusError] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
-  const [globalActivity, setGlobalActivity] = useState<GlobalActivityItem[]>([]);
-  const adminCacheRef = useRef<Map<number, { name: string | null; email: string }>>(new Map());
+  const [globalActivity, setGlobalActivity] = useState<GlobalActivityItem[]>(
+    [],
+  );
+  const adminCacheRef = useRef<
+    Map<number, { name: string | null; email: string }>
+  >(new Map());
 
   function sseLogToGlobalItem(raw: SseLogRaw): GlobalActivityItem {
     const admin = adminCacheRef.current.get(raw.admin_id) ?? {
@@ -64,12 +83,16 @@ const AdminDashboardPage = () => {
     fetch("/api/admin/analytics")
       .then((r) => r.json())
       .then((d) => {
-        if (d.success) setAnalytics(d.data);
+        if (d.success) {
+          setAnalytics(d.data);
+          setTrends(d.trends ?? {});
+        }
       })
       .catch(() => {});
     fetchEvents();
+    fetchSystemStatus();
 
-    fetch("/api/admin/global-activity")
+    fetch("/api/admin/global-activity?limit=30")
       .then((r) => r.json())
       .then((d) => {
         if (!d.logs) return;
@@ -84,6 +107,21 @@ const AdminDashboardPage = () => {
       .catch(() => {});
   }, []);
 
+  const fetchSystemStatus = async () => {
+    try {
+      const res = await fetch("/api/admin/system-status");
+      const data = await res.json();
+      if (res.ok) {
+        setSystemStatus(data);
+        setSystemStatusError(false);
+      } else {
+        setSystemStatusError(true);
+      }
+    } catch {
+      setSystemStatusError(true);
+    }
+  };
+
   useEffect(() => {
     const es = new EventSource("/api/admin/activity-stream");
 
@@ -94,7 +132,7 @@ const AdminDashboardPage = () => {
         const item = sseLogToGlobalItem(raw);
         setGlobalActivity((prev) => {
           if (prev.some((a) => a.id === item.id)) return prev;
-          return [item, ...prev].slice(0, 50);
+          return [item, ...prev].slice(0, 100);
         });
       } catch {}
     });
@@ -105,14 +143,46 @@ const AdminDashboardPage = () => {
   const fetchEvents = async () => {
     try {
       const response = await fetch(`/api/events?t=${Date.now()}`);
-      const data = await response.json();
-      if (data.success) {
+
+      const rawBody = await response.text();
+      let data: any = null;
+      if (rawBody) {
+        try {
+          data = JSON.parse(rawBody);
+        } catch (parseErr) {
+          console.error(
+            "Failed to parse /api/events response as JSON:",
+            parseErr,
+            "Raw body:",
+            rawBody.slice(0, 500),
+          );
+          return;
+        }
+      }
+
+      if (!response.ok) {
+        console.error(
+          "GET /api/events returned an error:",
+          response.status,
+          data?.error ?? "(no error message in response)",
+        );
+        return;
+      }
+
+      if (data?.success) {
         setEvents(data.events);
+      } else {
+        console.error("GET /api/events responded without success:", data);
       }
     } catch (error) {
       console.error("Failed to fetch events:", error);
     }
   };
+
+  const criticalAlerts = useMemo(
+    () => globalActivity.filter((a) => a.logLevel === "CRITICAL").slice(0, 8),
+    [globalActivity],
+  );
 
   const stats = analytics
     ? [
@@ -120,22 +190,32 @@ const AdminDashboardPage = () => {
           label: "Total Points Distributed",
           value: analytics.totalPointsDistributed.toLocaleString(),
           growth: "Across all users",
+          trend: trends.totalPointsDistributed ?? null,
         },
         {
           label: "Active Users",
           value: analytics.activeUsers.toLocaleString(),
           growth: "Last 30 days",
+          trend: trends.activeUsers ?? null,
         },
         {
           label: "Pending Verifications",
           value: analytics.pendingVerifications.toLocaleString(),
           growth: "Awaiting review",
+          trend: null,
+        },
+        {
+          label: "Tasks In Progress",
+          value: analytics.tasksInProgress.toLocaleString(),
+          growth: "Currently assigned",
+          trend: null,
         },
       ]
     : [
-        { label: "Loading...", value: "—", growth: "" },
-        { label: "Loading...", value: "—", growth: "" },
-        { label: "Loading...", value: "—", growth: "" },
+        { label: "Loading...", value: "—", growth: "", trend: null },
+        { label: "Loading...", value: "—", growth: "", trend: null },
+        { label: "Loading...", value: "—", growth: "", trend: null },
+        { label: "Loading...", value: "—", growth: "", trend: null },
       ];
 
   return (
@@ -143,6 +223,9 @@ const AdminDashboardPage = () => {
       stats={stats}
       events={events}
       globalActivity={globalActivity}
+      criticalAlerts={criticalAlerts}
+      systemStatus={systemStatus}
+      systemStatusError={systemStatusError}
       onViewAllEvents={() => router.push("/admin/dashboard/events")}
     />
   );

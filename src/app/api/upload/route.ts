@@ -7,9 +7,10 @@ import {
   computePerceptualHash,
   hammingDistance,
   PHASH_DUPLICATE_THRESHOLD,
+  type ExifFlags,
 } from "@/src/lib/image-analysis";
 import { db } from "@/src/db";
-import { userTasksTable } from "@/src/db/schema";
+import { userTasksTable, uploadAnalysisTable } from "@/src/db/schema";
 import { isNotNull } from "drizzle-orm";
 
 
@@ -101,26 +102,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to read file" }, { status: 400 });
   }
 
-  // ── Tier-1 image analysis ─────────────────────────────────────────────────
-  // Run EXIF extraction and perceptual hashing in parallel.
-  // These are best-effort: failures don't block the upload.
-  const [exifSettled, phashSettled] = await Promise.allSettled([
-    extractExifFlags(buffer),
-    computePerceptualHash(buffer),
-  ]);
-  const exifFlags = exifSettled.status === "fulfilled" ? exifSettled.value : null;
-  const phash = phashSettled.status === "fulfilled" ? phashSettled.value : null;
-
-
   // ── Image-only: EXIF + perceptual hash analysis ───────────────────────────
+  // Run EXIF extraction and perceptual hashing in parallel. Best-effort:
+  // failures don't block the upload.
   let imageAnalysis = null;
+  let serverPhash: string | null = null;
+  let serverExifFlags: ExifFlags | null = null;
   if (isImage && rawType === "task-proofs") {
-    const [exifSettled2, phashSettled2] = await Promise.allSettled([
+    const [exifSettled, phashSettled] = await Promise.allSettled([
       extractExifFlags(buffer),
       computePerceptualHash(buffer),
     ]);
-    const exifFlags = exifSettled2.status === "fulfilled" ? exifSettled2.value : null;
-    const phash = phashSettled2.status === "fulfilled" ? phashSettled2.value : null;
+    const exifFlags = exifSettled.status === "fulfilled" ? exifSettled.value : null;
+    const phash = phashSettled.status === "fulfilled" ? phashSettled.value : null;
+    serverPhash = phash;
+    serverExifFlags = exifFlags;
 
     let isDuplicateImage = false;
     let duplicateImageUserTaskId: number | null = null;
@@ -197,6 +193,25 @@ export async function POST(req: NextRequest) {
       { error: uploadData.error?.message || "Cloudinary upload failed" },
       { status: 500 },
     );
+  }
+
+  // Persist the server-computed analysis, keyed by publicId, so task
+  // submission can look up trustworthy values instead of accepting
+  // client-submitted phash/EXIF. Only written for uploads that actually
+  // completed (after Cloudinary confirms success). Best-effort: a failure
+  // here shouldn't fail the upload — submission will just find no record
+  // and treat the proof as unverifiable, same as today's behavior.
+  if (isImage && rawType === "task-proofs") {
+    try {
+      await db.insert(uploadAnalysisTable).values({
+        publicId: uploadData.public_id,
+        userId: auth.data.id,
+        phash: serverPhash,
+        exifFlags: serverExifFlags ? JSON.stringify(serverExifFlags) : null,
+      });
+    } catch (err) {
+      console.error("Failed to persist upload analysis:", err);
+    }
   }
 
   return NextResponse.json({

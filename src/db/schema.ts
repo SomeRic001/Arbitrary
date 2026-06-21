@@ -8,6 +8,9 @@ export const eventsTable = pgTable("events", {
     title: varchar("title", { length: 255 }).notNull(),
     eventType: varchar("event_type", { length: 100 }).notNull(),
     status: varchar("status", { length: 100 }).notNull(),
+    /** "high" events render as the large hero banner on /events and always sort
+     *  above "low" events, which render as compact 3-up grid cards. */
+    priority: varchar("priority", { length: 10 }).notNull().default("low"),
     eventDate: timestamp("event_date").notNull(),
     venue: varchar("venue", { length: 255 }),
     description: text("description"),
@@ -82,7 +85,20 @@ export const usersTable = pgTable("users", {
     fraudRiskScore: integer("fraud_risk_score").notNull().default(0),
     isFlagged: boolean("is_flagged").notNull().default(false),
     signupFingerprint: varchar("signup_fingerprint", { length: 255 }),
-})
+    /** Set at signup when a duplicate device fingerprint is detected. Independent of
+     *  fraudRiskScore/isFlagged-from-behavior so FraudService's recompute can't silently
+     *  un-flag it. isFlagged = (behavioral riskScore > threshold) OR this. */
+    signupFingerprintFlagged: boolean("signup_fingerprint_flagged").notNull().default(false),
+    /** When set to a future timestamp, suppresses re-flagging in getFraudReport()
+     *  even if recomputed behavioral signals still exceed the threshold. Set by
+     *  clearFlags() to DISMISS_SUPPRESSION_DAYS from now; cleared (or simply expires)
+     *  once the suppression window passes. */
+    dismissedUntil: timestamp("dismissed_until"),
+}, (table) => ({
+    lastLoginAtIdx: index("idx_users_last_login_at").on(table.lastLoginAt),
+    fraudRiskScoreIdx: index("idx_users_fraud_risk_score").on(table.fraudRiskScore),
+    isFlaggedIdx: index("idx_users_is_flagged").on(table.isFlagged),
+}))
 
 // --- Task Table -----
 export const tasksTable = pgTable("tasks", {
@@ -117,6 +133,8 @@ export const userTasksTable = pgTable("user_tasks", {
     proofImageUrl: text("proof_image_url"),
     proofUrl: text("proof_url"),
     assignedAt: timestamp("assigned_at").defaultNow(),
+    /** When the user submitted proof for verification (status -> "Pending Verification") */
+    submittedAt: timestamp("submitted_at"),
     completedAt: timestamp("completed_at"),
     submissionFingerprint: varchar("submission_fingerprint", { length: 255 }),
     completionDurationSeconds: integer("completion_duration_seconds"),
@@ -135,6 +153,29 @@ export const userTasksTable = pgTable("user_tasks", {
     taskIdIdx: index("idx_user_tasks_task_id").on(table.taskId),
     statusIdx: index("idx_user_tasks_status").on(table.status),
 }))
+
+/**
+ * Server-side persisted image analysis, written at upload time (/api/upload)
+ * while the server still has the raw buffer in memory. Task submission looks
+ * this up by publicId instead of trusting client-submitted phash/EXIF values —
+ * closes the bypass where a client could fabricate its own "clean" analysis.
+ * Not a drizzle relation: looked up by publicId (parsed from the Cloudinary
+ * URL), not joined via foreign key.
+ */
+export const uploadAnalysisTable = pgTable("upload_analysis", {
+    id: serial("id").primaryKey(),
+    /** Cloudinary public_id for the uploaded asset, e.g. "42_1718980000000" */
+    publicId: varchar("public_id", { length: 255 }).notNull().unique(),
+    /** Owner of the upload, for a defense-in-depth ownership check at lookup time */
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    /** 16-char hex dHash, server-computed */
+    phash: varchar("phash", { length: 16 }),
+    /** JSON blob of ExifFlags, server-computed */
+    exifFlags: text("exif_flags"),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+    publicIdIdx: index("idx_upload_analysis_public_id").on(table.publicId),
+}));
 
 /**
  * Permanent history log for Daily Refresh task completions.
@@ -187,9 +228,9 @@ export const pointsLogTable = pgTable("points_log", {
     points: integer("points").notNull(),
     reason: text("reason"),
     createdAt: timestamp("created_at").defaultNow(),
-});
-
-// --- Watch Sessions (Hybrid heartbeat+session) ---
+}, (table) => ({
+    userCreatedAtIdx: index("idx_points_log_user_id_created_at").on(table.userId, table.createdAt),
+}));
 export const watchSessionsTable = pgTable("watch_sessions", {
     id: serial("id").primaryKey(),
     userId: integer("user_id").notNull().references(() => usersTable.id),

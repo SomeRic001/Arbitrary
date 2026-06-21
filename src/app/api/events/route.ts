@@ -7,10 +7,18 @@ import { toNextResponse } from "@/src/lib/api-response";
 export const revalidate = 0;
 
 export async function GET() {
-  const result = await EventService.getEvents();
-  if (!result.success) return toNextResponse(result);
+  try {
+    const result = await EventService.getEvents();
+    if (!result.success) return toNextResponse(result);
 
-  return NextResponse.json({ success: true, events: result.data }, { status: 200 });
+    return NextResponse.json({ success: true, events: result.data }, { status: 200 });
+  } catch (err) {
+    console.error("GET /api/events failed:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to load events" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {

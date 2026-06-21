@@ -61,7 +61,16 @@ export function isValidYouTubeUrl(raw: string | null | undefined): boolean {
   return extractYouTubeId(raw) !== null;
 }
 
-/** Builds a privacy-friendlier embeddable URL for a known-good video ID. */
-export function youtubeEmbedUrl(videoId: string): string {
-  return `https://www.youtube-nocookie.com/embed/${videoId}`;
+/** Builds a privacy-friendlier embeddable URL for a known-good video ID.
+ *  Pass `extraParams` to opt into additional embed query params (e.g.
+ *  `{ enablejsapi: "1" }` for IFrame API playback-state events) without
+ *  changing the default behavior for existing callers like the admin preview. */
+export function youtubeEmbedUrl(
+  videoId: string,
+  extraParams?: Record<string, string>,
+): string {
+  const base = `https://www.youtube-nocookie.com/embed/${videoId}`;
+  if (!extraParams || Object.keys(extraParams).length === 0) return base;
+  const qs = new URLSearchParams(extraParams).toString();
+  return `${base}?${qs}`;
 }

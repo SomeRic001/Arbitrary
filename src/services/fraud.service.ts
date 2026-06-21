@@ -24,6 +24,9 @@ export type FraudUser = {
   riskScore: number;
   breakdown: FraudBreakdown;
   completedTasks: number;
+  /** True if this user is flagged due to a duplicate signup-time device fingerprint —
+   *  independent of (and not reflected in) riskScore/breakdown above. */
+  signupFingerprintFlagged: boolean;
 };
 
 export type FraudReport = {
@@ -42,6 +45,8 @@ const HIGH_VOLUME_LIMIT = 20;
 const HIGH_VOLUME_WINDOW_HOURS = 1;
 const DUPLICATE_IMAGE_PTS = 40;
 const SUSPICIOUS_EXIF_PTS = 15;
+/** How long a dismissed user stays unflagged even if behavioral signals recompute high. */
+const DISMISS_SUPPRESSION_DAYS = 7;
 
 export const FraudService = {
   async getFraudReport(): Promise<ServiceResult<FraudReport>> {
@@ -51,6 +56,8 @@ export const FraudService = {
         name: usersTable.name,
         email: usersTable.email,
         completedTasksCount: usersTable.completedTasksCount,
+        signupFingerprintFlagged: usersTable.signupFingerprintFlagged,
+        dismissedUntil: usersTable.dismissedUntil,
       })
       .from(usersTable)
       .where(sql`LOWER(${usersTable.role}) = 'user'`)
@@ -251,9 +258,22 @@ export const FraudService = {
       const riskScore =
         sharedFingerprint + multipleAccounts + fastCompletion + highVolume + duplicateImage + suspiciousExif;
 
-      updates.push({ id: user.id, riskScore, isFlagged: riskScore > FLAG_THRESHOLD });
+      // A dismissal suppresses re-flagging for DISMISS_SUPPRESSION_DAYS even if the
+      // recomputed behavioral score is still above threshold — otherwise "Dismiss Flags"
+      // has no visible effect for any signal whose underlying cause hasn't changed
+      // (e.g. a shared fingerprint that's still shared). We still store the true,
+      // recomputed riskScore so admins can see it climbing — only isFlagged (and thus
+      // inclusion in the flaggedUsers list) is suppressed during the window.
+      const isSuppressed = !!user.dismissedUntil && user.dismissedUntil > new Date();
 
-      if (riskScore > FLAG_THRESHOLD) {
+      // isFlagged combines the recomputed behavioral score with the
+      // signup-time fingerprint flag, which FraudService must never silently
+      // clear — only an explicit clearFlags() call should reset it.
+      const isFlagged = !isSuppressed && (riskScore > FLAG_THRESHOLD || user.signupFingerprintFlagged);
+
+      updates.push({ id: user.id, riskScore, isFlagged });
+
+      if (isFlagged) {
         flaggedUsers.push({
           userId: user.id,
           userName: user.name,
@@ -268,6 +288,7 @@ export const FraudService = {
             suspiciousExif,
           },
           completedTasks: user.completedTasksCount,
+          signupFingerprintFlagged: user.signupFingerprintFlagged,
         });
       }
     }
@@ -297,9 +318,17 @@ export const FraudService = {
   },
 
   async clearFlags(userId: number): Promise<ServiceResult<{ success: true }>> {
+    const dismissedUntil = new Date(
+      Date.now() + DISMISS_SUPPRESSION_DAYS * 24 * 60 * 60 * 1000,
+    );
     await db
       .update(usersTable)
-      .set({ fraudRiskScore: 0, isFlagged: false })
+      .set({
+        fraudRiskScore: 0,
+        isFlagged: false,
+        signupFingerprintFlagged: false,
+        dismissedUntil,
+      })
       .where(eq(usersTable.id, userId));
     return ok({ success: true });
   },

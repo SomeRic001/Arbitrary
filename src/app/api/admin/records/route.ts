@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
 import { RecordService } from "@/src/services/record.service";
+import { AdminLogService, extractIpFromRequest } from "@/src/services/admin-log.service";
 
 async function deleteCloudinaryImage(url: string | null): Promise<void> {
   if (!url) return;
@@ -11,12 +12,10 @@ async function deleteCloudinaryImage(url: string | null): Promise<void> {
     const afterUpload = url.slice(idx + uploadSegment.length);
     const withoutVersion = afterUpload.replace(/^v\d+\//, "");
     const publicId = withoutVersion.replace(/\.[^.]+$/, "");
-
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
     if (!cloudName || !apiKey || !apiSecret) return;
-
     const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
     await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
@@ -39,12 +38,10 @@ export async function GET() {
   if (!auth.success) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-
   const result = await RecordService.getRecords();
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
-
   return NextResponse.json({ records: result.data }, { status: 200 });
 }
 
@@ -53,9 +50,7 @@ export async function POST(req: NextRequest) {
   if (!auth.success) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-
   const body = await req.json();
-
   if (body.id && (body.removeCover || body.coverImageUrl)) {
     const existing = await RecordService.getRecordById(body.id);
     if (existing.success && existing.data?.coverImageUrl) {
@@ -64,12 +59,10 @@ export async function POST(req: NextRequest) {
       }
     }
   }
-
   if (body.removeCover) {
     body.coverImageUrl = null;
   }
   delete body.removeCover;
-
   const result = await RecordService.createOrUpdateRecord(body);
   if (!result.success) {
     return NextResponse.json(
@@ -77,7 +70,18 @@ export async function POST(req: NextRequest) {
       { status: result.status },
     );
   }
-
+  if (result.data) {
+    await AdminLogService.logAction({
+      adminId: auth.data.id,
+      action: body.id ? "update_record" : "create_record",
+      description: body.id
+        ? `Record "${result.data.title}" updated`
+        : `Record "${result.data.title}" created`,
+      entityType: "record",
+      entityId: result.data.id,
+      ipAddress: extractIpFromRequest(req),
+    });
+  }
   return NextResponse.json({ record: result.data }, { status: 201 });
 }
 
@@ -86,8 +90,8 @@ export async function DELETE(req: NextRequest) {
   if (!auth.success) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-
   const { id } = await req.json();
+  const existing = await RecordService.getRecordById(Number(id));
   const result = await RecordService.deleteRecord(Number(id));
   if (!result.success) {
     return NextResponse.json(
@@ -95,6 +99,15 @@ export async function DELETE(req: NextRequest) {
       { status: result.status },
     );
   }
-
+  await AdminLogService.logAction({
+    adminId: auth.data.id,
+    action: "delete_record",
+    description: existing.success && existing.data
+      ? `Record "${existing.data.title}" deleted`
+      : `Record #${id} deleted`,
+    entityType: "record",
+    entityId: Number(id),
+    ipAddress: extractIpFromRequest(req),
+  });
   return NextResponse.json({ message: "Record deleted" }, { status: 200 });
 }

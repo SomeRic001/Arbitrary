@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/src/services/auth.service";
 import { FraudService } from "@/src/services/fraud.service";
+import { AdminLogService, extractIpFromRequest } from "@/src/services/admin-log.service";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -36,6 +37,17 @@ export async function POST(req: NextRequest) {
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
+
+    await AdminLogService.logAction({
+      adminId: auth.data.id,
+      action: "clear_flags",
+      description: `Cleared fraud flags for user ${userId}`,
+      entityType: "user",
+      entityId: Number(userId),
+      logLevel: "WARNING",
+      ipAddress: extractIpFromRequest(req),
+    });
+
     return NextResponse.json({ success: true }, { status: 200 });
   }
 

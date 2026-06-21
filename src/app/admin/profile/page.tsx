@@ -1,8 +1,19 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Pencil, Check, ExternalLink } from "lucide-react";
+import {
+  Pencil,
+  Check,
+  Shield,
+  ShieldOff,
+  Clock,
+  MapPin,
+  KeyRound,
+} from "lucide-react";
 import DashboardShell from "@/src/app/admin/dashboard/_components/dashboard-shell";
+import ActivityFeed, {
+  type ActivityFeedEntry,
+} from "@/src/app/admin/dashboard/_components/activity-feed";
 
 interface ProfileUser {
   id: number;
@@ -14,51 +25,45 @@ interface ProfileUser {
   role: string;
   createdAt: string | null;
   image: string | null;
+  lastLoginAt: string | null;
 }
 
-interface ProfileStats {
-  activeUsers: number;
-  pointsDistributed: number;
-  eventsManaged: number;
+interface AccountSecurity {
+  lastLoginAt: string | null;
+  lastLoginIp: string | null;
+  twoFactorEnabled: boolean | null;
+  passwordLastChangedAt: string | null;
 }
 
-interface ActivityEntry {
+interface AdminImpact {
+  eventsCreated: number;
+  eventsUpdated: number;
+  eventsDeleted: number;
+  recordsModified: number;
+  ticketsRedeemed: number;
+  totalActions: number;
+  criticalActions: number;
+}
+
+interface SseLogRaw {
   id: number;
+  admin_id: number;
   action: string;
   description: string;
-  logLevel: string;
-  entityType: string;
-  entityId: number | null;
-  metadata: Record<string, unknown> | null;
-  ipAddress: string | null;
-  createdAt: string | null;
+  log_level: string;
+  entity_type: string;
+  entity_id: number | null;
+  ip_address?: string | null;
+  created_at: string | null;
+  __replay?: boolean;
 }
-
-const LOG_LEVEL_STYLES: Record<string, string> = {
-  INFO: "border-l-green-500",
-  WARNING: "border-l-yellow-500",
-  CRITICAL: "border-l-red-500",
-};
-
-const LOG_LEVEL_DOTS: Record<string, string> = {
-  INFO: "bg-green-500",
-  WARNING: "bg-yellow-500",
-  CRITICAL: "bg-red-500",
-};
-
-const ENTITY_ROUTES: Record<string, string> = {
-  event: "/admin/dashboard/events",
-  task: "/admin/dashboard/tasks",
-  user: "/admin/dashboard/users",
-  ticket: "/admin/dashboard/tickets",
-  submission: "/admin/dashboard/submissions",
-  record: "/admin/dashboard/records",
-};
 
 export default function AdminProfilePage() {
   const [user, setUser] = useState<ProfileUser | null>(null);
-  const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [accountSecurity, setAccountSecurity] =
+    useState<AccountSecurity | null>(null);
+  const [adminImpact, setAdminImpact] = useState<AdminImpact | null>(null);
+  const [activity, setActivity] = useState<ActivityFeedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -85,7 +90,8 @@ export default function AdminProfilePage() {
           return;
         }
         setUser(d.user);
-        setStats(d.stats);
+        setAccountSecurity(d.accountSecurity ?? null);
+        setAdminImpact(d.adminImpact ?? null);
         setActivity(d.recentActivity ?? []);
         const f = {
           name: d.user.name ?? "",
@@ -101,20 +107,32 @@ export default function AdminProfilePage() {
   }, []);
 
   useEffect(() => {
+    if (!user) return;
     const es = new EventSource("/api/admin/activity-stream");
 
     es.addEventListener("log", (e: MessageEvent) => {
       try {
-        const log = JSON.parse(e.data);
+        const raw: SseLogRaw = JSON.parse(e.data);
+        // This feed shows only this admin's own activity.
+        if (raw.admin_id !== user.id) return;
+        const entry: ActivityFeedEntry = {
+          id: raw.id,
+          description: raw.description,
+          logLevel: raw.log_level,
+          entityType: raw.entity_type,
+          entityId: raw.entity_id,
+          ipAddress: raw.ip_address ?? null,
+          createdAt: raw.created_at,
+        };
         setActivity((prev) => {
-          if (prev.some((a) => a.id === log.id)) return prev;
-          return [log, ...prev].slice(0, 100);
+          if (prev.some((a) => a.id === entry.id)) return prev;
+          return [entry, ...prev].slice(0, 100);
         });
       } catch {}
     });
 
     return () => es.close();
-  }, []);
+  }, [user]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -232,7 +250,6 @@ export default function AdminProfilePage() {
             )}
           </div>
 
-          {/* 2-column field grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <Field
               label="FULL NAME"
@@ -277,7 +294,6 @@ export default function AdminProfilePage() {
             />
           </div>
 
-          {/* BIO field */}
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2">
               BIO
@@ -287,9 +303,8 @@ export default function AdminProfilePage() {
                 <textarea
                   value={form.bio}
                   onChange={(e) => {
-                    if (e.target.value.length <= 200) {
+                    if (e.target.value.length <= 200)
                       setForm((f) => ({ ...f, bio: e.target.value }));
-                    }
                   }}
                   className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm text-zinc-800 resize-none focus:outline-none focus:ring-2 focus:ring-[#FACC15]/30"
                   rows={3}
@@ -306,7 +321,6 @@ export default function AdminProfilePage() {
             )}
           </div>
 
-          {/* Discard link */}
           {isEditing && (
             <button
               onClick={handleDiscard}
@@ -317,65 +331,103 @@ export default function AdminProfilePage() {
           )}
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard
-            label="Active Users"
-            value={stats?.activeUsers.toLocaleString() ?? "—"}
-            sub="Last 30 days"
-          />
-          <StatCard
-            label="Points Distributed"
-            value={stats?.pointsDistributed.toLocaleString() ?? "—"}
-            sub="Across all users"
-          />
-          <StatCard
-            label="Events Managed"
-            value={stats?.eventsManaged.toLocaleString() ?? "—"}
-            sub="Total events"
-          />
+        {/* Admin Impact */}
+        <div>
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-3 px-1">
+            Admin Impact
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <StatCard
+              label="Events Created"
+              value={adminImpact?.eventsCreated.toLocaleString() ?? "—"}
+              sub={`${adminImpact?.eventsUpdated ?? 0} updated · ${adminImpact?.eventsDeleted ?? 0} deleted`}
+            />
+            <StatCard
+              label="Records Modified"
+              value={adminImpact?.recordsModified.toLocaleString() ?? "—"}
+              sub="Created, updated or deleted"
+            />
+            <StatCard
+              label="Tickets Redeemed"
+              value={adminImpact?.ticketsRedeemed.toLocaleString() ?? "—"}
+              sub="Scanned by this admin"
+            />
+            <StatCard
+              label="Total Actions Logged"
+              value={adminImpact?.totalActions.toLocaleString() ?? "—"}
+              sub={`${adminImpact?.criticalActions ?? 0} flagged critical`}
+              warn={!!adminImpact?.criticalActions}
+            />
+          </div>
         </div>
 
-        {/* Recent Activity + Permissions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Activity — white card */}
-          <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-sm p-6 md:p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-black uppercase tracking-tight">
-                Recent Activity
-              </h3>
-              {activity.length > 0 && (
-                <span className="text-[10px] font-medium text-zinc-400">
-                  {activity.length} entries
-                </span>
-              )}
-            </div>
-            {activity.length === 0 ? (
-              <p className="text-sm text-zinc-400">No recent activity.</p>
-            ) : (
-              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                {activity.map((entry) => (
-                  <ActivityRow key={entry.id} entry={entry} />
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Recent Activity + Account Security */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <ActivityFeed
+            entries={activity}
+            title="Recent Activity"
+            emptyMessage="No recent activity."
+            showLevelFilter
+          />
 
-          {/* Permissions — dark card */}
+          {/* Account Security — dark card */}
           <div className="bg-[#0f0f0f] text-white rounded-[2.5rem] p-6 md:p-8 shadow-sm">
             <h3 className="text-lg font-black uppercase tracking-tight mb-6 text-[#FACC15]">
-              Permissions
+              Account Security
             </h3>
-            <div className="space-y-4">
-              <PermissionRow label="Manage events" status="on" />
-              <PermissionRow label="Manage records" status="on" />
-              <PermissionRow label="Manage tasks" status="on" />
-              <PermissionRow label="Manage submissions" status="on" />
-              <PermissionRow label="Fraud detection" status="on" />
-              <PermissionRow label="Scanner access" status="on" />
-              <PermissionRow label="View analytics" status="on" />
-              <PermissionRow label="Delete records" status="on" />
+            <div className="space-y-5">
+              <SecurityRow
+                icon={<Clock className="w-4 h-4" />}
+                label="Last login"
+                value={
+                  accountSecurity?.lastLoginAt
+                    ? new Date(accountSecurity.lastLoginAt).toLocaleString()
+                    : "Not available"
+                }
+                available={!!accountSecurity?.lastLoginAt}
+              />
+              <SecurityRow
+                icon={<MapPin className="w-4 h-4" />}
+                label="Last login IP"
+                value={accountSecurity?.lastLoginIp ?? "Not tracked"}
+                available={!!accountSecurity?.lastLoginIp}
+              />
+              <SecurityRow
+                icon={
+                  accountSecurity?.twoFactorEnabled ? (
+                    <Shield className="w-4 h-4" />
+                  ) : (
+                    <ShieldOff className="w-4 h-4" />
+                  )
+                }
+                label="Two-factor authentication"
+                value={
+                  accountSecurity?.twoFactorEnabled == null
+                    ? "Not available"
+                    : accountSecurity.twoFactorEnabled
+                      ? "Enabled"
+                      : "Disabled"
+                }
+                available={accountSecurity?.twoFactorEnabled != null}
+              />
+              <SecurityRow
+                icon={<KeyRound className="w-4 h-4" />}
+                label="Password last changed"
+                value={
+                  accountSecurity?.passwordLastChangedAt
+                    ? new Date(
+                        accountSecurity.passwordLastChangedAt,
+                      ).toLocaleDateString()
+                    : "Not tracked"
+                }
+                available={!!accountSecurity?.passwordLastChangedAt}
+              />
             </div>
+            <p className="text-[10px] text-zinc-500 font-medium mt-6 leading-relaxed">
+              Fields marked &quot;Not tracked&quot; require backend support that
+              doesn&apos;t exist yet — see the implementation notes for
+              what&apos;s needed.
+            </p>
           </div>
         </div>
       </div>
@@ -383,55 +435,28 @@ export default function AdminProfilePage() {
   );
 }
 
-function ActivityRow({ entry }: { entry: ActivityEntry }) {
-  const borderColor = LOG_LEVEL_STYLES[entry.logLevel] ?? "border-l-zinc-300";
-  const dotColor = LOG_LEVEL_DOTS[entry.logLevel] ?? "bg-zinc-300";
-  const route = ENTITY_ROUTES[entry.entityType];
-  const href =
-    route && entry.entityId != null ? `${route}?id=${entry.entityId}` : null;
-
+function SecurityRow({
+  icon,
+  label,
+  value,
+  available,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  available: boolean;
+}) {
   return (
-    <div
-      className={`flex items-start gap-3 pl-3 border-l-2 ${borderColor} py-2`}
-    >
-      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm text-zinc-700">{entry.description}</p>
-          {href && (
-            <a
-              href={href}
-              className="shrink-0 mt-0.5 text-zinc-300 hover:text-zinc-600 transition-colors"
-              title={`View ${entry.entityType}`}
-            >
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          <p className="text-[10px] text-zinc-400 font-medium">
-            {entry.createdAt
-              ? new Date(entry.createdAt).toLocaleString()
-              : ""}
-          </p>
-          {entry.logLevel && entry.logLevel !== "INFO" && (
-            <span
-              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                entry.logLevel === "CRITICAL"
-                  ? "bg-red-100 text-red-600"
-                  : "bg-yellow-100 text-yellow-600"
-              }`}
-            >
-              {entry.logLevel}
-            </span>
-          )}
-          {entry.ipAddress && (
-            <span className="text-[9px] text-zinc-300 font-mono">
-              {entry.ipAddress}
-            </span>
-          )}
-        </div>
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="text-zinc-500 shrink-0">{icon}</span>
+        <span className="text-sm font-semibold text-zinc-300">{label}</span>
       </div>
+      <span
+        className={`text-xs font-bold text-right shrink-0 ${available ? "text-white" : "text-zinc-600 italic"}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -470,42 +495,24 @@ function StatCard({
   label,
   value,
   sub,
+  warn,
 }: {
   label: string;
   value: string;
   sub: string;
+  warn?: boolean;
 }) {
   return (
-    <div className="bg-zinc-50 rounded-[2rem] p-6 md:p-8">
+    <div className="bg-zinc-50 rounded-[2rem] p-5 md:p-8">
       <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-3">
         {label}
       </p>
       <h3 className="text-2xl md:text-3xl font-black mb-1">{value}</h3>
-      <p className="text-[10px] font-bold text-green-500 uppercase tracking-tight">
+      <p
+        className={`text-[10px] font-bold uppercase tracking-tight ${warn ? "text-red-500" : "text-green-500"}`}
+      >
         {sub}
       </p>
-    </div>
-  );
-}
-
-function PermissionRow({
-  label,
-  status,
-}: {
-  label: string;
-  status: "on" | "restricted";
-}) {
-  const isOn = status === "on";
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm font-semibold text-zinc-300">{label}</span>
-      <span
-        className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
-          isOn ? "bg-green-500/10 text-green-400" : "bg-zinc-800 text-zinc-500"
-        }`}
-      >
-        {isOn ? "On" : "Restricted"}
-      </span>
     </div>
   );
 }

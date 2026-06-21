@@ -61,6 +61,11 @@ const TimelineEditor = ({
                     : "border-black/5 focus:border-[#FACC15]"
                 }`}
               />
+              {fieldErrors[`timelineItems.${timeline.id}.time`] && (
+                <p className="text-[10px] font-bold text-red-500 ml-2">
+                  {fieldErrors[`timelineItems.${timeline.id}.time`]}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 ml-2">
@@ -81,6 +86,11 @@ const TimelineEditor = ({
                     : "border-black/5 focus:border-[#FACC15]"
                 }`}
               />
+              {fieldErrors[`timelineItems.${timeline.id}.description`] && (
+                <p className="text-[10px] font-bold text-red-500 ml-2">
+                  {fieldErrors[`timelineItems.${timeline.id}.description`]}
+                </p>
+              )}
             </div>
           </div>
         </div>

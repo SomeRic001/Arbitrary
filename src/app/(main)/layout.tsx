@@ -29,6 +29,22 @@ export default function MainLayout({
     }
   }, [status, router]);
 
+  // Redirect admin-level users to the admin dashboard.
+  // Role values in the `users` table are stored inconsistently in casing
+  // (e.g. "user" by default, "USER" from OAuth signup, "ADMIN" from the seed
+  // script), so we normalize to uppercase before comparing rather than
+  // relying on an exact-case match. See PR notes for the full list of
+  // role-casing inconsistencies found across the codebase.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const userRole = ((session?.user as any)?.role ?? "")
+      .toString()
+      .toUpperCase();
+    if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+      router.push("/admin/dashboard");
+    }
+  }, [status, session, router]);
+
   // Real-time notifications — start SSE FIRST so the connection is open
   // before useDailyLogin fires and the server calls NotificationService.deliver().
   // This ensures the notification lands in the bell in real-time on the very

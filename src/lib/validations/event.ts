@@ -6,6 +6,7 @@ export const eventSchema = z.object({
     title: z.string().min(1, "Event title is required").max(255),
     eventType: z.string().min(1, "Event type is required").max(100),
     status: z.string().min(1, "Status is required").max(100),
+    priority: z.enum(["high", "low"]).default("low"),
     date: z.string()
         .min(1, "Event date is required")
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),

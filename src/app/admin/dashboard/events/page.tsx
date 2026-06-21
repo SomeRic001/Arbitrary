@@ -30,6 +30,7 @@ export default function AdminEvents() {
   const [eventTitle, setEventTitle] = useState("");
   const [eventType, setEventType] = useState("Tour");
   const [eventStatus, setEventStatus] = useState("Upcoming");
+  const [eventPriority, setEventPriority] = useState("low");
   const [eventDate, setEventDate] = useState("");
   const [eventVenue, setEventVenue] = useState("");
   const [eventDescription, setEventDescription] = useState("");
@@ -46,6 +47,7 @@ export default function AdminEvents() {
     setEventTitle("");
     setEventType("Tour");
     setEventStatus("Upcoming");
+    setEventPriority("low");
     setEventDate("");
     setEventVenue("");
     setEventDescription("");
@@ -87,6 +89,7 @@ export default function AdminEvents() {
         setEventTitle(ev.title || "");
         setEventType(ev.eventType || "Tour");
         setEventStatus(ev.status || "Upcoming");
+        setEventPriority(ev.priority || "low");
         let formattedDate = ev.eventDate || "";
         if (formattedDate && formattedDate.includes("T")) {
           formattedDate = formattedDate.split("T")[0];
@@ -242,9 +245,29 @@ export default function AdminEvents() {
       localErrors.accessTypes =
         "At least one access type with a title is required";
     }
+    // A timeline entry with only one of time/description filled in would
+    // otherwise be silently dropped before it reaches the server (it fails
+    // the backend's "both required" rule either way) — catch it here so
+    // the admin gets a clear, actionable message instead of a confusing
+    // "Description not filled" error pointing at the wrong field.
+    timelines.forEach((t) => {
+      const hasTime = !!t.time?.trim();
+      const hasDescription = !!t.description?.trim();
+      if (hasTime && !hasDescription) {
+        localErrors[`timelineItems.${t.id}.description`] =
+          "Add a description, or clear the time, for this timeline entry";
+      } else if (hasDescription && !hasTime) {
+        localErrors[`timelineItems.${t.id}.time`] =
+          "Add a time, or clear the description, for this timeline entry";
+      }
+    });
     if (Object.keys(localErrors).length > 0) {
       setFieldErrors(localErrors);
-      toast.error("Please fill in all required fields.");
+      toast.error(
+        Object.keys(localErrors).some((k) => k.startsWith("timelineItems."))
+          ? "Timeline entries need both a time and a description — fill in the missing field or remove the entry."
+          : "Please fill in all required fields.",
+      );
       triggerScrollToError();
       return;
     }
@@ -265,7 +288,7 @@ export default function AdminEvents() {
           pointCost: a.pointCost ?? 0,
         }));
       const filteredTimelines = timelines
-        .filter((t) => t.time || t.description)
+        .filter((t) => t.time?.trim() && t.description?.trim())
         .map((t) => ({
           id: cleanseId(t.id),
           time: t.time,
@@ -299,6 +322,7 @@ export default function AdminEvents() {
         title: eventTitle,
         eventType,
         status: eventStatus,
+        priority: eventPriority,
         date: eventDate,
         venue: eventVenue,
         description: eventDescription,
@@ -449,6 +473,8 @@ export default function AdminEvents() {
         setEventType={setEventType}
         eventStatus={eventStatus}
         setEventStatus={setEventStatus}
+        eventPriority={eventPriority}
+        setEventPriority={setEventPriority}
         eventDate={eventDate}
         setEventDate={setEventDate}
         eventVenue={eventVenue}
