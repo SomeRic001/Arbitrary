@@ -103,7 +103,7 @@ function RegisterBtn({ className = "" }: { className?: string }) {
   return (
     <Link
       href={BANNER_CONFIG.registerHref}
-      className={`flex-shrink-0 bg-white text-green-700 font-black uppercase tracking-widest rounded-md hover:bg-green-50 transition-colors duration-150 shadow-sm ${className}`}
+      className={`flex-shrink-0 bg-[#12122A] text-white font-black uppercase tracking-widest rounded-lg hover:bg-[#1e1e3a] transition-colors duration-150 ${className}`}
     >
       PARTICIPATE
     </Link>
@@ -122,7 +122,7 @@ function Countdown({
     return (
       <span
         className={`inline-flex items-center gap-1.5 text-white font-medium tracking-widest uppercase px-3 py-1 rounded-full ${className}`}
-        style={{ background: "rgba(0,0,0,0.3)" }}
+        style={{ background: "rgba(0,0,0,0.45)" }}
         aria-live="polite"
       >
         <ClockIcon />
@@ -176,6 +176,12 @@ function Ticker() {
         @keyframes promo-marquee {
           0%   { transform: translateX(0); }
           100% { transform: translateX(-50%); }
+        }
+        @keyframes particleDrift {
+          0%   { transform: translateY(-15px); opacity: 0; }
+          8%   { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { transform: translateY(80px); opacity: 0; }
         }
         .promo-ticker-track {
           animation: promo-marquee 18s linear infinite;
@@ -246,6 +252,43 @@ export default function PromoBanner() {
 
   const pad = (n: number) => String(n).padStart(2, "0");
 
+  const PARTICLES = [
+    { t: 3,  l: 1,  sz: 8,  dr: 8.0,  dy: 0.0 },
+    { b: 4,  l: 4,  sz: 7,  dr: 9.5,  dy: 1.2 },
+    { t: 5,  l: 7,  sz: 10, dr: 7.2,  dy: 2.8 },
+    { b: 2,  l: 10, sz: 6,  dr: 11.0, dy: 0.5 },
+    { t: 2,  l: 13, sz: 9,  dr: 8.8,  dy: 3.4 },
+    { b: 5,  l: 16, sz: 7,  dr: 10.2, dy: 1.8 },
+    { t: 4,  l: 19, sz: 11, dr: 6.5,  dy: 4.2 },
+    { b: 3,  l: 22, sz: 6,  dr: 12.0, dy: 0.2 },
+    { t: 3,  l: 25, sz: 8,  dr: 9.0,  dy: 3.0 },
+    { b: 4,  l: 28, sz: 10, dr: 7.8,  dy: 1.5 },
+    { t: 5,  l: 31, sz: 7,  dr: 10.5, dy: 4.8 },
+    { b: 2,  l: 34, sz: 9,  dr: 8.2,  dy: 0.8 },
+    { t: 2,  l: 37, sz: 6,  dr: 11.8, dy: 2.5 },
+    { b: 5,  l: 40, sz: 8,  dr: 9.4,  dy: 3.8 },
+    { t: 4,  l: 43, sz: 10, dr: 7.0,  dy: 0.1 },
+    { b: 3,  l: 46, sz: 7,  dr: 10.8, dy: 4.5 },
+    { t: 3,  l: 49, sz: 11, dr: 6.8,  dy: 1.0 },
+    { b: 4,  l: 52, sz: 6,  dr: 12.2, dy: 3.2 },
+    { t: 5,  l: 55, sz: 9,  dr: 8.5,  dy: 0.6 },
+    { b: 2,  l: 58, sz: 8,  dr: 9.8,  dy: 4.0 },
+    { t: 2,  l: 61, sz: 7,  dr: 11.4, dy: 1.4 },
+    { b: 5,  l: 64, sz: 10, dr: 7.4,  dy: 3.6 },
+    { t: 4,  l: 67, sz: 6,  dr: 10.0, dy: 0.3 },
+    { b: 3,  l: 70, sz: 9,  dr: 9.2,  dy: 5.0 },
+    { t: 3,  l: 73, sz: 8,  dr: 8.6,  dy: 2.2 },
+    { b: 4,  l: 76, sz: 7,  dr: 11.6, dy: 0.9 },
+    { t: 5,  l: 79, sz: 11, dr: 6.2,  dy: 4.6 },
+    { b: 2,  l: 82, sz: 6,  dr: 12.4, dy: 3.0 },
+    { t: 2,  l: 85, sz: 10, dr: 7.6,  dy: 0.4 },
+    { b: 5,  l: 88, sz: 8,  dr: 10.4, dy: 1.6 },
+    { t: 4,  l: 91, sz: 7,  dr: 9.6,  dy: 4.4 },
+    { b: 3,  l: 94, sz: 9,  dr: 8.4,  dy: 2.0 },
+    { t: 5,  l: 97, sz: 6,  dr: 11.2, dy: 3.5 },
+    { b: 4,  l: 99, sz: 10, dr: 7.0,  dy: 1.0 },
+  ] as const;
+
   return (
     <div
       id="promo-banner"
@@ -254,81 +297,27 @@ export default function PromoBanner() {
       aria-label="Promotional announcement"
       className="fixed top-0 left-0 right-0 w-full overflow-hidden z-[10000]"
       style={{
-        background:
-          "linear-gradient(90deg, #15803d 0%, #16a34a 30%, #22c55e 60%, #15803d 100%)",
+        background: "linear-gradient(to right, #469930 0%, #35af0a 45%, #36b40d 100%)",
       }}
     >
-      <Particle
-        style={{
-          top: "4px",
-          left: "3%",
-          fontSize: "8px",
-          color: "rgba(255,255,255,0.5)",
-        }}
-      />
-      <Particle
-        style={{
-          top: "2px",
-          left: "12%",
-          fontSize: "6px",
-          color: "rgba(255,255,255,0.35)",
-        }}
-      />
-      <Particle
-        style={{
-          bottom: "4px",
-          left: "22%",
-          fontSize: "7px",
-          color: "rgba(255,255,255,0.4)",
-        }}
-      />
-      <Particle
-        style={{
-          top: "3px",
-          left: "42%",
-          fontSize: "5px",
-          color: "rgba(255,255,255,0.3)",
-        }}
-      />
-      <Particle
-        style={{
-          bottom: "3px",
-          left: "55%",
-          fontSize: "9px",
-          color: "rgba(255,255,255,0.45)",
-        }}
-      />
-      <Particle
-        style={{
-          top: "5px",
-          right: "32%",
-          fontSize: "6px",
-          color: "rgba(255,255,255,0.35)",
-        }}
-      />
-      <Particle
-        style={{
-          bottom: "3px",
-          right: "18%",
-          fontSize: "8px",
-          color: "rgba(255,255,255,0.4)",
-        }}
-      />
-      <Particle
-        style={{
-          top: "2px",
-          right: "8%",
-          fontSize: "5px",
-          color: "rgba(255,255,255,0.3)",
-        }}
-      />
+      {PARTICLES.map((p, i) => (
+        <Particle
+          key={i}
+          style={{
+            [p.t !== undefined ? "top" : "bottom"]: `${p.t ?? p.b}px`,
+            left: `${p.l}%`,
+            fontSize: `${p.sz}px`,
+            color: "white",
+            animation: `particleDrift ${p.dr}s ${p.dy}s ease-in-out infinite backwards`,
+          } as React.CSSProperties}
+        />
+      ))}
 
       {/* ── Mobile (< 640px): 3 rows ── */}
       <div className="sm:hidden relative px-3 pt-2 pb-1.5">
         <div className="flex items-center justify-between mb-1">
           <span
-            className="text-white font-black text-[10px] tracking-widest uppercase px-2 py-1.5 rounded-full border border-white/40"
-            style={{ background: "rgba(0,0,0,0.25)" }}
+            className="text-white font-black text-[10px] tracking-widest uppercase px-2 py-1.5 rounded-full border border-white"
           >
             TUBORG × ARBITRARY
           </span>
@@ -359,8 +348,7 @@ export default function PromoBanner() {
       {/* ── Tablet (640px–1023px): badge | ticker | countdown + CTA + close ── */}
       <div className="hidden sm:flex lg:hidden relative items-center gap-3 px-4 py-2">
         <span
-          className="flex-shrink-0 text-white font-black text-[11px] tracking-widest uppercase px-2.5 py-1 rounded-full border border-white/40"
-          style={{ background: "rgba(0,0,0,0.25)" }}
+          className="flex-shrink-0 text-white font-black text-[11px] tracking-widest uppercase px-2.5 py-1 rounded-full border border-white"
         >
           TUBORG × ARBITRARY
         </span>
@@ -380,8 +368,7 @@ export default function PromoBanner() {
       <div className="hidden lg:flex relative items-center justify-between gap-2 px-6 py-2.5">
         <div className="flex-shrink-0">
           <span
-            className="text-white font-black text-[12px] tracking-widest uppercase px-3 py-1 rounded-full border border-white/40"
-            style={{ background: "rgba(0,0,0,0.25)" }}
+            className="text-white font-black text-[12px] tracking-widest uppercase px-3 py-1 rounded-full border border-white"
           >
             TUBORG × ARBITRARY
           </span>
