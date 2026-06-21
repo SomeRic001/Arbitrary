@@ -9,6 +9,7 @@ import {
   EMAIL_FORMAT_REGEX,
   isDisposableEmail,
 } from "@/src/lib/tilt/disposable-email";
+import { validateEmailDomain } from "@/src/lib/tilt/email";
 import {
   getSessionFromCookie,
   getSessionFromId,
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     }
 
     const fullName = readTrimmedString(body, "full_name");
-    const email = readTrimmedString(body, "email").toLowerCase();
+    let email = readTrimmedString(body, "email").toLowerCase();
     const phoneRaw = readTrimmedString(body, "phone");
     const address = readTrimmedString(body, "address");
 
@@ -93,6 +94,21 @@ export async function POST(req: NextRequest) {
         "Disposable email addresses are not allowed",
         "DISPOSABLE_EMAIL",
       );
+    }
+
+    // Domain validation: typo correction + MX lookup (skipped for known-good domains)
+    const atIndex = email.lastIndexOf("@");
+    const domain = atIndex > 0 ? email.slice(atIndex + 1) : "";
+    if (domain) {
+      const result = await validateEmailDomain(domain);
+      if (!result.valid) {
+        if (result.correctedTo) {
+          // Silently fix the email and continue
+          email = `${email.slice(0, atIndex + 1)}${result.correctedTo}`;
+        } else {
+          return jsonError(400, "Invalid email address", "INVALID_EMAIL");
+        }
+      }
     }
 
     const phoneDigits = phoneRaw.replace(/\D/g, "");

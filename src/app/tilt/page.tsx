@@ -10,10 +10,13 @@
 //   2. POST /api/tilt/register → lottery entry validation + save.
 //   3. Success screen shown.
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants, Transition } from "framer-motion";
+
+import { normalisePhone } from "@/src/lib/tilt/phone";
+import { EMAIL_FORMAT_REGEX } from "@/src/lib/tilt/disposable-email";
 
 type PageStep = "form" | "success";
 
@@ -83,6 +86,16 @@ const pageCss = `
   .tilt-btn:hover { transform: scale(1.015); }
   .tilt-btn:active { transform: scale(0.985); }
   .tilt-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .tilt-field-error {
+    font-size: 11px;
+    color: #e05555;
+    margin-top: 5px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .tilt-input.tilt-input-error {
+    border-color: rgba(224,85,85,0.5);
+  }
 `;
 
 export default function TiltPage() {
@@ -93,6 +106,57 @@ export default function TiltPage() {
   // Form state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [phoneValue, setPhoneValue] = useState("");
+  const [emailValue, setEmailValue] = useState("");
+
+  const validatePhone = useCallback((value: string): string | null => {
+    const normalised = normalisePhone(value, "977");
+    if (!normalised) return "Phone number is required";
+    const sub = normalised.startsWith("977") ? normalised.slice(3) : normalised;
+    if (sub.length !== 10) return "Phone must be exactly 10 digits";
+    if (!/^(97|98)/.test(sub)) return "Phone must start with 97 or 98";
+    return null;
+  }, []);
+
+  const handlePhoneBlur = useCallback(() => {
+    const err = validatePhone(phoneValue);
+    setFieldErrors((prev) => {
+      if (err === prev.phone) return prev;
+      return { ...prev, phone: err ?? "" };
+    });
+  }, [phoneValue, validatePhone]);
+
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setPhoneValue(v);
+    setFieldErrors((prev) => {
+      if (!prev.phone) return prev;
+      return { ...prev, phone: "" };
+    });
+  }, []);
+
+  const validateEmail = useCallback((value: string): string | null => {
+    if (!value) return "Email is required";
+    if (!EMAIL_FORMAT_REGEX.test(value)) return "Please enter a valid email address";
+    return null;
+  }, []);
+
+  const handleEmailBlur = useCallback(() => {
+    const err = validateEmail(emailValue);
+    setFieldErrors((prev) => {
+      if (err === prev.email) return prev;
+      return { ...prev, email: err ?? "" };
+    });
+  }, [emailValue, validateEmail]);
+
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmailValue(e.target.value);
+    setFieldErrors((prev) => {
+      if (!prev.email) return prev;
+      return { ...prev, email: "" };
+    });
+  }, []);
 
   useEffect(() => {
     document.title = "Apply | Tilt Lottery";
@@ -194,11 +258,27 @@ export default function TiltPage() {
     setIsLoading(true);
     setError("");
 
+    // Client-side phone validation
+    const phoneErr = validatePhone(phoneValue);
+    if (phoneErr) {
+      setFieldErrors((prev) => ({ ...prev, phone: phoneErr }));
+      setIsLoading(false);
+      return;
+    }
+
+    // Client-side email validation
+    const emailErr = validateEmail(emailValue);
+    if (emailErr) {
+      setFieldErrors((prev) => ({ ...prev, email: emailErr }));
+      setIsLoading(false);
+      return;
+    }
+
     const fd = new FormData(e.currentTarget);
     const data = {
       full_name: fd.get("full_name") as string,
-      email: fd.get("email") as string,
-      phone: fd.get("phone") as string,
+      email: emailValue,
+      phone: phoneValue,
       address: fd.get("address") as string,
       sid: sidFallback,
     };
@@ -587,8 +667,14 @@ export default function TiltPage() {
                   required
                   placeholder={field.placeholder}
                   autoComplete={field.autoComplete}
-                  className="tilt-input"
+                  className={`tilt-input${fieldErrors[field.id] ? " tilt-input-error" : ""}`}
+                  value={field.id === "phone" ? phoneValue : field.id === "email" ? emailValue : undefined}
+                  onChange={field.id === "phone" ? handlePhoneChange : field.id === "email" ? handleEmailChange : undefined}
+                  onBlur={field.id === "phone" ? handlePhoneBlur : field.id === "email" ? handleEmailBlur : undefined}
                 />
+                {fieldErrors[field.id] && (
+                  <div className="tilt-field-error">{fieldErrors[field.id]}</div>
+                )}
               </motion.div>
             ))}
 
