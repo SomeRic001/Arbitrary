@@ -31,6 +31,7 @@ interface ApiTask {
   completedAt: string | null;
   taskType: string | null;
   platform: string | null;
+  description: string | null;
   difficulty: string | null;
 }
 
@@ -40,6 +41,7 @@ interface ProfileTask {
   points: number;
   status: string;
   completedAt: string | null;
+  description: string | null;
   taskType: string | null;
   platform: string | null;
   difficulty: string;
@@ -113,6 +115,7 @@ export default function ProfilePage() {
         .map((t) => ({
           id: t.id,
           title: t.title,
+          description: t.description ?? null,
           points: t.points,
           status: (t.userStatus ?? "").toLowerCase(),
           completedAt: t.completedAt,
