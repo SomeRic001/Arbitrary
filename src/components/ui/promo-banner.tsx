@@ -252,7 +252,14 @@ export default function PromoBanner() {
 
   const pad = (n: number) => String(n).padStart(2, "0");
 
-  const PARTICLES = [
+  const PARTICLES: ReadonlyArray<{
+    t?: number;
+    b?: number;
+    l: number;
+    sz: number;
+    dr: number;
+    dy: number;
+  }> = [
     { t: 3,  l: 1,  sz: 8,  dr: 8.0,  dy: 0.0 },
     { b: 4,  l: 4,  sz: 7,  dr: 9.5,  dy: 1.2 },
     { t: 5,  l: 7,  sz: 10, dr: 7.2,  dy: 2.8 },
@@ -287,7 +294,7 @@ export default function PromoBanner() {
     { b: 3,  l: 94, sz: 9,  dr: 8.4,  dy: 2.0 },
     { t: 5,  l: 97, sz: 6,  dr: 11.2, dy: 3.5 },
     { b: 4,  l: 99, sz: 10, dr: 7.0,  dy: 1.0 },
-  ] as const;
+  ];
 
   return (
     <div

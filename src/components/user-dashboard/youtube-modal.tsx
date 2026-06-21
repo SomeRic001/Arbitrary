@@ -29,7 +29,7 @@ interface YTPlayer {
 
 declare global {
   interface Window {
-    YT: {
+    YT?: {
       Player: any;
       PlayerState: {
         OFF: number;
@@ -40,7 +40,7 @@ declare global {
         CUED: number;
       };
     };
-    onYouTubeIframeAPIReady: () => void;
+    onYouTubeIframeAPIReady?: () => void;
   }
 }
 
@@ -297,12 +297,15 @@ export function YoutubeModal({
     completedRef.current = false;
 
     function initPlayer() {
+      const yt = window.YT;
+      if (!yt?.Player) return;
+
       if (playerRef.current) {
         playerRef.current.destroy();
         playerRef.current = null;
       }
 
-      playerRef.current = new window.YT.Player("yt-player-container", {
+      playerRef.current = new yt.Player("yt-player-container", {
         height: "100%",
         width: "100%",
         videoId,
@@ -317,7 +320,7 @@ export function YoutubeModal({
         events: {
           onReady: () => setPlayerReady(true),
           onStateChange: (event: { data: number }) => {
-            if (event.data === window.YT.PlayerState.PLAYING) {
+            if (event.data === yt.PlayerState.PLAYING) {
               setIsPlaying(true);
               startSession();
             } else {

@@ -28,7 +28,7 @@ export type TaskFormPayload = {
   taskType: string;
   rewardPoint: number;
   videoUrl: string | null;
-  platform: Platform | null;
+  platform: Platform | "screenshot" | "share" | null;
   socialPostId: string | null;
   socialPostUrl: string | null;
   socialPlatform?: string | null;
@@ -70,7 +70,11 @@ export function TaskFormModal({
   onSubmit,
 }: Props) {
   const [taskSource, setTaskSource] = useState<TaskSource>(
-    task?.isShare ? "share" : (task?.platform ?? "manual"),
+    task?.isShare
+      ? "share"
+      : task?.platform === "screenshot" || !task?.platform
+        ? "manual"
+        : task.platform,
   );
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [isFlash, setIsFlash] = useState<boolean>(task?.isFlash === true);

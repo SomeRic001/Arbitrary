@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const isAdminRole = or(
     ilike(usersTable.role, "admin"),
     ilike(usersTable.role, "super_admin"),
-  );
+  )!;
 
   let roleClause;
   if (role === "admin") {

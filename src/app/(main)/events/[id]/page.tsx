@@ -41,12 +41,10 @@ type YTNamespace = {
   PlayerState: { PLAYING: number };
 };
 
-declare global {
-  interface Window {
-    YT?: YTNamespace;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
+type YTWindow = Window & {
+  YT?: YTNamespace;
+  onYouTubeIframeAPIReady?: () => void;
+};
 
 const YT_API_SRC = "https://www.youtube.com/iframe_api";
 
@@ -58,15 +56,17 @@ function loadYouTubeIframeApi(): Promise<YTNamespace> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("No window"));
   }
-  if (window.YT?.Player) {
-    return Promise.resolve(window.YT);
+  const ytWindow = window as YTWindow;
+
+  if (ytWindow.YT?.Player) {
+    return Promise.resolve(ytWindow.YT);
   }
 
   return new Promise((resolve) => {
-    const previousCallback = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
+    const previousCallback = ytWindow.onYouTubeIframeAPIReady;
+    ytWindow.onYouTubeIframeAPIReady = () => {
       previousCallback?.();
-      resolve(window.YT as YTNamespace);
+      resolve(ytWindow.YT as YTNamespace);
     };
 
     if (!document.querySelector(`script[src="${YT_API_SRC}"]`)) {

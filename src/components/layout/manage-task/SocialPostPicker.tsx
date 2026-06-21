@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { PLATFORMS } from "@/src/lib/manage-task/types";
 import { Platform, PLATFORM_LABELS, SocialPost } from "@/src/lib/social/type";
 import { useQuery } from "@tanstack/react-query";
 
@@ -48,7 +47,8 @@ export function SocialPostPicker({ platform, selected, onSelect }: Props) {
     );
   }
 
-  const platformIcon = PLATFORMS.find((p) => p.value === platform)?.icon;
+  const platformIcon =
+    platform === "facebook" ? "f" : platform === "instagram" ? "◎" : "▶";
 
   return (
     <div className="space-y-3">

@@ -13,7 +13,7 @@ export type Task = {
     completedUsers: number;
     rewardPoint?: number;
     videoUrl?: string;
-    platform?: import("@/src/lib/social/type").Platform;
+    platform?: import("@/src/lib/social/type").Platform | "screenshot" | "share";
     socialPostId?: string;
     socialPostUrl?: string;
     socialPlatform?: string;
@@ -32,7 +32,10 @@ export type Task = {
 
 export type ModalMode = "add" | "edit";
 
-export type TaskSource = "manual" | import("@/src/lib/social/type").Platform;
+export type TaskSource =
+    | "manual"
+    | "share"
+    | import("@/src/lib/social/type").Platform;
 
 export const PLATFORMS: {
     value: import("@/src/lib/social/type").Platform;

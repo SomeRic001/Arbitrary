@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Pencil, Trash2, X, Check, AlertTriangle } from "lucide-react";
 
 import { Task } from "@/src/lib/manage-task/types";
-import { Platform } from "@/src/lib/social/type";
 import { ModalShell } from "./ModalShell";
 import { PlatformBadge } from "./PlatformBadge";
 import { TaskFormPayload } from "./TaskFormModal";
@@ -26,7 +25,7 @@ type EditState = {
   socialPostUrl: string;
   commentInstruction: string;
   watchDuration: number;
-  platform: Platform | "";
+  platform: Exclude<Task["platform"], undefined> | "";
   isRecurring: boolean;
 };
 

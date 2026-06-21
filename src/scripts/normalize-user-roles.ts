@@ -26,7 +26,7 @@ import { and, eq, ilike, isNull, not, or, sql } from "drizzle-orm";
 const isAdminRole = or(
   ilike(usersTable.role, "admin"),
   ilike(usersTable.role, "super_admin"),
-);
+)!;
 const isSuperAdminRole = ilike(usersTable.role, "super_admin");
 
 async function roleDistribution() {
