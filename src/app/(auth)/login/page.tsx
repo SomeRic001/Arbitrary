@@ -1,5 +1,6 @@
 "use client";
 import { signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import FormInput from "@/src/components/layout/form-input";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -86,6 +87,7 @@ const UserLoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
@@ -94,6 +96,22 @@ const UserLoginPage = () => {
     setMounted(true);
     document.title = "Login | Arbitrary";
   }, []);
+
+  useEffect(() => {
+    // If OAuth completes and we land back on /login for any reason,
+    // immediately move authenticated users to the dashboard.
+    if (status === "authenticated") {
+      setIsLoading(false);
+      router.replace("/dashboard");
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    // Clear local spinner state whenever provider returned an auth error.
+    if (authError) {
+      setIsLoading(false);
+    }
+  }, [authError]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
