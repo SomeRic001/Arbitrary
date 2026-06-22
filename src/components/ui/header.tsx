@@ -100,7 +100,7 @@ const Header = () => {
         {/* Logo */}
         <Link
           href="/"
-          className="pointer-events-auto group relative flex items-center h-12 min-w-fit sm:min-w-[150px] md:min-w-[200px] shrink-0"
+          className="pointer-events-auto group relative flex items-center h-10 w-[140px] sm:w-[160px] shrink-0"
         >
           <span className="absolute left-0 top-1/2 -translate-y-1/2 text-black font-black text-lg sm:text-2xl md:text-3xl tracking-tighter uppercase inline-flex items-center transition-opacity duration-700 group-hover:opacity-0 whitespace-nowrap">
             {displayText}
